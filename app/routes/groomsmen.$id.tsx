@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Form, useNavigation, useActionData, redirect, useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -43,9 +44,15 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
         const fileExt = photo.name.split('.').pop();
         const fileName = `groomsman_${Date.now()}.${fileExt}`;
 
+        const arrayBuffer = await photo.arrayBuffer();
+        const fileBuffer = Buffer.from(arrayBuffer);
+
         const { error: uploadError } = await supabase.storage
             .from("images")
-            .upload(fileName, photo);
+            .upload(fileName, fileBuffer, {
+                contentType: photo.type,
+                upsert: true
+            });
 
         if (uploadError) {
             return { error: `Erro no upload da foto: ${uploadError.message}` };
@@ -85,6 +92,15 @@ export default function EditGroomsman() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+    const [previewUrl, setPreviewUrl] = useState<string | null>(groomsman.photo_url);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+        }
+    };
 
     return (
         <div className="space-y-6 max-w-md mx-auto">
@@ -134,20 +150,25 @@ export default function EditGroomsman() {
 
                         <div className="space-y-2">
                             <Label htmlFor="photo">Foto (Opcional)</Label>
-                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative">
+                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative overflow-hidden min-h-[150px] flex items-center justify-center">
                                 <Input
                                     id="photo"
                                     name="photo"
                                     type="file"
                                     accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                    onChange={handleFileChange}
                                 />
-                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                    <UploadCloud className="h-8 w-8" />
-                                    <span className="text-xs">Toque para alterar a foto</span>
-                                </div>
+                                {previewUrl ? (
+                                    <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                ) : (
+                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                        <UploadCloud className="h-8 w-8" />
+                                        <span className="text-xs">Toque para alterar a foto</span>
+                                    </div>
+                                )}
                             </div>
-                            {groomsman.photo_url && (
+                            {groomsman.photo_url && !previewUrl && (
                                 <div className="text-xs text-muted-foreground text-center">
                                     Foto atual cadastrada
                                 </div>

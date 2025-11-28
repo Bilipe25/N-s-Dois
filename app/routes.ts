@@ -9,6 +9,7 @@ export default [
         route("suppliers/new", "routes/suppliers.new.tsx"),
         route("checklist", "routes/checklist.tsx"),
         route("guests", "routes/guests.tsx"),
+        route("guests/:id", "routes/guests.$id.tsx"),
         route("budget", "routes/budget.tsx"),
         route("groomsmen", "routes/groomsmen.tsx"),
         route("groomsmen/new", "routes/groomsmen.new.tsx"),

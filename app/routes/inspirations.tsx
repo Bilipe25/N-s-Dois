@@ -45,9 +45,15 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const fileExt = photo.name.split('.').pop();
         const fileName = `inspiration_${Date.now()}.${fileExt}`;
 
+        const arrayBuffer = await photo.arrayBuffer();
+        const fileBuffer = Buffer.from(arrayBuffer);
+
         const { error: uploadError } = await supabase.storage
             .from("images")
-            .upload(fileName, photo);
+            .upload(fileName, fileBuffer, {
+                contentType: photo.type,
+                upsert: true
+            });
 
         if (uploadError) {
             console.error("Upload error:", uploadError);

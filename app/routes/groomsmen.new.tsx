@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Form, useNavigation, useActionData, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -28,9 +29,15 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const fileExt = photo.name.split('.').pop();
         const fileName = `groomsman_${Date.now()}.${fileExt}`;
 
+        const arrayBuffer = await photo.arrayBuffer();
+        const fileBuffer = Buffer.from(arrayBuffer);
+
         const { error: uploadError } = await supabase.storage
             .from("images")
-            .upload(fileName, photo);
+            .upload(fileName, fileBuffer, {
+                contentType: photo.type,
+                upsert: true
+            });
 
         if (uploadError) {
             // Se falhar o upload, retornamos erro mas não impedimos o cadastro se o usuário tentar de novo sem foto?
@@ -63,6 +70,17 @@ export default function NewGroomsman() {
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+        } else {
+            setPreviewUrl(null);
+        }
+    };
 
     return (
         <div className="space-y-6 max-w-md mx-auto">
@@ -106,18 +124,23 @@ export default function NewGroomsman() {
 
                         <div className="space-y-2">
                             <Label htmlFor="photo">Foto (Opcional)</Label>
-                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative">
+                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative overflow-hidden min-h-[150px] flex items-center justify-center">
                                 <Input
                                     id="photo"
                                     name="photo"
                                     type="file"
                                     accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                    onChange={handleFileChange}
                                 />
-                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                    <UploadCloud className="h-8 w-8" />
-                                    <span className="text-xs">Toque para selecionar uma foto</span>
-                                </div>
+                                {previewUrl ? (
+                                    <img src={previewUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                ) : (
+                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                        <UploadCloud className="h-8 w-8" />
+                                        <span className="text-xs">Toque para selecionar uma foto</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
