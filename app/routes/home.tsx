@@ -60,9 +60,9 @@ export default function Home() {
     <div className="p-4 space-y-6 pb-20 relative">
       {/* Background Image se existir */}
       {config?.home_photo_url && (
-        <div className="fixed inset-0 z-[-1] opacity-10">
-          <img src={config.home_photo_url} alt="Background" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background" />
+        <div className="fixed inset-0 z-[-1]">
+          <img src={config.home_photo_url} alt="Background" className="w-full h-full object-cover opacity-50" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/50 to-background/90" />
         </div>
       )}
 
