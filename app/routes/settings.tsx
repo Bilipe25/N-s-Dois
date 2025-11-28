@@ -123,6 +123,30 @@ export const action = async ({ request }: Route.ActionArgs) => {
             updates.home_photo_url = publicUrl;
         }
 
+        // Upload Logo
+        const logo = formData.get("logo") as File;
+        if (logo && logo.size > 0) {
+            const fileExt = logo.name.split('.').pop();
+            const fileName = `logo_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabaseAdmin.storage
+                .from("images")
+                .upload(fileName, logo, {
+                    contentType: logo.type,
+                    upsert: true
+                });
+
+            if (uploadError) {
+                return { error: `Erro ao salvar logo: ${uploadError.message}` };
+            }
+
+            const { data: { publicUrl } } = supabaseAdmin.storage
+                .from("images")
+                .getPublicUrl(fileName);
+
+            updates.logo_url = publicUrl;
+        }
+
         const { error: updateError } = await supabaseAdmin.from("app_config").update(updates).eq("id", configId);
 
         if (updateError) {
@@ -231,6 +255,23 @@ export default function Settings() {
                             )}
                             <Input id="home_photo" name="home_photo" type="file" accept="image/*" />
                             <p className="text-[10px] text-muted-foreground">Recomendado: Foto mais clara ou com bom contraste.</p>
+                        </div>
+
+                        <div className="h-px bg-border" />
+
+                        {/* Logo do App */}
+                        <div className="space-y-3">
+                            <Label htmlFor="logo">Logo do App (Ícone)</Label>
+                            {config?.logo_url && (
+                                <div className="flex items-center gap-4">
+                                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted border relative group">
+                                        <img src={config.logo_url} alt="App Logo" className="w-full h-full object-cover" />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">Logo atual</span>
+                                </div>
+                            )}
+                            <Input id="logo" name="logo" type="file" accept="image/*" />
+                            <p className="text-[10px] text-muted-foreground">Recomendado: Imagem quadrada (PNG ou JPG), será usada como ícone do app.</p>
                         </div>
                     </CardContent>
                 </Card>

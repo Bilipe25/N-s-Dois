@@ -25,8 +25,39 @@ export const links: Route.LinksFunction = () => [
   { rel: "manifest", href: "/manifest.json" },
 ];
 
-export function loader() {
+export async function loader({ request }: Route.LoaderArgs) {
+  // Precisamos criar o cliente aqui para buscar a config, mas cuidado com loops se usar auth
+  // Vamos usar fetch direto ou criar cliente anonimo simples se possivel, ou apenas passar ENV
+  // Para simplificar e evitar overhead no root, vamos passar apenas ENV e fazer o fetch no client se precisar,
+  // MAS para o favicon funcionar no SSR, precisamos buscar aqui.
+
+  // Nota: Em Remix/React Router v7, loader roda no server.
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+  let logoUrl = "/favicon.ico"; // Default
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/app_config?select=logo_url&limit=1`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0 && data[0].logo_url) {
+          logoUrl = data[0].logo_url;
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao buscar logo no root:", e);
+    }
+  }
+
   return {
+    logoUrl,
     ENV: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
@@ -43,6 +74,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
+        <link rel="icon" href={data?.logoUrl || "/favicon.ico"} />
+        <link rel="apple-touch-icon" href={data?.logoUrl || "/logo192.png"} />
       </head>
       <body>
         {children}
