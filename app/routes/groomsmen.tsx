@@ -5,7 +5,13 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, User, Trash2, Pencil } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, User, Trash2, Pencil, MoreHorizontal } from "lucide-react";
 import type { Route } from "./+types/groomsmen";
 
 export const meta: Route.MetaFunction = () => {
@@ -78,23 +84,42 @@ export default function Groomsmen() {
                                 </div>
                             )}
 
-                            {/* Overlay com Ações */}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <Button asChild variant="secondary" size="icon" className="h-8 w-8 rounded-full">
-                                    <Link to={`/groomsmen/${person.id}`}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Link>
-                                </Button>
-                                <Form method="post" onSubmit={(e) => {
-                                    if (!confirm("Tem certeza que deseja remover?")) {
-                                        e.preventDefault();
-                                    }
-                                }}>
-                                    <input type="hidden" name="id" value={person.id} />
-                                    <Button type="submit" name="intent" value="delete" variant="destructive" size="icon" className="h-8 w-8 rounded-full">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </Form>
+                            {/* Menu de Ações */}
+                            <div className="absolute top-1 right-1 z-10">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full opacity-90 hover:opacity-100 shadow-sm">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem asChild>
+                                            <Link to={`/groomsmen/${person.id}`} className="cursor-pointer flex items-center gap-2">
+                                                <Pencil className="h-4 w-4" />
+                                                <span>Editar</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Form method="post" className="w-full">
+                                                <input type="hidden" name="id" value={person.id} />
+                                                <button
+                                                    type="submit"
+                                                    name="intent"
+                                                    value="delete"
+                                                    className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                                    onClick={(e) => {
+                                                        if (!confirm("Tem certeza que deseja remover?")) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span>Excluir</span>
+                                                </button>
+                                            </Form>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                         <CardContent className="p-3 text-center">

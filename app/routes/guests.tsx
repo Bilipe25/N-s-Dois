@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, Form } from "react-router";
+import { useLoaderData, Form, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Check, X, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import type { Route } from "./+types/guests";
 
 export const meta: Route.MetaFunction = () => {
@@ -240,6 +240,12 @@ export default function Guests() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            <span>Editar</span>
+                                        </Link>
+                                    </DropdownMenuItem>
                                     {guest.rsvp_status === 'pendente' && (
                                         <>
                                             <DropdownMenuItem asChild>
