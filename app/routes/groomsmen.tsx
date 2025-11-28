@@ -1,8 +1,10 @@
-import { useLoaderData, Link } from "react-router";
+import { useState } from "react";
+import { useLoaderData, Link, Form } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, User } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, User, Trash2 } from "lucide-react";
 import type { Route } from "./+types/groomsmen";
 
 export const meta: Route.MetaFunction = () => {
@@ -24,21 +26,49 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { groomsmen };
 };
 
+export const action = async ({ request }: Route.ActionArgs) => {
+    const formData = await request.formData();
+    const intent = formData.get("intent");
+    const supabase = createClient(request);
+
+    if (intent === "delete") {
+        const id = formData.get("id") as string;
+        await supabase.from("groomsmen").delete().eq("id", id);
+    }
+
+    return null;
+};
+
 export default function Groomsmen() {
     const { groomsmen } = useLoaderData<typeof loader>();
+    const [roleFilter, setRoleFilter] = useState<string>("todos");
 
-    return (
-        <div className="p-4 space-y-6 pb-20">
-            <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-serif text-primary">Padrinhos</h1>
-                {/* Botão de adicionar no cabeçalho também, opcional */}
-            </header>
+    const roles = ["todos", "Padrinho", "Madrinha", "Daminha", "Pajem"];
 
-            {/* Lista de Padrinhos */}
+    const filterGroomsmen = (side: string) => {
+        return groomsmen.filter((person: any) => {
+            const matchesSide = person.side === side;
+            const matchesRole = roleFilter === "todos" ? true : person.role === roleFilter;
+            return matchesSide && matchesRole;
+        });
+    };
+
+    const renderList = (side: string) => {
+        const list = filterGroomsmen(side);
+
+        if (list.length === 0) {
+            return (
+                <div className="text-center py-10 text-muted-foreground">
+                    <p>Ninguém deste lado cadastrado com este filtro.</p>
+                </div>
+            );
+        }
+
+        return (
             <div className="grid grid-cols-2 gap-4">
-                {groomsmen.map((person: any) => (
-                    <Card key={person.id} className="overflow-hidden">
-                        <div className="aspect-square bg-secondary flex items-center justify-center relative group">
+                {list.map((person: any) => (
+                    <Card key={person.id} className="overflow-hidden relative group">
+                        <div className="aspect-square bg-secondary flex items-center justify-center relative">
                             {person.photo_url ? (
                                 <img src={person.photo_url} alt={person.name} className="w-full h-full object-cover" />
                             ) : (
@@ -46,25 +76,65 @@ export default function Groomsmen() {
                                     <User className="h-12 w-12" />
                                 </div>
                             )}
+
+                            {/* Overlay com Ações */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                {/* Ações futuras como editar/excluir podem vir aqui */}
+                                <Form method="post" onSubmit={(e) => {
+                                    if (!confirm("Tem certeza que deseja remover?")) {
+                                        e.preventDefault();
+                                    }
+                                }}>
+                                    <input type="hidden" name="id" value={person.id} />
+                                    <Button type="submit" name="intent" value="delete" variant="destructive" size="icon" className="h-8 w-8 rounded-full">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </Form>
                             </div>
                         </div>
                         <CardContent className="p-3 text-center">
                             <h3 className="font-medium text-sm truncate">{person.name}</h3>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{person.role}</p>
-                            <p className="text-[10px] text-primary/80 font-serif italic">Lado {person.side === 'Noivo' ? 'do Noivo' : 'da Noiva'}</p>
                         </CardContent>
                     </Card>
                 ))}
             </div>
+        );
+    };
 
-            {groomsmen.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">
-                    <p>Nenhum padrinho ou madrinha cadastrado.</p>
-                    <p className="text-sm mt-2">Clique no + para adicionar.</p>
-                </div>
-            )}
+    return (
+        <div className="p-4 space-y-6 pb-20">
+            <header className="flex justify-between items-center">
+                <h1 className="text-2xl font-serif text-primary">Padrinhos</h1>
+            </header>
+
+            {/* Filtro de Função */}
+            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                {roles.map((role) => (
+                    <button
+                        key={role}
+                        onClick={() => setRoleFilter(role)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${roleFilter === role
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                            }`}
+                    >
+                        {role}
+                    </button>
+                ))}
+            </div>
+
+            <Tabs defaultValue="Noiva" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="Noiva">Time da Noiva</TabsTrigger>
+                    <TabsTrigger value="Noivo">Time do Noivo</TabsTrigger>
+                </TabsList>
+                <TabsContent value="Noiva">
+                    {renderList("Noiva")}
+                </TabsContent>
+                <TabsContent value="Noivo">
+                    {renderList("Noivo")}
+                </TabsContent>
+            </Tabs>
 
             <div className="fixed bottom-20 right-4 z-40">
                 <Button asChild size="icon" className="h-14 w-14 rounded-full shadow-lg">

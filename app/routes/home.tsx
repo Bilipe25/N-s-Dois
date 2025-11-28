@@ -2,7 +2,7 @@ import { Link, useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, CheckSquare, Users, DollarSign, Store, Gift, User, Settings } from "lucide-react";
+import { Heart, CheckSquare, Users, DollarSign, Store, Gift, User, Settings, Package } from "lucide-react";
 import type { Route } from "./+types/home";
 
 export const meta: Route.MetaFunction = () => {
@@ -137,6 +137,12 @@ export default function Home() {
             <Heart className="h-6 w-6" />
           </div>
           <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Inspirações</span>
+        </Link>
+        <Link to="/assets" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Package className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Nossos Bens</span>
         </Link>
       </div>
 

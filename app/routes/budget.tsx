@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, DollarSign } from "lucide-react";
+import { Plus, DollarSign, Download } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Route } from "./+types/budget";
 
 export const meta: Route.MetaFunction = () => {
@@ -60,11 +61,52 @@ export default function Budget() {
     const totalPaid = items.reduce((acc: any, curr: any) => acc + (Number(curr.paid_value) || 0), 0);
     const progress = totalEstimated > 0 ? (totalPaid / totalEstimated) * 100 : 0;
 
+    // Dados para o gráfico
+    const categoryData = items.reduce((acc: any, curr: any) => {
+        const existing = acc.find((i: any) => i.name === curr.category);
+        if (existing) {
+            existing.value += Number(curr.paid_value) || 0;
+        } else {
+            acc.push({ name: curr.category, value: Number(curr.paid_value) || 0 });
+        }
+        return acc;
+    }, []).filter((i: any) => i.value > 0);
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
+    const handleExport = () => {
+        const headers = ["Descrição", "Categoria", "Valor Orçado", "Valor Pago", "Status"];
+        const csvContent = [
+            headers.join(","),
+            ...items.map((item: any) => [
+                `"${item.description}"`,
+                `"${item.category}"`,
+                item.estimated_value,
+                item.paid_value,
+                item.status
+            ].join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "orcamento_casamento.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="p-4 space-y-6 pb-20">
-            <header>
-                <h1 className="text-2xl font-serif text-primary">Orçamento</h1>
-                <p className="text-sm text-muted-foreground">Controle financeiro do casamento</p>
+            <header className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-serif text-primary">Orçamento</h1>
+                    <p className="text-sm text-muted-foreground">Controle financeiro do casamento</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                    <Download className="h-4 w-4 mr-2" /> Exportar
+                </Button>
             </header>
 
             {/* Resumo Geral */}
@@ -100,6 +142,47 @@ export default function Budget() {
                 </CardContent>
             </Card>
 
+            {/* Gráfico de Gastos por Categoria */}
+            {categoryData.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm">Gastos por Categoria</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                        <div className="h-[200px] w-full max-w-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={categoryData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {categoryData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        formatter={(value: any) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="flex flex-col justify-center gap-2 text-xs ml-4">
+                            {categoryData.map((entry: any, index: number) => (
+                                <div key={index} className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                    <span>{entry.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Adicionar Gasto */}
             <Card>
                 <CardHeader className="pb-2">
@@ -109,19 +192,25 @@ export default function Budget() {
                     <Form method="post" className="space-y-2">
                         <Input name="description" placeholder="Descrição (ex: Buffet)" required />
                         <div className="flex gap-2">
-                            <select
+                            <Input
                                 name="category"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                list="categories"
+                                placeholder="Categoria (Selecione ou Digite)"
                                 required
-                            >
-                                <option value="">Categoria...</option>
-                                <option value="Buffet">Buffet</option>
-                                <option value="Decoração">Decoração</option>
-                                <option value="Foto/Vídeo">Foto/Vídeo</option>
-                                <option value="Local">Local</option>
-                                <option value="Roupas">Roupas</option>
-                                <option value="Outros">Outros</option>
-                            </select>
+                                className="flex-1"
+                            />
+                            <datalist id="categories">
+                                <option value="Buffet" />
+                                <option value="Decoração" />
+                                <option value="Foto/Vídeo" />
+                                <option value="Local" />
+                                <option value="Roupas" />
+                                <option value="Música" />
+                                <option value="Cerimonial" />
+                                <option value="Doces/Bolo" />
+                                <option value="Papelaria" />
+                                <option value="Outros" />
+                            </datalist>
                         </div>
                         <div className="flex gap-2">
                             <div className="relative flex-1">
@@ -172,6 +261,21 @@ export default function Budget() {
                                             }`}
                                         style={{ width: `${Math.min(itemProgress, 100)}%` }}
                                     />
+                                </div>
+                                <div className="flex justify-end">
+                                    <Form method="post">
+                                        <input type="hidden" name="id" value={item.id} />
+                                        <Button
+                                            type="submit"
+                                            name="intent"
+                                            value="delete"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs text-destructive hover:text-destructive"
+                                        >
+                                            Excluir
+                                        </Button>
+                                    </Form>
                                 </div>
                             </div>
                         );

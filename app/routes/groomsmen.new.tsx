@@ -23,7 +23,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
     let photoUrl = null;
 
-    if (photo && photo.size > 0) {
+    // Verificar se existe arquivo e se tem tamanho > 0
+    if (photo && photo.size > 0 && photo.name !== "undefined") {
         const fileExt = photo.name.split('.').pop();
         const fileName = `groomsman_${Date.now()}.${fileExt}`;
 
@@ -32,6 +33,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
             .upload(fileName, photo);
 
         if (uploadError) {
+            // Se falhar o upload, retornamos erro mas não impedimos o cadastro se o usuário tentar de novo sem foto?
+            // Melhor avisar o erro.
             return { error: `Erro no upload da foto: ${uploadError.message}` };
         }
 

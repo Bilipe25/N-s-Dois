@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Plus, Trash2, Users, Check, X } from "lucide-react";
 import type { Route } from "./+types/guests";
 
 export const meta: Route.MetaFunction = () => {
@@ -35,6 +35,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const name = formData.get("name") as string;
         const group_name = formData.get("group_name") as string;
         const adults_count = parseInt(formData.get("adults_count") as string) || 1;
+        const children_count = parseInt(formData.get("children_count") as string) || 0;
 
         if (!name) return null;
 
@@ -42,11 +43,16 @@ export const action = async ({ request }: Route.ActionArgs) => {
             name,
             group_name,
             adults_count,
+            children_count,
             rsvp_status: "pendente"
         });
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("guests").delete().eq("id", id);
+    } else if (intent === "rsvp_action") {
+        const id = formData.get("id") as string;
+        const status = formData.get("status") as string;
+        await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
     }
 
     return null;
@@ -55,23 +61,34 @@ export const action = async ({ request }: Route.ActionArgs) => {
 export default function Guests() {
     const { guests } = useLoaderData<typeof loader>();
     const [filter, setFilter] = useState<"todos" | "confirmado" | "pendente" | "recusado">("todos");
+    const [groupFilter, setGroupFilter] = useState<string>("todos");
 
     const filteredGuests = guests.filter((guest: any) => {
-        if (filter === "todos") return true;
-        return guest.rsvp_status === filter;
+        const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
+        const matchesGroup = groupFilter === "todos" ? true : guest.group_name === groupFilter;
+        return matchesStatus && matchesGroup;
     });
 
-    const totalGuests = guests.reduce((acc: any, curr: any) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
-    const confirmedGuests = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
+    const totalAdults = guests.reduce((acc: any, curr: any) => acc + (curr.adults_count || 0), 0);
+    const totalChildren = guests.reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
+    const totalGuests = totalAdults + totalChildren;
+
+    const confirmedAdults = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.adults_count || 0), 0);
+    const confirmedChildren = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
+    const confirmedTotal = confirmedAdults + confirmedChildren;
+
+    const groups = Array.from(new Set(guests.map((g: any) => g.group_name))).filter(Boolean);
 
     return (
         <div className="p-4 space-y-6 pb-20">
             <header className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-serif text-primary">Convidados</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {confirmedGuests} confirmados de {totalGuests}
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-primary">{confirmedTotal}</span> confirmados
+                        <span className="text-xs ml-1">({confirmedAdults} Ad. / {confirmedChildren} Cr.)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">de {totalGuests} total</p>
                 </div>
                 <div className="bg-primary/10 p-2 rounded-full">
                     <Users className="text-primary w-6 h-6" />
@@ -106,6 +123,34 @@ export default function Guests() {
                 </Card>
             </div>
 
+            {/* Filtros */}
+            <div className="flex flex-col gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                    {["todos", "confirmado", "pendente", "recusado"].map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f as any)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${filter === f
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                }`}
+                        >
+                            {f}
+                        </button>
+                    ))}
+                </div>
+                <select
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={groupFilter}
+                    onChange={(e) => setGroupFilter(e.target.value)}
+                >
+                    <option value="todos">Todos os Grupos</option>
+                    {groups.map((g: any) => (
+                        <option key={g} value={g}>{g}</option>
+                    ))}
+                </select>
+            </div>
+
             {/* Adicionar Convidado */}
             <Card>
                 <CardHeader className="pb-2">
@@ -115,24 +160,33 @@ export default function Guests() {
                     <Form method="post" className="space-y-2">
                         <div className="flex gap-2">
                             <Input name="name" placeholder="Nome completo" className="flex-1" required />
-                            <Input name="adults_count" type="number" placeholder="Qtd" className="w-16" min="1" defaultValue="1" />
                         </div>
                         <div className="flex gap-2">
-                            <select
-                                name="group_name"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                required
-                            >
-                                <option value="">Grupo...</option>
-                                <option value="Família Noivo">Família Noivo</option>
-                                <option value="Família Noiva">Família Noiva</option>
-                                <option value="Amigos Noivo">Amigos Noivo</option>
-                                <option value="Amigos Noiva">Amigos Noiva</option>
-                                <option value="Igreja">Igreja</option>
-                                <option value="Trabalho">Trabalho</option>
-                                <option value="Outros">Outros</option>
-                            </select>
-                            <Button type="submit" name="intent" value="add" className="shrink-0">
+                            <div className="flex-1">
+                                <select
+                                    name="group_name"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    required
+                                >
+                                    <option value="">Grupo...</option>
+                                    <option value="Família Noivo">Família Noivo</option>
+                                    <option value="Família Noiva">Família Noiva</option>
+                                    <option value="Amigos Noivo">Amigos Noivo</option>
+                                    <option value="Amigos Noiva">Amigos Noiva</option>
+                                    <option value="Igreja">Igreja</option>
+                                    <option value="Trabalho">Trabalho</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <div className="w-20 relative">
+                                <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Adultos</span>
+                                <Input name="adults_count" type="number" min="1" defaultValue="1" className="h-10" />
+                            </div>
+                            <div className="w-20 relative">
+                                <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Crianças</span>
+                                <Input name="children_count" type="number" min="0" defaultValue="0" className="h-10" />
+                            </div>
+                            <Button type="submit" name="intent" value="add" className="shrink-0 h-10 w-10 p-0">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
@@ -154,32 +208,75 @@ export default function Guests() {
                         >
                             <div className="flex items-center gap-3">
                                 <div className={`
-                  h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold
+                  h-9 w-9 rounded-full flex flex-col items-center justify-center text-[10px] font-bold leading-tight
                   ${guest.rsvp_status === 'confirmado' ? 'bg-green-100 text-green-700' :
                                         guest.rsvp_status === 'recusado' ? 'bg-red-100 text-red-700' :
                                             'bg-yellow-100 text-yellow-700'}
                 `}>
-                                    {guest.adults_count + (guest.children_count || 0)}
+                                    <span>{guest.adults_count + (guest.children_count || 0)}</span>
+                                    <span className="font-normal opacity-75 text-[8px]">Total</span>
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium">{guest.name}</p>
-                                    <p className="text-[10px] text-muted-foreground">{guest.group_name}</p>
+                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                        <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">{guest.group_name}</span>
+                                        {(guest.children_count > 0) && (
+                                            <span>({guest.adults_count} Ad. + {guest.children_count} Cr.)</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <Form method="post">
-                                <input type="hidden" name="id" value={guest.id} />
-                                <Button
-                                    type="submit"
-                                    name="intent"
-                                    value="delete"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </Form>
+                            <div className="flex items-center gap-1">
+                                {guest.rsvp_status === 'pendente' && (
+                                    <>
+                                        <Form method="post">
+                                            <input type="hidden" name="id" value={guest.id} />
+                                            <input type="hidden" name="status" value="confirmado" />
+                                            <Button
+                                                type="submit"
+                                                name="intent"
+                                                value="rsvp_action"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                title="Confirmar"
+                                            >
+                                                <Check className="h-4 w-4" />
+                                            </Button>
+                                        </Form>
+                                        <Form method="post">
+                                            <input type="hidden" name="id" value={guest.id} />
+                                            <input type="hidden" name="status" value="recusado" />
+                                            <Button
+                                                type="submit"
+                                                name="intent"
+                                                value="rsvp_action"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                title="Recusar"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </Form>
+                                    </>
+                                )}
+
+                                <Form method="post">
+                                    <input type="hidden" name="id" value={guest.id} />
+                                    <Button
+                                        type="submit"
+                                        name="intent"
+                                        value="delete"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </Form>
+                            </div>
                         </div>
                     ))
                 )}

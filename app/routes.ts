@@ -14,6 +14,7 @@ export default [
         route("groomsmen/new", "routes/groomsmen.new.tsx"),
         route("bridal-shower", "routes/bridal-shower.tsx"),
         route("inspirations", "routes/inspirations.tsx"),
+        route("assets", "routes/assets.tsx"),
         route("settings", "routes/settings.tsx"),
     ]),
 ] satisfies RouteConfig;

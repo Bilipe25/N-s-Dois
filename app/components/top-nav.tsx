@@ -19,6 +19,7 @@ export function TopNav() {
         if (pathname.startsWith("/groomsmen/new")) return "Novo Padrinho";
         if (pathname === "/bridal-shower") return "Chá de Casa Nova";
         if (pathname === "/inspirations") return "Inspirações";
+        if (pathname === "/assets") return "Nossos Bens";
         return "Nós Dois";
     };
 

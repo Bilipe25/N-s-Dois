@@ -19,11 +19,30 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const price = formData.get("price") ? parseFloat(formData.get("price") as string) : null;
     const status = formData.get("status") as string;
 
-    // File upload handling would go here
-    // const photo = formData.get("photo") as File;
-    // const contract = formData.get("contract") as File;
-
     const supabase = createClient(request);
+
+    // Upload de Contrato
+    const contract = formData.get("contract") as File;
+    let contractUrl = null;
+
+    if (contract && contract.size > 0 && contract.name !== "undefined") {
+        const fileExt = contract.name.split('.').pop();
+        const fileName = `contract_${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from("images") // Usando bucket images por enquanto, ideal seria 'documents'
+            .upload(fileName, contract);
+
+        if (uploadError) {
+            // Não vamos travar o cadastro por erro no upload, mas logar
+            console.error("Erro upload contrato:", uploadError);
+        } else {
+            const { data } = supabase.storage
+                .from("images")
+                .getPublicUrl(fileName);
+            contractUrl = data.publicUrl;
+        }
+    }
 
     const { error } = await supabase.from("suppliers").insert({
         name,
@@ -31,6 +50,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         contact_info,
         price,
         status,
+        contract_url: contractUrl
     });
 
     if (error) {
@@ -115,11 +135,9 @@ export default function NewSupplier() {
 
                         {/* Upload placeholder - to be implemented */}
                         <div className="space-y-2">
-                            <Label>Contrato / Foto</Label>
-                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center text-muted-foreground bg-muted/50">
-                                <Upload className="h-8 w-8 mb-2" />
-                                <span className="text-xs">Upload em breve</span>
-                            </div>
+                            <Label htmlFor="contract">Contrato (PDF ou Imagem)</Label>
+                            <Input id="contract" name="contract" type="file" accept=".pdf,image/*" />
+                            <p className="text-[10px] text-muted-foreground">Opcional. Anexe o contrato para fácil acesso.</p>
                         </div>
 
                         {actionData?.error && (
