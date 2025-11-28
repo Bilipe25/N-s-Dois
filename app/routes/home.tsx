@@ -257,7 +257,6 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Próxima Tarefa Card */}
       <Card className="border-l-4 border-l-primary shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Próxima Tarefa</CardTitle>
@@ -275,7 +274,7 @@ export default function Home() {
             <div className="text-sm text-muted-foreground">Tudo em dia! 🎉</div>
           )}
         </CardContent>
-      </Card>
-    </div>
+      </Card >
+    </div >
   );
 }

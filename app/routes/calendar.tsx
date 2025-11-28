@@ -235,7 +235,7 @@ export default function CalendarPage() {
                     </div>
                 ) : (
                     selectedItems.map((item: any, idx) => (
-                        <div key={idx} className={`p-3 rounded-lg border flex items-start gap-3 ${item.isTask ? 'bg-green-50/50 border-green-100' : 'bg-blue-50/50 border-blue-100'}`}>
+                        <div key={idx} className={`p-3 rounded-lg border flex items-start gap-3 hover:scale-[1.02] transition-all duration-300 hover:shadow-md ${item.isTask ? 'bg-green-50/50 border-green-100' : 'bg-blue-50/50 border-blue-100'}`}>
                             <div className={`mt-1 p-1.5 rounded-full ${item.isTask ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                                 {item.isTask ? <CheckSquare className="h-4 w-4" /> : <CalendarIcon className="h-4 w-4" />}
                             </div>

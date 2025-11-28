@@ -306,7 +306,7 @@ export default function Checklist() {
                         return (
                             <div
                                 key={item.id}
-                                className={`flex flex-col p-3 rounded-lg border transition-all ${item.status === 'concluido' ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-border'
+                                className={`flex flex-col p-3 rounded-lg border transition-all hover:scale-[1.02] duration-300 hover:shadow-md ${item.status === 'concluido' ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-border'
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
