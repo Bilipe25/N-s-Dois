@@ -141,8 +141,7 @@ export default function CalendarPage() {
 
     return (
         <div className="p-4 space-y-6 pb-20">
-            <header className="flex justify-between items-center">
-                <h1 className="text-xl font-serif text-primary">Agenda</h1>
+            <header className="flex justify-end items-center">
                 <Button size="sm" onClick={() => setIsAddingEvent(!isAddingEvent)}>
                     <Plus className="h-4 w-4 mr-2" /> Novo Evento
                 </Button>
