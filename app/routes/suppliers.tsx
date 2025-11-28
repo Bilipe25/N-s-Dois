@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Phone, DollarSign } from "lucide-react";
+import { Plus, Phone, DollarSign, FileText } from "lucide-react";
 import type { Route } from "./+types/suppliers";
 
 export const meta: Route.MetaFunction = () => {
@@ -112,6 +112,15 @@ export default function Suppliers() {
                                     <div className="flex items-center text-muted-foreground">
                                         <Phone className="h-4 w-4 mr-2 text-primary" />
                                         {supplier.contact_info}
+                                    </div>
+                                )}
+                                {supplier.contract_url && (
+                                    <div className="pt-2">
+                                        <Button variant="outline" size="sm" className="w-full h-8 text-xs" asChild>
+                                            <a href={supplier.contract_url} target="_blank" rel="noopener noreferrer">
+                                                <FileText className="h-3 w-3 mr-2" /> Ver Contrato
+                                            </a>
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>
