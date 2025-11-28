@@ -71,10 +71,11 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
     if (intent === "save_all") {
         const date = formData.get("wedding_date") as string;
+        const address = formData.get("wedding_address") as string;
         const loginPhoto = formData.get("login_photo") as File;
         const homePhoto = formData.get("home_photo") as File;
 
-        const updates: any = { wedding_date: date };
+        const updates: any = { wedding_date: date, wedding_address: address };
         let successMessage = "Configurações salvas com sucesso!";
 
         // Upload Login Photo
@@ -205,15 +206,27 @@ export default function Settings() {
                         <CardDescription>Quando será o grande dia?</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                            <Label htmlFor="wedding_date">Data e Hora</Label>
-                            <Input
-                                type="datetime-local"
-                                id="wedding_date"
-                                name="wedding_date"
-                                defaultValue={defaultDate}
-                                required
-                            />
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="wedding_date">Data e Hora</Label>
+                                <Input
+                                    type="datetime-local"
+                                    id="wedding_date"
+                                    name="wedding_date"
+                                    defaultValue={defaultDate}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="wedding_address">Endereço do Local</Label>
+                                <Input
+                                    type="text"
+                                    id="wedding_address"
+                                    name="wedding_address"
+                                    defaultValue={config?.wedding_address || ""}
+                                    placeholder="Ex: Chácara Recanto dos Sonhos - Rua das Flores, 123"
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
