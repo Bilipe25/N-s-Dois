@@ -1,4 +1,5 @@
 import { useState } from "react";
+import QRCode from "react-qr-code";
 import { useLoaderData, Form, useActionData } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Route } from "./+types/bridal-shower";
 
 export const meta: Route.MetaFunction = () => {
@@ -80,8 +82,48 @@ export const action = async ({ request }: Route.ActionArgs) => {
     } else if (intent === "toggle_gift_status") {
         const id = formData.get("id") as string;
         const currentStatus = formData.get("currentStatus") as string;
-        const newStatus = currentStatus === "disponivel" ? "comprado" : "disponivel";
+        const newStatus = currentStatus === 'comprado' ? 'disponivel' : 'comprado';
         await supabase.from("bridal_shower_gifts").update({ status: newStatus }).eq("id", id);
+    } else if (intent === "import_gifts") {
+        const importText = formData.get("import_text") as string;
+        if (importText) {
+            const lines = importText.split('\n');
+            const giftsToInsert = [];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+
+                // Tenta dividir por | ou - ou ;
+                // Prioridade: | > ; > - (hífen é perigoso pois pode estar no nome)
+                let parts = [];
+                if (trimmedLine.includes('|')) {
+                    parts = trimmedLine.split('|');
+                } else if (trimmedLine.includes(';')) {
+                    parts = trimmedLine.split(';');
+                } else {
+                    // Se não tiver separador claro, assume que é tudo nome
+                    parts = [trimmedLine];
+                }
+
+                const item_name = parts[0]?.trim();
+                const suggested_store = parts[1]?.trim() || null;
+                const price_range = parts[2]?.trim() || null;
+
+                if (item_name) {
+                    giftsToInsert.push({
+                        item_name,
+                        suggested_store,
+                        price_range,
+                        status: 'disponivel'
+                    });
+                }
+            }
+
+            if (giftsToInsert.length > 0) {
+                await supabase.from("bridal_shower_gifts").insert(giftsToInsert);
+            }
+        }
     }
 
     return null;
@@ -99,6 +141,7 @@ export default function BridalShower() {
     const boughtGiftsCount = gifts.filter((g: any) => g.status === 'comprado').length;
 
     const [showQrCode, setShowQrCode] = useState(false);
+    const [showImport, setShowImport] = useState(false);
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
     const copyToClipboard = () => {
@@ -108,9 +151,7 @@ export default function BridalShower() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-primary font-serif">Chá de Casa Nova</h1>
-            </div>
+
 
             {/* Compartilhamento */}
             <Card className="bg-gradient-to-r from-rose-50 to-white border-rose-100">
@@ -145,10 +186,11 @@ export default function BridalShower() {
                         <p className="text-sm text-muted-foreground">Aponte a câmera do celular</p>
                     </div>
                     <div className="bg-white p-2 rounded-xl border shadow-sm">
-                        <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(publicUrl)}&bgcolor=ffffff`}
-                            alt="QR Code"
-                            className="rounded-lg"
+                        <QRCode
+                            value={publicUrl}
+                            size={200}
+                            viewBox={`0 0 256 256`}
+                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                         />
                     </div>
                     <p className="text-xs text-muted-foreground text-center max-w-[200px]">
@@ -259,6 +301,12 @@ export default function BridalShower() {
 
                 {/* Aba de Presentes */}
                 <TabsContent value="gifts" className="space-y-4 mt-4">
+                    <div className="flex justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setShowImport(true)} className="text-xs">
+                            <Plus className="mr-1 h-3 w-3" /> Importar em Massa
+                        </Button>
+                    </div>
+
                     <Card>
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base">Adicionar Presente</CardTitle>
@@ -332,6 +380,33 @@ export default function BridalShower() {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Modal de Importação em Massa */}
+            <Dialog open={showImport} onOpenChange={setShowImport}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Importar Presentes em Massa</DialogTitle>
+                        <DialogDescription>
+                            Cole sua lista abaixo. Cada linha será um presente.<br />
+                            Formato: <code>Nome | Loja | Preço</code>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" onSubmit={() => setShowImport(false)}>
+                        <div className="py-4">
+                            <textarea
+                                name="import_text"
+                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
+                                placeholder="Exemplo:&#10;Liquidificador | Magalu | 150&#10;Jogo de Panelas | Tramontina&#10;Toalha de Banho"
+                                required
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="import_gifts">Importar Lista</Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
