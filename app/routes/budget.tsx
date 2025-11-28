@@ -1,10 +1,13 @@
-import { useLoaderData, Form } from "react-router";
+import { useState } from "react";
+import { useLoaderData, Form, Link, useSubmit } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, DollarSign, Download } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Plus, DollarSign, Download, Pencil, MoreHorizontal, Trash2, Filter } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Route } from "./+types/budget";
 
 export const meta: Route.MetaFunction = () => {
@@ -49,19 +52,83 @@ export const action = async ({ request }: Route.ActionArgs) => {
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("budget_items").delete().eq("id", id);
+    } else if (intent === "update_value") {
+        const id = formData.get("id") as string;
+        const field = formData.get("field") as "estimated_value" | "paid_value";
+        const value = parseFloat(formData.get("value") as string) || 0;
+
+        // Fetch current item to update status correctly
+        const { data: currentItem } = await supabase.from("budget_items").select("*").eq("id", id).single();
+
+        if (currentItem) {
+            const updates: any = { [field]: value };
+
+            // Recalculate status
+            const estimated = field === "estimated_value" ? value : currentItem.estimated_value;
+            const paid = field === "paid_value" ? value : currentItem.paid_value;
+
+            updates.status = paid >= estimated && estimated > 0 ? "pago" : paid > 0 ? "parcial" : "pendente";
+
+            await supabase.from("budget_items").update(updates).eq("id", id);
+        }
     }
 
     return null;
 };
 
+const InlineCurrencyInput = ({ id, value, field, submit, className }: any) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentValue, setCurrentValue] = useState(value);
+
+    const handleBlur = () => {
+        setIsEditing(false);
+        if (currentValue !== value) {
+            const formData = new FormData();
+            formData.append("intent", "update_value");
+            formData.append("id", id);
+            formData.append("field", field);
+            formData.append("value", currentValue.toString());
+            submit(formData, { method: "post", replace: true });
+        }
+    };
+
+    if (isEditing) {
+        return (
+            <Input
+                type="number"
+                step="0.01"
+                value={currentValue}
+                onChange={(e) => setCurrentValue(parseFloat(e.target.value) || 0)}
+                onBlur={handleBlur}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleBlur();
+                }}
+                autoFocus
+                className={`h-6 p-1 ${className}`}
+            />
+        );
+    }
+
+    return (
+        <span
+            onClick={() => setIsEditing(true)}
+            className={`cursor-pointer hover:bg-secondary/50 rounded px-1 transition-colors ${className}`}
+        >
+            {Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </span>
+    );
+};
+
 export default function Budget() {
     const { items } = useLoaderData<typeof loader>();
+    const submit = useSubmit();
+    const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
     const totalEstimated = items.reduce((acc: any, curr: any) => acc + (Number(curr.estimated_value) || 0), 0);
     const totalPaid = items.reduce((acc: any, curr: any) => acc + (Number(curr.paid_value) || 0), 0);
     const progress = totalEstimated > 0 ? (totalPaid / totalEstimated) * 100 : 0;
 
-    // Dados para o gráfico
+    // Dados para o gráfico de Pizza (Gastos por Categoria)
     const categoryData = items.reduce((acc: any, curr: any) => {
         const existing = acc.find((i: any) => i.name === curr.category);
         if (existing) {
@@ -71,6 +138,30 @@ export default function Budget() {
         }
         return acc;
     }, []).filter((i: any) => i.value > 0);
+
+    // Dados para o gráfico de Barras (Orçado vs Pago)
+    const comparisonData = items.reduce((acc: any, curr: any) => {
+        const existing = acc.find((i: any) => i.name === curr.category);
+        if (existing) {
+            existing.estimated += Number(curr.estimated_value) || 0;
+            existing.paid += Number(curr.paid_value) || 0;
+        } else {
+            acc.push({
+                name: curr.category,
+                estimated: Number(curr.estimated_value) || 0,
+                paid: Number(curr.paid_value) || 0
+            });
+        }
+        return acc;
+    }, []);
+
+    // Filtrar itens
+    const filteredItems = categoryFilter === "all"
+        ? items
+        : items.filter((item: any) => item.category === categoryFilter);
+
+    // Lista única de categorias para o filtro
+    const categories = Array.from(new Set(items.map((item: any) => item.category)));
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -141,46 +232,65 @@ export default function Budget() {
                 </CardContent>
             </Card>
 
-            {/* Gráfico de Gastos por Categoria */}
-            {categoryData.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm">Gastos por Categoria</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                        <div className="h-[200px] w-full max-w-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={categoryData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {categoryData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(value: any) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="flex flex-col justify-center gap-2 text-xs ml-4">
-                            {categoryData.map((entry: any, index: number) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                    <span>{entry.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Gráfico de Gastos por Categoria (Pizza) */}
+                {categoryData.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm">Distribuição de Gastos</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex justify-center">
+                            <div className="h-[200px] w-full max-w-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={categoryData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {categoryData.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value: any) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Gráfico Comparativo (Barras) */}
+                {comparisonData.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm">Orçado vs Pago</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[200px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={comparisonData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={60} />
+                                        <Tooltip
+                                            formatter={(value: any) => Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        />
+                                        <Bar dataKey="estimated" name="Orçado" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="paid" name="Pago" fill="#82ca9d" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
             {/* Adicionar Gasto */}
             <Card>
@@ -228,58 +338,106 @@ export default function Budget() {
                 </CardContent>
             </Card>
 
-            {/* Lista de Gastos */}
-            <div className="space-y-2">
-                {items.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                        Nenhum item lançado.
-                    </div>
-                ) : (
-                    items.map((item: any) => {
-                        const itemProgress = item.estimated_value > 0 ? (item.paid_value / item.estimated_value) * 100 : 0;
-                        return (
-                            <div key={item.id} className="p-3 rounded-lg border bg-card border-border space-y-2">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-medium">{item.description}</p>
-                                        <p className="text-xs text-muted-foreground">{item.category}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-sm">
-                                            {Number(item.paid_value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            de {Number(item.estimated_value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                    </div>
-                                </div>
+            {/* Filtros e Lista */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-medium">Itens do Orçamento</h3>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-[140px] h-8 text-xs">
+                            <Filter className="w-3 h-3 mr-2" />
+                            <SelectValue placeholder="Filtrar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            {categories.map((cat: any) => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-                                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full ${itemProgress >= 100 ? 'bg-green-500' : 'bg-primary'
-                                            }`}
-                                        style={{ width: `${Math.min(itemProgress, 100)}%` }}
-                                    />
+                <div className="space-y-2">
+                    {filteredItems.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground text-sm">
+                            Nenhum item encontrado.
+                        </div>
+                    ) : (
+                        filteredItems.map((item: any) => {
+                            const itemProgress = item.estimated_value > 0 ? (item.paid_value / item.estimated_value) * 100 : 0;
+                            return (
+                                <div key={item.id} className="p-3 rounded-lg border bg-card border-border space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-medium">{item.description}</p>
+                                            <p className="text-xs text-muted-foreground">{item.category}</p>
+                                        </div>
+                                        <div className="text-right flex flex-col items-end gap-1">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] text-muted-foreground mr-1">Pago:</span>
+                                                <InlineCurrencyInput
+                                                    id={item.id}
+                                                    value={item.paid_value}
+                                                    field="paid_value"
+                                                    submit={submit}
+                                                    className="font-bold text-sm w-20 text-right"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] text-muted-foreground mr-1">Orçado:</span>
+                                                <InlineCurrencyInput
+                                                    id={item.id}
+                                                    value={item.estimated_value}
+                                                    field="estimated_value"
+                                                    submit={submit}
+                                                    className="text-[10px] text-muted-foreground w-16 text-right"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${itemProgress >= 100 ? 'bg-green-500' : 'bg-primary'
+                                                }`}
+                                            style={{ width: `${Math.min(itemProgress, 100)}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild>
+                                                    <Link to={`/budget/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
+                                                        <Pencil className="h-4 w-4" />
+                                                        <span>Editar</span>
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Form method="post" className="w-full flex">
+                                                        <input type="hidden" name="id" value={item.id} />
+                                                        <button
+                                                            type="submit"
+                                                            name="intent"
+                                                            value="delete"
+                                                            className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                            <span>Excluir</span>
+                                                        </button>
+                                                    </Form>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
-                                <div className="flex justify-end">
-                                    <Form method="post">
-                                        <input type="hidden" name="id" value={item.id} />
-                                        <Button
-                                            type="submit"
-                                            name="intent"
-                                            value="delete"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 text-xs text-destructive hover:text-destructive"
-                                        >
-                                            Excluir
-                                        </Button>
-                                    </Form>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
+                            );
+                        })
+                    )}
+                </div>
             </div>
         </div>
     );

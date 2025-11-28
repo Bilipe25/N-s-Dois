@@ -10,7 +10,17 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "../components/ui/textarea";
+import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, Upload, PieChart as PieChartIcon, BarChart as BarChartIcon } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import type { Route } from "./+types/guests";
 
 export const meta: Route.MetaFunction = () => {
@@ -59,6 +69,29 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const id = formData.get("id") as string;
         const status = formData.get("status") as string;
         await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
+    } else if (intent === "bulk_import") {
+        const csvData = formData.get("csv_data") as string;
+        if (!csvData) return null;
+
+        const lines = csvData.split("\n");
+        const guestsToInsert = [];
+
+        for (const line of lines) {
+            const [name, group_name, adults_count, children_count] = line.split(",").map(s => s.trim());
+            if (name) {
+                guestsToInsert.push({
+                    name,
+                    group_name: group_name || "Outros",
+                    adults_count: parseInt(adults_count) || 1,
+                    children_count: parseInt(children_count) || 0,
+                    rsvp_status: "pendente"
+                });
+            }
+        }
+
+        if (guestsToInsert.length > 0) {
+            await supabase.from("guests").insert(guestsToInsert);
+        }
     }
 
     return null;
@@ -128,6 +161,57 @@ export default function Guests() {
                 </Card>
             </div>
 
+            {/* Gráficos Detalhados (Collapsible ou sempre visível? Vamos colocar sempre visível por enquanto) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Por Grupo</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={groups.map(g => ({
+                                name: g,
+                                value: guests.filter((guest: any) => guest.group_name === g).length
+                            }))}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={60} />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Ações em Massa */}
+            <div className="flex justify-end">
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                            <Upload className="h-4 w-4 mr-2" /> Importar CSV
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Importar Convidados</DialogTitle>
+                            <DialogDescription>
+                                Cole os dados no formato: Nome, Grupo, Adultos, Crianças (um por linha).
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Form method="post" className="space-y-4">
+                            <Textarea
+                                name="csv_data"
+                                placeholder="Ex: Tio João, Família Noivo, 2, 0&#10;Prima Maria, Família Noiva, 1, 1"
+                                className="min-h-[200px]"
+                            />
+                            <Button type="submit" name="intent" value="bulk_import" className="w-full">
+                                Importar
+                            </Button>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
             {/* Filtros */}
             <div className="flex flex-col gap-2">
                 <div className="flex gap-2 overflow-x-auto pb-1">
@@ -163,37 +247,37 @@ export default function Guests() {
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
                     <Form method="post" className="space-y-2">
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                             <Input name="name" placeholder="Nome completo" className="flex-1" required />
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="flex-1">
-                                <select
-                                    name="group_name"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    required
-                                >
-                                    <option value="">Grupo...</option>
-                                    <option value="Família Noivo">Família Noivo</option>
-                                    <option value="Família Noiva">Família Noiva</option>
-                                    <option value="Amigos Noivo">Amigos Noivo</option>
-                                    <option value="Amigos Noiva">Amigos Noiva</option>
-                                    <option value="Igreja">Igreja</option>
-                                    <option value="Trabalho">Trabalho</option>
-                                    <option value="Outros">Outros</option>
-                                </select>
+                            <div className="flex gap-2 flex-1">
+                                <div className="flex-1 min-w-[120px]">
+                                    <select
+                                        name="group_name"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        required
+                                    >
+                                        <option value="">Grupo...</option>
+                                        <option value="Família Noivo">Família Noivo</option>
+                                        <option value="Família Noiva">Família Noiva</option>
+                                        <option value="Amigos Noivo">Amigos Noivo</option>
+                                        <option value="Amigos Noiva">Amigos Noiva</option>
+                                        <option value="Igreja">Igreja</option>
+                                        <option value="Trabalho">Trabalho</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div className="w-16 relative">
+                                    <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Ad.</span>
+                                    <Input name="adults_count" type="number" min="1" defaultValue="1" className="h-10 px-2 text-center" />
+                                </div>
+                                <div className="w-16 relative">
+                                    <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Cr.</span>
+                                    <Input name="children_count" type="number" min="0" defaultValue="0" className="h-10 px-2 text-center" />
+                                </div>
+                                <Button type="submit" name="intent" value="add" className="shrink-0 h-10 w-10 p-0">
+                                    <Plus className="h-4 w-4" />
+                                </Button>
                             </div>
-                            <div className="w-20 relative">
-                                <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Adultos</span>
-                                <Input name="adults_count" type="number" min="1" defaultValue="1" className="h-10" />
-                            </div>
-                            <div className="w-20 relative">
-                                <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Crianças</span>
-                                <Input name="children_count" type="number" min="0" defaultValue="0" className="h-10" />
-                            </div>
-                            <Button type="submit" name="intent" value="add" className="shrink-0 h-10 w-10 p-0">
-                                <Plus className="h-4 w-4" />
-                            </Button>
                         </div>
                     </Form>
                 </CardContent>
@@ -245,6 +329,17 @@ export default function Guests() {
                                             <Pencil className="mr-2 h-4 w-4" />
                                             <span>Editar</span>
                                         </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <a
+                                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Confirme sua presença aqui: https://nosdois.app/rsvp`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="cursor-pointer flex items-center text-green-600"
+                                        >
+                                            <MessageCircle className="mr-2 h-4 w-4" />
+                                            <span>Enviar Convite</span>
+                                        </a>
                                     </DropdownMenuItem>
                                     {guest.rsvp_status === 'pendente' && (
                                         <>

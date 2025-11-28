@@ -82,9 +82,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
             const fileExt = loginPhoto.name.split('.').pop();
             const fileName = `login_${Date.now()}.${fileExt}`;
 
+            const arrayBuffer = await loginPhoto.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+
             const { error: uploadError } = await supabaseAdmin.storage
                 .from("images")
-                .upload(fileName, loginPhoto, {
+                .upload(fileName, fileBuffer, {
                     contentType: loginPhoto.type,
                     upsert: true
                 });
@@ -105,9 +108,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
             const fileExt = homePhoto.name.split('.').pop();
             const fileName = `home_${Date.now()}.${fileExt}`;
 
+            const arrayBuffer = await homePhoto.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+
             const { error: uploadError } = await supabaseAdmin.storage
                 .from("images")
-                .upload(fileName, homePhoto, {
+                .upload(fileName, fileBuffer, {
                     contentType: homePhoto.type,
                     upsert: true
                 });
@@ -129,9 +135,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
             const fileExt = logo.name.split('.').pop();
             const fileName = `logo_${Date.now()}.${fileExt}`;
 
+            const arrayBuffer = await logo.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+
             const { error: uploadError } = await supabaseAdmin.storage
                 .from("images")
-                .upload(fileName, logo, {
+                .upload(fileName, fileBuffer, {
                     contentType: logo.type,
                     upsert: true
                 });

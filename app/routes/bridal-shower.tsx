@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink } from "lucide-react";
+import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X } from "lucide-react";
 import type { Route } from "./+types/bridal-shower";
 
 export const meta: Route.MetaFunction = () => {
@@ -98,8 +98,65 @@ export default function BridalShower() {
     const confirmedCount = guests.filter((g: any) => g.confirmed).length;
     const boughtGiftsCount = gifts.filter((g: any) => g.status === 'comprado').length;
 
+    const [showQrCode, setShowQrCode] = useState(false);
+    const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(publicUrl);
+        alert("Link copiado!");
+    };
+
     return (
         <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-primary font-serif">Chá de Casa Nova</h1>
+            </div>
+
+            {/* Compartilhamento */}
+            <Card className="bg-gradient-to-r from-rose-50 to-white border-rose-100">
+                <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-full shadow-sm text-rose-500">
+                            <Gift className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-medium text-rose-900">Lista de Presentes Pública</h3>
+                            <p className="text-sm text-rose-600">Compartilhe este link com seus convidados</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="outline" size="sm" onClick={copyToClipboard} className="flex-1 sm:flex-none bg-white hover:bg-rose-50 border-rose-200 text-rose-700">
+                            <LinkIcon className="h-4 w-4 mr-2" /> Copiar Link
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 sm:flex-none bg-white hover:bg-rose-50 border-rose-200 text-rose-700">
+                            <ExternalLink className="h-4 w-4 mr-2" /> QR Code
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {showQrCode && (
+                <Card className="bg-white p-6 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300 border-2 border-rose-100 shadow-lg max-w-sm mx-auto relative">
+                    <Button variant="ghost" size="icon" className="absolute right-2 top-2" onClick={() => setShowQrCode(false)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                    <div className="text-center space-y-1">
+                        <h3 className="font-serif text-xl text-primary">Escaneie para acessar</h3>
+                        <p className="text-sm text-muted-foreground">Aponte a câmera do celular</p>
+                    </div>
+                    <div className="bg-white p-2 rounded-xl border shadow-sm">
+                        <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(publicUrl)}&bgcolor=ffffff`}
+                            alt="QR Code"
+                            className="rounded-lg"
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+                        Este QR Code leva diretamente para a sua lista de presentes pública.
+                    </p>
+                </Card>
+            )}
+
             {/* Resumo / Configuração Rápida */}
             <Card className="bg-primary/5 border-primary/20">
                 <CardContent className="p-4 space-y-4">
@@ -226,16 +283,21 @@ export default function BridalShower() {
                             <p className="text-center text-sm text-muted-foreground py-8">Lista vazia.</p>
                         ) : (
                             gifts.map((gift: any) => (
-                                <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-muted/50' : 'bg-card shadow-sm'}`}>
+                                <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-card shadow-sm'}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className={`font-medium ${gift.status === 'comprado' ? 'line-through text-muted-foreground' : ''}`}>
+                                            <p className={`font-medium ${gift.status === 'comprado' ? 'text-green-800' : ''}`}>
                                                 {gift.item_name}
                                             </p>
                                             <div className="flex flex-wrap gap-2 mt-1">
                                                 {gift.suggested_store && <Badge variant="secondary" className="text-[10px]">{gift.suggested_store}</Badge>}
                                                 {gift.price_range && <Badge variant="outline" className="text-[10px]">{gift.price_range}</Badge>}
                                             </div>
+                                            {gift.reserved_by && (
+                                                <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
+                                                    <Check className="h-3 w-3" /> Reservado por {gift.reserved_by}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Form method="post">
