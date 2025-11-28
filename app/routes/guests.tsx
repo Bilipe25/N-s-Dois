@@ -350,7 +350,7 @@ export default function Guests() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <a
-                                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Confirme sua presença aqui: https://nosdois.app/rsvp`}
+                                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois.app/public/wedding`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="cursor-pointer flex items-center text-green-600"
@@ -398,6 +398,6 @@ export default function Guests() {
                     ))
                 )}
             </div>
-        </div>
+        </div >
     );
 }
