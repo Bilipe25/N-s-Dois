@@ -1,7 +1,8 @@
-import { Outlet, redirect, useLoaderData } from "react-router";
+import { Outlet, redirect, useLoaderData, useLocation, useNavigation } from "react-router";
 import { getSession } from "@/sessions";
 import { BottomNav } from "@/components/bottom-nav";
 import { TopNav } from "@/components/top-nav";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Route } from "./+types/protected";
 
 import { createClient } from "@/lib/supabase";
@@ -23,13 +24,42 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { user, pendingTasksCount: pendingTasksCount || 0 };
 };
 
+function PageSkeleton() {
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="grid gap-4">
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+                <Skeleton className="h-32 w-full rounded-xl" />
+            </div>
+        </div>
+    );
+}
+
 export default function ProtectedLayout() {
     const { pendingTasksCount } = useLoaderData<typeof loader>();
+    const location = useLocation();
+    const navigation = useNavigation();
+    const isLoading = navigation.state === "loading";
+
     return (
         <div className="min-h-screen bg-background font-sans text-foreground">
             <TopNav />
             <main className="pb-24 pt-16 px-4">
-                <Outlet />
+                {isLoading ? (
+                    <PageSkeleton />
+                ) : (
+                    <div
+                        key={location.pathname}
+                        className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                    >
+                        <Outlet />
+                    </div>
+                )}
             </main>
             <BottomNav pendingTasksCount={pendingTasksCount} />
         </div>

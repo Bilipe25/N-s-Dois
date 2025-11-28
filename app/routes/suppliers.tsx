@@ -71,7 +71,7 @@ export default function Suppliers() {
             ) : (
                 <div className="grid gap-4">
                     {filteredSuppliers.map((supplier: any) => (
-                        <Card key={supplier.id} className="overflow-hidden border-l-4 border-l-transparent hover:border-l-primary transition-all">
+                        <Card key={supplier.id} className="overflow-hidden border-l-4 border-l-transparent hover:border-l-primary transition-all hover:scale-[1.02] duration-300 hover:shadow-md">
                             {supplier.photo_url && (
                                 <div className="h-32 w-full overflow-hidden relative">
                                     <img src={supplier.photo_url} alt={supplier.name} className="w-full h-full object-cover" />
@@ -155,10 +155,10 @@ export default function Suppliers() {
                                     </div>
                                 )}
                             </CardContent>
-                        </Card>
+                        </Card >
                     ))}
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 }
