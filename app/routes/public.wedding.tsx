@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Form, useLoaderData, useActionData, useNavigation, Link } from "react-router";
+import { Form, useLoaderData, useActionData, useNavigation, Link, useFetcher } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade, Navigation, Pagination } from "swiper/modules";
-import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check } from "lucide-react";
+import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+
 import type { Route } from "./+types/public.wedding";
 
 // Import Swiper styles
@@ -39,29 +40,69 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const intent = formData.get("intent");
+    const supabase = createClient(request);
+
+    if (intent === "search") {
+        const query = formData.get("query") as string;
+        if (!query || query.length < 2) return { searchResults: [] };
+
+        const { data: guests } = await supabase
+            .from("guests")
+            .select("id, name, adults_count, children_count, rsvp_status")
+            .ilike("name", `%${query}%`)
+            .limit(5);
+
+        return { searchResults: guests || [] };
+    }
 
     if (intent === "rsvp") {
+        const guestId = formData.get("guest_id") as string;
         const name = formData.get("name") as string;
-        const guestsCount = Number(formData.get("guests_count"));
+        const adultsCount = Number(formData.get("adults_count"));
+        const childrenCount = Number(formData.get("children_count") || 0);
         const message = formData.get("message") as string;
 
-        const supabase = createClient(request);
+        let error;
 
-        // Insert guest into database
-        const { error } = await supabase
-            .from("guests")
-            .insert({
-                name,
-                total_guests: guestsCount,
-                message,
-                confirmed: true,
-                type: "convidado", // Default type
-                status: "confirmado"
-            });
+        if (guestId && guestId !== "new") {
+            // Update existing guest
+            const { error: updateError } = await supabase
+                .from("guests")
+                .update({
+                    adults_count: adultsCount,
+                    children_count: childrenCount,
+                    message: message, // Assuming message column exists
+                    rsvp_status: "confirmado"
+                })
+                .eq("id", guestId);
+            error = updateError;
+        } else {
+            // Insert new guest
+            const { error: insertError } = await supabase
+                .from("guests")
+                .insert({
+                    name,
+                    adults_count: adultsCount,
+                    children_count: childrenCount,
+                    message: message, // Assuming message column exists
+                    rsvp_status: "confirmado",
+                    type: "convidado" // Default type
+                });
+            error = insertError;
+        }
 
         if (error) {
+            console.error("RSVP Error:", error);
             return { error: "Erro ao confirmar presença. Tente novamente." };
         }
+
+        // Create notification
+        await supabase.from("notifications").insert({
+            type: "rsvp",
+            title: "Nova Confirmação de Presença 🎉",
+            message: `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`,
+            link: "/guests"
+        });
 
         return { success: true, guestName: name };
     }
@@ -82,11 +123,40 @@ export default function PublicWedding() {
     const isSubmitting = navigation.state === "submitting";
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    // RSVP Flow State
+    const [rsvpStep, setRsvpStep] = useState<"search" | "select" | "details">("search");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedGuest, setSelectedGuest] = useState<any>(null);
+    const fetcher = useFetcher<typeof action>();
+    const isSearching = fetcher.state === "submitting";
+    const searchResults = fetcher.data?.searchResults || [];
+
     useEffect(() => {
         if (actionData?.success) {
             setShowSuccessModal(true);
+            setRsvpStep("search"); // Reset for next time
+            setSearchQuery("");
+            setSelectedGuest(null);
         }
     }, [actionData]);
+
+    // Handle search input change with debounce could be better, but simple submit for now
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.length < 2) return;
+        fetcher.submit({ intent: "search", query: searchQuery }, { method: "post" });
+        setRsvpStep("select");
+    };
+
+    const handleGuestSelect = (guest: any) => {
+        setSelectedGuest(guest);
+        setRsvpStep("details");
+    };
+
+    const handleNewGuest = () => {
+        setSelectedGuest({ id: "new", name: searchQuery });
+        setRsvpStep("details");
+    };
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
@@ -145,7 +215,15 @@ export default function PublicWedding() {
                         transition={{ duration: 1, delay: 1.5 }}
                         className="pt-8"
                     >
-                        <Dialog>
+                        <Dialog onOpenChange={(open) => {
+                            if (!open) {
+                                setTimeout(() => {
+                                    setRsvpStep("search");
+                                    setSearchQuery("");
+                                    setSelectedGuest(null);
+                                }, 300);
+                            }
+                        }}>
                             <DialogTrigger asChild>
                                 <Button size="lg" className="bg-white text-stone-900 hover:bg-stone-100 rounded-full px-8 py-6 text-lg transition-all transform hover:scale-105">
                                     Confirmar Presença
@@ -155,33 +233,137 @@ export default function PublicWedding() {
                                 <DialogHeader>
                                     <DialogTitle>Confirmar Presença</DialogTitle>
                                     <DialogDescription>
-                                        Ficaremos muito felizes com a sua presença!
+                                        {rsvpStep === "search" && "Busque seu nome na lista de convidados."}
+                                        {rsvpStep === "select" && "Selecione seu nome abaixo."}
+                                        {rsvpStep === "details" && "Confirme os detalhes da sua presença."}
                                     </DialogDescription>
                                 </DialogHeader>
-                                <Form method="post" className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name">Nome Completo</Label>
-                                        <Input id="name" name="name" placeholder="Seu nome" required />
-                                    </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="guests_count">Total de Pessoas (incluindo você)</Label>
-                                        <Input id="guests_count" name="guests_count" type="number" min="1" defaultValue="1" required />
-                                    </div>
+                                <div className="py-4">
+                                    {/* STEP 1: SEARCH */}
+                                    {rsvpStep === "search" && (
+                                        <form onSubmit={handleSearch} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="search">Seu Nome</Label>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" />
+                                                    <Input
+                                                        id="search"
+                                                        placeholder="Digite seu nome..."
+                                                        className="pl-9"
+                                                        value={searchQuery}
+                                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Button type="submit" className="w-full" disabled={searchQuery.length < 2 || isSearching}>
+                                                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                                            </Button>
+                                        </form>
+                                    )}
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="message">Mensagem aos Noivos (Opcional)</Label>
-                                        <Textarea id="message" name="message" placeholder="Deixe um recadinho..." />
-                                    </div>
+                                    {/* STEP 2: SELECT */}
+                                    {rsvpStep === "select" && (
+                                        <div className="space-y-4">
+                                            {searchResults.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {searchResults.map((guest: any) => (
+                                                        <Button
+                                                            key={guest.id}
+                                                            variant="outline"
+                                                            className="w-full justify-start h-auto py-3 px-4"
+                                                            onClick={() => handleGuestSelect(guest)}
+                                                        >
+                                                            <User className="mr-3 h-5 w-5 text-stone-400" />
+                                                            <div className="text-left">
+                                                                <div className="font-medium">{guest.name}</div>
+                                                                <div className="text-xs text-stone-500">
+                                                                    {guest.rsvp_status === "confirmado" ? "Já confirmado ✅" : "Pendente"}
+                                                                </div>
+                                                            </div>
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-4 text-stone-500">
+                                                    Nenhum convidado encontrado com "{searchQuery}".
+                                                </div>
+                                            )}
 
-                                    <Button type="submit" name="intent" value="rsvp" className="w-full" disabled={isSubmitting}>
-                                        {isSubmitting ? (
-                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...</>
-                                        ) : (
-                                            "Confirmar Minha Presença"
-                                        )}
-                                    </Button>
-                                </Form>
+                                            <div className="pt-2 border-t">
+                                                <Button variant="ghost" className="w-full text-stone-600" onClick={handleNewGuest}>
+                                                    <UserPlus className="mr-2 h-4 w-4" />
+                                                    Não encontrei meu nome (Novo Cadastro)
+                                                </Button>
+                                            </div>
+                                            <Button variant="link" className="w-full text-stone-400" onClick={() => setRsvpStep("search")}>
+                                                Voltar para busca
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* STEP 3: DETAILS */}
+                                    {rsvpStep === "details" && (
+                                        <Form method="post" className="space-y-4">
+                                            <input type="hidden" name="guest_id" value={selectedGuest?.id || "new"} />
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="name">Nome Completo</Label>
+                                                <Input
+                                                    id="name"
+                                                    name="name"
+                                                    defaultValue={selectedGuest?.name}
+                                                    readOnly={selectedGuest?.id !== "new"}
+                                                    className={selectedGuest?.id !== "new" ? "bg-stone-100" : ""}
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="adults_count">Adultos</Label>
+                                                    <Input
+                                                        id="adults_count"
+                                                        name="adults_count"
+                                                        type="number"
+                                                        min="1"
+                                                        defaultValue={selectedGuest?.adults_count || 1}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="children_count">Crianças</Label>
+                                                    <Input
+                                                        id="children_count"
+                                                        name="children_count"
+                                                        type="number"
+                                                        min="0"
+                                                        defaultValue={selectedGuest?.children_count || 0}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="message">Mensagem aos Noivos (Opcional)</Label>
+                                                <Textarea id="message" name="message" placeholder="Deixe um recadinho..." />
+                                            </div>
+
+                                            <div className="flex gap-3 pt-2">
+                                                <Button type="button" variant="outline" onClick={() => setRsvpStep("search")} className="flex-1">
+                                                    Voltar
+                                                </Button>
+                                                <Button type="submit" name="intent" value="rsvp" className="flex-[2]" disabled={isSubmitting}>
+                                                    {isSubmitting ? (
+                                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...</>
+                                                    ) : (
+                                                        "Confirmar Presença"
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </Form>
+                                    )}
+                                </div>
                             </DialogContent>
                         </Dialog>
                     </motion.div>
