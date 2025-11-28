@@ -23,10 +23,15 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     .select("*", { count: "exact", head: true })
     .eq("status", "pendente");
 
-  const { count: guestsCount } = await supabase
+  const { data: confirmedGuests } = await supabase
     .from("guests")
-    .select("*", { count: "exact", head: true })
-    .eq("confirmed", true);
+    .select("adults_count, children_count")
+    .eq("rsvp_status", "confirmado");
+
+  const guestsCount = confirmedGuests?.reduce(
+    (acc, guest) => acc + (guest.adults_count || 0) + (guest.children_count || 0),
+    0
+  ) || 0;
 
   const { data: budgetItems } = await supabase
     .from("budget_items")
@@ -72,14 +77,6 @@ export default function Home() {
           <p className="text-muted-foreground text-sm">
             {diffDays > 0 ? `Faltam ${diffDays} dias para o grande dia!` : "O grande dia chegou!"}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/settings" className="bg-secondary/50 p-2 rounded-full text-muted-foreground hover:text-primary transition-colors">
-            <Settings className="w-6 h-6" />
-          </Link>
-          <div className="bg-primary/10 p-2 rounded-full">
-            <Heart className="text-primary w-6 h-6 fill-primary" />
-          </div>
         </div>
       </header>
 

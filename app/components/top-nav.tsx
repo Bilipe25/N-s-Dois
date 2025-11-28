@@ -1,6 +1,6 @@
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart } from "lucide-react";
+import { ArrowLeft, Heart, Settings } from "lucide-react";
 
 export function TopNav() {
     const location = useLocation();
@@ -27,8 +27,8 @@ export function TopNav() {
     const isHome = location.pathname === "/";
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 h-14 flex items-center px-4 shadow-sm transition-all duration-300">
-            <div className="flex items-center gap-3 w-full">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 h-14 flex items-center px-4 shadow-sm transition-all duration-300 justify-between">
+            <div className="flex items-center gap-3">
                 {!isHome ? (
                     <Button
                         variant="ghost"
@@ -48,6 +48,14 @@ export function TopNav() {
                     {title}
                 </h1>
             </div>
+
+            {isHome && (
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary" asChild>
+                    <Link to="/settings">
+                        <Settings className="h-5 w-5" />
+                    </Link>
+                </Button>
+            )}
         </header>
     );
 }

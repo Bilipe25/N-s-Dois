@@ -172,14 +172,7 @@ export default function Settings() {
 
     return (
         <div className="p-4 space-y-6 pb-20">
-            <header className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild>
-                    <Link to="/">
-                        <ArrowLeft className="h-6 w-6" />
-                    </Link>
-                </Button>
-                <h1 className="text-2xl font-serif text-primary">Configurações</h1>
-            </header>
+
 
             {actionData?.error && (
                 <div className="bg-destructive/10 text-destructive p-4 rounded-lg text-sm font-medium border border-destructive/20">

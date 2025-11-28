@@ -101,7 +101,6 @@ export default function Budget() {
         <div className="p-4 space-y-6 pb-20">
             <header className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-serif text-primary">Orçamento</h1>
                     <p className="text-sm text-muted-foreground">Controle financeiro do casamento</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleExport}>

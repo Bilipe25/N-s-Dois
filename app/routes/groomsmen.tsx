@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { useLoaderData, Link, Form } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, User, Trash2 } from "lucide-react";
+import { Plus, User, Trash2, Pencil } from "lucide-react";
 import type { Route } from "./+types/groomsmen";
 
 export const meta: Route.MetaFunction = () => {
@@ -43,7 +44,7 @@ export default function Groomsmen() {
     const { groomsmen } = useLoaderData<typeof loader>();
     const [roleFilter, setRoleFilter] = useState<string>("todos");
 
-    const roles = ["todos", "Padrinho", "Madrinha", "Daminha", "Pajem"];
+    const roles = ["todos", "padrinho", "madrinha", "daminha", "pajem"];
 
     const filterGroomsmen = (side: string) => {
         return groomsmen.filter((person: any) => {
@@ -79,6 +80,11 @@ export default function Groomsmen() {
 
                             {/* Overlay com Ações */}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <Button asChild variant="secondary" size="icon" className="h-8 w-8 rounded-full">
+                                    <Link to={`/groomsmen/${person.id}`}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Link>
+                                </Button>
                                 <Form method="post" onSubmit={(e) => {
                                     if (!confirm("Tem certeza que deseja remover?")) {
                                         e.preventDefault();
@@ -103,9 +109,7 @@ export default function Groomsmen() {
 
     return (
         <div className="p-4 space-y-6 pb-20">
-            <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-serif text-primary">Padrinhos</h1>
-            </header>
+
 
             {/* Filtro de Função */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -123,16 +127,16 @@ export default function Groomsmen() {
                 ))}
             </div>
 
-            <Tabs defaultValue="Noiva" className="w-full">
+            <Tabs defaultValue="noiva" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="Noiva">Time da Noiva</TabsTrigger>
-                    <TabsTrigger value="Noivo">Time do Noivo</TabsTrigger>
+                    <TabsTrigger value="noiva">Time da Noiva</TabsTrigger>
+                    <TabsTrigger value="noivo">Time do Noivo</TabsTrigger>
                 </TabsList>
-                <TabsContent value="Noiva">
-                    {renderList("Noiva")}
+                <TabsContent value="noiva">
+                    {renderList("noiva")}
                 </TabsContent>
-                <TabsContent value="Noivo">
-                    {renderList("Noivo")}
+                <TabsContent value="noivo">
+                    {renderList("noivo")}
                 </TabsContent>
             </Tabs>
 

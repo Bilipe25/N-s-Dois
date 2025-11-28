@@ -38,8 +38,7 @@ export default function Suppliers() {
 
     return (
         <div className="p-4 space-y-6 pb-20">
-            <header className="flex justify-between items-center">
-                <h1 className="text-2xl font-serif text-primary">Fornecedores</h1>
+            <header className="flex justify-end items-center">
                 <Button size="icon" className="rounded-full h-10 w-10 shadow-md" asChild>
                     <Link to="/suppliers/new">
                         <Plus className="h-6 w-6" />

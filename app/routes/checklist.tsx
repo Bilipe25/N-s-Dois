@@ -130,8 +130,7 @@ export default function Checklist() {
     return (
         <div className="p-4 space-y-6 pb-20">
             <header className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-serif text-primary">Checklist</h1>
+                <div className="flex justify-end items-center">
                     <div className="text-sm text-muted-foreground font-medium">
                         {Math.round((items.filter((i: any) => i.status === 'concluido').length / (items.length || 1)) * 100)}%
                     </div>
