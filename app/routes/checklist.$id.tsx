@@ -41,6 +41,13 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
         return { error: "Título é obrigatório" };
     }
 
+    // Check if assigned_to is changing
+    const { data: currentTask } = await supabase
+        .from("checklist_items")
+        .select("assigned_to")
+        .eq("id", params.id)
+        .single();
+
     const { error } = await supabase
         .from("checklist_items")
         .update({
@@ -50,6 +57,16 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
             assigned_to: assigned_to || null
         })
         .eq("id", params.id);
+
+    // Create notification if assigned_to changed and is specific
+    if (!error && assigned_to && assigned_to !== "Ambos" && currentTask?.assigned_to !== assigned_to) {
+        await supabase.from("notifications").insert({
+            type: "task",
+            title: "Nova Tarefa Atribuída 📋",
+            message: `A tarefa "${title}" foi atribuída a ${assigned_to}.`,
+            link: `/checklist/${params.id}`
+        });
+    }
 
     if (error) {
         return { error: error.message };

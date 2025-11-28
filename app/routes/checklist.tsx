@@ -63,7 +63,24 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const currentStatus = formData.get("currentStatus") as string;
         const newStatus = currentStatus === "concluido" ? "pendente" : "concluido";
 
+        // Fetch task title for notification
+        const { data: task } = await supabase
+            .from("checklist_items")
+            .select("title")
+            .eq("id", id)
+            .single();
+
         await supabase.from("checklist_items").update({ status: newStatus }).eq("id", id);
+
+        // Create notification if task is completed
+        if (newStatus === "concluido" && task) {
+            await supabase.from("notifications").insert({
+                type: "task",
+                title: "Tarefa Concluída! ✅",
+                message: `A tarefa "${task.title}" foi marcada como concluída.`,
+                link: "/checklist"
+            });
+        }
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("checklist_items").delete().eq("id", id);

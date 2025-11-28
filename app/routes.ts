@@ -22,6 +22,7 @@ export default [
         route("assets", "routes/assets.tsx"),
         route("settings", "routes/settings.tsx"),
         route("calendar", "routes/calendar.tsx"),
+        route("notifications", "routes/notifications.tsx"),
     ]),
 
     route("public/bridal-shower", "routes/public.bridal-shower.tsx"),

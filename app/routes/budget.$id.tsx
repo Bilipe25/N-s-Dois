@@ -42,6 +42,13 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
 
     const status = paid_value >= estimated_value ? "pago" : paid_value > 0 ? "parcial" : "pendente";
 
+    // Fetch current item to compare
+    const { data: currentItem } = await supabase
+        .from("budget_items")
+        .select("paid_value, description")
+        .eq("id", params.id)
+        .single();
+
     const { error } = await supabase
         .from("budget_items")
         .update({
@@ -52,6 +59,17 @@ export const action = async ({ request, params }: Route.ActionArgs) => {
             status
         })
         .eq("id", params.id);
+
+    // Notification for payment update
+    if (!error && currentItem && paid_value > currentItem.paid_value) {
+        const diff = paid_value - currentItem.paid_value;
+        await supabase.from("notifications").insert({
+            type: "budget",
+            title: "Pagamento Atualizado 💰",
+            message: `Um valor adicional de R$ ${diff.toFixed(2)} foi registrado para "${description}".`,
+            link: "/budget"
+        });
+    }
 
     if (error) {
         return { error: error.message };

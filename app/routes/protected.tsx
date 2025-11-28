@@ -21,7 +21,12 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .select("*", { count: "exact", head: true })
         .eq("status", "pendente");
 
-    return { user, pendingTasksCount: pendingTasksCount || 0 };
+    const { count: unreadNotificationsCount } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("read", false);
+
+    return { user, pendingTasksCount: pendingTasksCount || 0, unreadNotificationsCount: unreadNotificationsCount || 0 };
 };
 
 function PageSkeleton() {
@@ -41,14 +46,14 @@ function PageSkeleton() {
 }
 
 export default function ProtectedLayout() {
-    const { pendingTasksCount } = useLoaderData<typeof loader>();
+    const { pendingTasksCount, unreadNotificationsCount } = useLoaderData<typeof loader>();
     const location = useLocation();
     const navigation = useNavigation();
     const isLoading = navigation.state === "loading";
 
     return (
         <div className="min-h-screen bg-background font-sans text-foreground">
-            <TopNav />
+            <TopNav unreadCount={unreadNotificationsCount} />
             <main className="pb-24 pt-16 px-4">
                 {isLoading ? (
                     <PageSkeleton />
