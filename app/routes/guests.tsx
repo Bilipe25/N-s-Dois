@@ -68,7 +68,25 @@ export const action = async ({ request }: Route.ActionArgs) => {
     } else if (intent === "rsvp_action") {
         const id = formData.get("id") as string;
         const status = formData.get("status") as string;
+
+        // Fetch guest name for notification
+        const { data: guest } = await supabase
+            .from("guests")
+            .select("name")
+            .eq("id", id)
+            .single();
+
         await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
+
+        // Create notification
+        if (guest) {
+            await supabase.from("notifications").insert({
+                type: "rsvp",
+                title: "Atualização de RSVP 📩",
+                message: `${guest.name} teve a presença marcada como "${status}".`,
+                link: "/guests"
+            });
+        }
     } else if (intent === "bulk_import") {
         const csvData = formData.get("csv_data") as string;
         if (!csvData) return null;

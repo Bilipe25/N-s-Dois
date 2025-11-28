@@ -49,6 +49,16 @@ export const action = async ({ request }: Route.ActionArgs) => {
             paid_value,
             status: paid_value >= estimated_value ? "pago" : paid_value > 0 ? "parcial" : "pendente"
         });
+
+        // Notification for new payment
+        if (paid_value > 0) {
+            await supabase.from("notifications").insert({
+                type: "budget",
+                title: "Novo Pagamento Registrado 💰",
+                message: `Um pagamento de R$ ${paid_value.toFixed(2)} foi registrado para "${description}".`,
+                link: "/budget"
+            });
+        }
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("budget_items").delete().eq("id", id);
@@ -70,6 +80,17 @@ export const action = async ({ request }: Route.ActionArgs) => {
             updates.status = paid >= estimated && estimated > 0 ? "pago" : paid > 0 ? "parcial" : "pendente";
 
             await supabase.from("budget_items").update(updates).eq("id", id);
+
+            // Notification for payment update
+            if (field === "paid_value" && value > currentItem.paid_value) {
+                const diff = value - currentItem.paid_value;
+                await supabase.from("notifications").insert({
+                    type: "budget",
+                    title: "Pagamento Atualizado 💰",
+                    message: `Um valor adicional de R$ ${diff.toFixed(2)} foi registrado para "${currentItem.description}".`,
+                    link: "/budget"
+                });
+            }
         }
     }
 

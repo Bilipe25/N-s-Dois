@@ -1,8 +1,8 @@
 import { useLocation, useNavigate, Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, Settings } from "lucide-react";
+import { ArrowLeft, Heart, Settings, Bell } from "lucide-react";
 
-export function TopNav() {
+export function TopNav({ unreadCount = 0 }: { unreadCount?: number }) {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -10,6 +10,7 @@ export function TopNav() {
     const getTitle = (pathname: string) => {
         if (pathname === "/") return "Nós Dois";
         if (pathname === "/settings") return "Configurações";
+        if (pathname === "/notifications") return "Notificações";
         if (pathname === "/tasks" || pathname === "/checklist") return "Checklist";
         if (pathname.startsWith("/checklist/")) return "Editar Tarefa";
         if (pathname === "/suppliers") return "Fornecedores";
@@ -56,13 +57,23 @@ export function TopNav() {
                 </h1>
             </div>
 
-            {isHome && (
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary" asChild>
-                    <Link to="/settings">
-                        <Settings className="h-5 w-5" />
+            <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary relative" asChild>
+                    <Link to="/notifications">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+                        )}
                     </Link>
                 </Button>
-            )}
+                {isHome && (
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary" asChild>
+                        <Link to="/settings">
+                            <Settings className="h-5 w-5" />
+                        </Link>
+                    </Button>
+                )}
+            </div>
         </header>
     );
 }

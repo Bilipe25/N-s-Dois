@@ -37,6 +37,13 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const name = formData.get("name") as string;
 
         if (name) {
+            // Fetch gift details for notification
+            const { data: gift } = await supabase
+                .from("bridal_shower_gifts")
+                .select("item_name")
+                .eq("id", id)
+                .single();
+
             await supabase.from("bridal_shower_gifts")
                 .update({
                     status: "comprado",
@@ -44,6 +51,16 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     reserved_at: new Date().toISOString()
                 })
                 .eq("id", id);
+
+            // Create notification
+            if (gift) {
+                await supabase.from("notifications").insert({
+                    type: "gift",
+                    title: "Novo Presente Reservado! 🎁",
+                    message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
+                    link: "/bridal-shower"
+                });
+            }
         }
     }
 
