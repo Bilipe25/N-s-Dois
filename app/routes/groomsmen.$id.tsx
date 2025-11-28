@@ -1,18 +1,33 @@
-import { Form, useNavigation, useActionData, redirect } from "react-router";
+import { Form, useNavigation, useActionData, redirect, useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UploadCloud, User } from "lucide-react";
-import type { Route } from "./+types/groomsmen.new";
+import { UploadCloud } from "lucide-react";
+import type { Route } from "./+types/groomsmen.$id";
 
 export const meta: Route.MetaFunction = () => {
-    return [{ title: "Novo Padrinho - Nós Dois" }];
+    return [{ title: "Editar Padrinho - Nós Dois" }];
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
+export const loader = async ({ request, params }: Route.LoaderArgs) => {
+    const supabase = createClient(request);
+    const { data: groomsman, error } = await supabase
+        .from("groomsmen")
+        .select("*")
+        .eq("id", params.id)
+        .single();
+
+    if (error || !groomsman) {
+        throw new Response("Padrinho não encontrado", { status: 404 });
+    }
+
+    return { groomsman };
+};
+
+export const action = async ({ request, params }: Route.ActionArgs) => {
     const formData = await request.formData();
     const name = formData.get("name") as string;
     const role = formData.get("role") as string;
@@ -33,8 +48,6 @@ export const action = async ({ request }: Route.ActionArgs) => {
             .upload(fileName, photo);
 
         if (uploadError) {
-            // Se falhar o upload, retornamos erro mas não impedimos o cadastro se o usuário tentar de novo sem foto?
-            // Melhor avisar o erro.
             return { error: `Erro no upload da foto: ${uploadError.message}` };
         }
 
@@ -45,12 +58,20 @@ export const action = async ({ request }: Route.ActionArgs) => {
         photoUrl = data.publicUrl;
     }
 
-    const { error } = await supabase.from("groomsmen").insert({
+    const updates: any = {
         name,
         role,
         side,
-        photo_url: photoUrl
-    });
+    };
+
+    if (photoUrl) {
+        updates.photo_url = photoUrl;
+    }
+
+    const { error } = await supabase
+        .from("groomsmen")
+        .update(updates)
+        .eq("id", params.id);
 
     if (error) {
         return { error: `Erro ao salvar: ${error.message}` };
@@ -59,7 +80,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
     return redirect("/groomsmen");
 };
 
-export default function NewGroomsman() {
+export default function EditGroomsman() {
+    const { groomsman } = useLoaderData<typeof loader>();
     const actionData = useActionData<typeof action>();
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
@@ -71,13 +93,19 @@ export default function NewGroomsman() {
                     <Form method="post" encType="multipart/form-data" className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Nome</Label>
-                            <Input id="name" name="name" required placeholder="Ex: João Silva" />
+                            <Input
+                                id="name"
+                                name="name"
+                                required
+                                placeholder="Ex: João Silva"
+                                defaultValue={groomsman.name}
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="role">Função</Label>
-                                <Select name="role" required defaultValue="padrinho">
+                                <Select name="role" required defaultValue={groomsman.role}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -92,7 +120,7 @@ export default function NewGroomsman() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="side">Lado</Label>
-                                <Select name="side" required defaultValue="noivo">
+                                <Select name="side" required defaultValue={groomsman.side}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -116,9 +144,14 @@ export default function NewGroomsman() {
                                 />
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                     <UploadCloud className="h-8 w-8" />
-                                    <span className="text-xs">Toque para selecionar uma foto</span>
+                                    <span className="text-xs">Toque para alterar a foto</span>
                                 </div>
                             </div>
+                            {groomsman.photo_url && (
+                                <div className="text-xs text-muted-foreground text-center">
+                                    Foto atual cadastrada
+                                </div>
+                            )}
                         </div>
 
                         {actionData?.error && (
@@ -128,7 +161,7 @@ export default function NewGroomsman() {
                         )}
 
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Salvando..." : "Adicionar Padrinho"}
+                            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
                         </Button>
                     </Form>
                 </CardContent>

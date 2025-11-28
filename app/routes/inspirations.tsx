@@ -106,7 +106,6 @@ export default function Inspirations() {
     return (
         <div className="p-4 space-y-6 pb-20">
             <header>
-                <h1 className="text-2xl font-serif text-primary">Inspirações</h1>
                 <p className="text-sm text-muted-foreground">Nossas ideias e referências</p>
             </header>
 

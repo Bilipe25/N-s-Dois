@@ -4,7 +4,13 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Users, Check, X } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Users, Check, X, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Route } from "./+types/guests";
 
 export const meta: Route.MetaFunction = () => {
@@ -83,7 +89,6 @@ export default function Guests() {
         <div className="p-4 space-y-6 pb-20">
             <header className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-serif text-primary">Convidados</h1>
                     <div className="text-sm text-muted-foreground">
                         <span className="font-medium text-primary">{confirmedTotal}</span> confirmados
                         <span className="text-xs ml-1">({confirmedAdults} Ad. / {confirmedChildren} Cr.)</span>
@@ -227,56 +232,49 @@ export default function Guests() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1">
-                                {guest.rsvp_status === 'pendente' && (
-                                    <>
-                                        <Form method="post">
-                                            <input type="hidden" name="id" value={guest.id} />
-                                            <input type="hidden" name="status" value="confirmado" />
-                                            <Button
-                                                type="submit"
-                                                name="intent"
-                                                value="rsvp_action"
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                title="Confirmar"
-                                            >
-                                                <Check className="h-4 w-4" />
-                                            </Button>
-                                        </Form>
-                                        <Form method="post">
-                                            <input type="hidden" name="id" value={guest.id} />
-                                            <input type="hidden" name="status" value="recusado" />
-                                            <Button
-                                                type="submit"
-                                                name="intent"
-                                                value="rsvp_action"
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                title="Recusar"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </Form>
-                                    </>
-                                )}
-
-                                <Form method="post">
-                                    <input type="hidden" name="id" value={guest.id} />
-                                    <Button
-                                        type="submit"
-                                        name="intent"
-                                        value="delete"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Abrir menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
                                     </Button>
-                                </Form>
-                            </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {guest.rsvp_status === 'pendente' && (
+                                        <>
+                                            <DropdownMenuItem asChild>
+                                                <Form method="post" className="w-full cursor-pointer">
+                                                    <input type="hidden" name="id" value={guest.id} />
+                                                    <input type="hidden" name="status" value="confirmado" />
+                                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
+                                                        <Check className="mr-2 h-4 w-4 text-green-600" />
+                                                        <span>Confirmar</span>
+                                                    </button>
+                                                </Form>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Form method="post" className="w-full cursor-pointer">
+                                                    <input type="hidden" name="id" value={guest.id} />
+                                                    <input type="hidden" name="status" value="recusado" />
+                                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
+                                                        <X className="mr-2 h-4 w-4 text-red-600" />
+                                                        <span>Recusar</span>
+                                                    </button>
+                                                </Form>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+                                        <Form method="post" className="w-full cursor-pointer">
+                                            <input type="hidden" name="id" value={guest.id} />
+                                            <button type="submit" name="intent" value="delete" className="flex w-full items-center">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Excluir</span>
+                                            </button>
+                                        </Form>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     ))
                 )}

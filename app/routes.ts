@@ -12,6 +12,7 @@ export default [
         route("budget", "routes/budget.tsx"),
         route("groomsmen", "routes/groomsmen.tsx"),
         route("groomsmen/new", "routes/groomsmen.new.tsx"),
+        route("groomsmen/:id", "routes/groomsmen.$id.tsx"),
         route("bridal-shower", "routes/bridal-shower.tsx"),
         route("inspirations", "routes/inspirations.tsx"),
         route("assets", "routes/assets.tsx"),
