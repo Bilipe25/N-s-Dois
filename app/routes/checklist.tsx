@@ -326,7 +326,7 @@ export default function Checklist() {
                                             {item.due_date && (
                                                 <span className={`flex items-center gap-1 text-[10px] whitespace-nowrap ml-2 ${overdue ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
                                                     <CalendarIcon className="h-3 w-3" />
-                                                    {new Date(item.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                                    {new Date(item.due_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                                                 </span>
                                             )}
                                         </div>

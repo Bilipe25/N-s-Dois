@@ -83,7 +83,8 @@ export default function CalendarPage() {
         ...tasks.map((t: any) => ({
             id: t.id,
             title: t.title,
-            date: new Date(t.due_date), // Assuming due_date is YYYY-MM-DD or ISO
+            // Fix: Append T12:00:00 to ensure it's treated as local date (middle of day) to avoid timezone shifts
+            date: new Date(t.due_date + 'T12:00:00'),
             isTask: true,
             status: t.status
         }))
