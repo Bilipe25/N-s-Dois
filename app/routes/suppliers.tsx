@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useLoaderData, Link } from "react-router";
+import { useLoaderData, Link, Form } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Phone, DollarSign, FileText } from "lucide-react";
+import { Plus, Phone, DollarSign, FileText, Pencil, MoreHorizontal, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Route } from "./+types/suppliers";
 
 export const meta: Route.MetaFunction = () => {
@@ -91,13 +92,44 @@ export default function Suppliers() {
                                     {supplier.photo_url && (
                                         <span className="text-xs font-medium text-primary uppercase tracking-wider">{supplier.category}</span>
                                     )}
-                                    <Badge variant={
-                                        supplier.status === 'contratado' ? 'default' :
-                                            supplier.status === 'pago' ? 'secondary' :
-                                                'outline'
-                                    } className="capitalize">
-                                        {supplier.status}
-                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant={
+                                            supplier.status === 'contratado' ? 'default' :
+                                                supplier.status === 'pago' ? 'secondary' :
+                                                    'outline'
+                                        } className="capitalize">
+                                            {supplier.status}
+                                        </Badge>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild>
+                                                    <Link to={`/suppliers/${supplier.id}`} className="flex items-center gap-2 cursor-pointer w-full">
+                                                        <Pencil className="h-4 w-4" />
+                                                        <span>Editar</span>
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Form method="post" action={`/suppliers/${supplier.id}`} className="w-full flex">
+                                                        <input type="hidden" name="id" value={supplier.id} />
+                                                        <button
+                                                            type="submit"
+                                                            name="intent"
+                                                            value="delete"
+                                                            className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                            <span>Excluir</span>
+                                                        </button>
+                                                    </Form>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="text-sm space-y-2">

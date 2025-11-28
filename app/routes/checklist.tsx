@@ -1,11 +1,26 @@
 import { useState } from "react";
-import { useLoaderData, Form, useSubmit } from "react-router";
+import { useLoaderData, Form, useSubmit, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Calendar as CalendarIcon, User } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, User, Pencil, MoreHorizontal, ArrowUpDown, ListPlus, Paperclip, Download, X, Loader2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Route } from "./+types/checklist";
+
+const TASK_TEMPLATES = [
+    { title: "Definir data do casamento", due_date: null },
+    { title: "Contratar Buffet", due_date: null },
+    { title: "Escolher Vestido de Noiva", due_date: null },
+    { title: "Lista de Convidados", due_date: null },
+    { title: "Contratar Fotógrafo", due_date: null },
+    { title: "Enviar Save the Date", due_date: null },
+    { title: "Escolher Padrinhos", due_date: null },
+    { title: "Definir Decoração", due_date: null },
+    { title: "Encomendar Bolo e Doces", due_date: null },
+    { title: "Escolher Músicas da Cerimônia", due_date: null },
+];
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Checklist - Nós Dois" }];
@@ -79,6 +94,51 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
         subtasks.splice(idx, 1);
         await supabase.from("checklist_items").update({ subtasks }).eq("id", id);
+    } else if (intent === "upload_attachment") {
+        const id = formData.get("id") as string;
+        const file = formData.get("file") as File;
+        const currentAttachmentsJson = formData.get("current_attachments") as string;
+        const currentAttachments = JSON.parse(currentAttachmentsJson || "[]");
+
+        if (file && file.size > 0 && file.name !== "undefined") {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `checklist_${id}_${Date.now()}.${fileExt}`;
+
+            const arrayBuffer = await file.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+
+            const { error: uploadError } = await supabase.storage
+                .from("images")
+                .upload(fileName, fileBuffer, {
+                    contentType: file.type,
+                    upsert: true
+                });
+
+            if (!uploadError) {
+                const { data } = supabase.storage
+                    .from("images")
+                    .getPublicUrl(fileName);
+
+                currentAttachments.push({
+                    name: file.name,
+                    url: data.publicUrl,
+                    type: file.type,
+                    size: file.size,
+                    created_at: new Date().toISOString()
+                });
+
+                await supabase.from("checklist_items").update({ attachments: currentAttachments }).eq("id", id);
+            }
+        }
+    } else if (intent === "delete_attachment") {
+        const id = formData.get("id") as string;
+        const urlToDelete = formData.get("url") as string;
+        const currentAttachmentsJson = formData.get("current_attachments") as string;
+        let currentAttachments = JSON.parse(currentAttachmentsJson || "[]");
+
+        currentAttachments = currentAttachments.filter((att: any) => att.url !== urlToDelete);
+
+        await supabase.from("checklist_items").update({ attachments: currentAttachments }).eq("id", id);
     }
 
     return null;
@@ -88,6 +148,7 @@ export default function Checklist() {
     const { items } = useLoaderData<typeof loader>();
     const submit = useSubmit();
     const [filter, setFilter] = useState<"todos" | "pendente" | "concluido">("todos");
+    const [sortOrder, setSortOrder] = useState<"urgency" | "recent" | "alpha">("urgency");
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
     const filteredItems = items.filter((item: any) => {
@@ -95,15 +156,31 @@ export default function Checklist() {
         return item.status === filter;
     });
 
-    // Ordenar por data de vencimento (mais urgentes primeiro) e depois por criação
+    // Ordenação
     filteredItems.sort((a: any, b: any) => {
+        // Concluídos sempre no final
         if (a.status === 'concluido' && b.status !== 'concluido') return 1;
         if (a.status !== 'concluido' && b.status === 'concluido') return -1;
 
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        if (sortOrder === "urgency") {
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        } else if (sortOrder === "recent") {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        } else if (sortOrder === "alpha") {
+            return a.title.localeCompare(b.title);
+        }
+        return 0;
     });
+
+    const handleAddTemplate = (template: { title: string, due_date: string | null }) => {
+        const formData = new FormData();
+        formData.append("intent", "add");
+        formData.append("title", template.title);
+        if (template.due_date) formData.append("due_date", template.due_date);
+        submit(formData, { method: "post", replace: true });
+    };
 
     const handleToggle = (id: string, currentStatus: string) => {
         const formData = new FormData();
@@ -145,20 +222,56 @@ export default function Checklist() {
                 </div>
             </header>
 
-            {/* Filtros Simples */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-                {["todos", "pendente", "concluido"].map((f) => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f as any)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${filter === f
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                            }`}
-                    >
-                        {f}
-                    </button>
-                ))}
+            {/* Controles: Filtros, Ordenação e Templates */}
+            <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                        {["todos", "pendente", "concluido"].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f as any)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${filter === f
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                    }`}
+                            >
+                                {f}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-between items-center gap-2">
+                    <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
+                        <SelectTrigger className="h-8 text-xs w-[130px]">
+                            <ArrowUpDown className="w-3 h-3 mr-2" />
+                            <SelectValue placeholder="Ordenar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="urgency">Mais Urgentes</SelectItem>
+                            <SelectItem value="recent">Recentes</SelectItem>
+                            <SelectItem value="alpha">A-Z</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 text-xs">
+                                <ListPlus className="w-3 h-3 mr-2" />
+                                Sugestões
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto">
+                            <DropdownMenuLabel>Tarefas Sugeridas</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {TASK_TEMPLATES.map((template, idx) => (
+                                <DropdownMenuItem key={idx} onClick={() => handleAddTemplate(template)}>
+                                    {template.title}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             {/* Adicionar Tarefa Rápida */}
@@ -227,19 +340,35 @@ export default function Checklist() {
                                         </div>
                                     </div>
 
-                                    <Form method="post">
-                                        <input type="hidden" name="id" value={item.id} />
-                                        <Button
-                                            type="submit"
-                                            name="intent"
-                                            value="delete"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </Form>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link to={`/checklist/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
+                                                    <Pencil className="h-4 w-4" />
+                                                    <span>Editar</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Form method="post" className="w-full flex">
+                                                    <input type="hidden" name="id" value={item.id} />
+                                                    <button
+                                                        type="submit"
+                                                        name="intent"
+                                                        value="delete"
+                                                        className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span>Excluir</span>
+                                                    </button>
+                                                </Form>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
 
                                 {/* Subtarefas (Expandido) */}
@@ -280,6 +409,55 @@ export default function Checklist() {
                                                 <Plus className="h-3 w-3" />
                                             </Button>
                                         </Form>
+
+                                        {/* Anexos */}
+                                        <div className="mt-4 pt-2 border-t border-border/50">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Paperclip className="h-3 w-3 text-muted-foreground" />
+                                                <span className="text-xs font-medium text-muted-foreground">Anexos</span>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {(item.attachments || []).map((att: any, attIdx: number) => (
+                                                    <div key={attIdx} className="flex items-center justify-between bg-secondary/30 p-2 rounded text-xs group">
+                                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline truncate flex-1">
+                                                            <span className="truncate max-w-[150px]">{att.name}</span>
+                                                        </a>
+                                                        <div className="flex items-center gap-2">
+                                                            <a href={att.url} download target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                                                <Download className="h-3 w-3" />
+                                                            </a>
+                                                            <Form method="post">
+                                                                <input type="hidden" name="id" value={item.id} />
+                                                                <input type="hidden" name="url" value={att.url} />
+                                                                <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
+                                                                <button type="submit" name="intent" value="delete_attachment" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </Form>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <Form method="post" encType="multipart/form-data" className="mt-2">
+                                                <input type="hidden" name="id" value={item.id} />
+                                                <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
+                                                <div className="flex items-center gap-2">
+                                                    <label className="cursor-pointer bg-secondary hover:bg-secondary/80 text-secondary-foreground px-2 py-1 rounded text-[10px] flex items-center gap-1 transition-colors">
+                                                        <Paperclip className="h-3 w-3" />
+                                                        Adicionar Anexo
+                                                        <input
+                                                            type="file"
+                                                            name="file"
+                                                            className="hidden"
+                                                            onChange={(e) => e.target.form?.requestSubmit()}
+                                                        />
+                                                    </label>
+                                                    <input type="hidden" name="intent" value="upload_attachment" />
+                                                </div>
+                                            </Form>
+                                        </div>
                                     </div>
                                 )}
                             </div>
