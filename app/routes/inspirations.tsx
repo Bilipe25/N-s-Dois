@@ -335,7 +335,7 @@ export default function Inspirations() {
             {/* Lightbox Dialog Detalhado */}
             <Dialog open={!!selectedImage} onOpenChange={handleCloseDialog}>
                 {/* z-index aumentado para 60 para ficar acima do BottomNav (z-50) */}
-                <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[60]">
+                <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[150]">
                     {selectedImage && (
                         <>
                             {/* Imagem (Esquerda/Topo) */}
