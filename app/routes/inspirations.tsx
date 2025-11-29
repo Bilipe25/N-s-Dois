@@ -109,12 +109,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
         if (newInspiration) {
             // Notificar o outro usuário
-            const otherUser = user === "Gabriel" ? "Raabe" : "Gabriel"; // Lógica simples baseada nos dois usuários
             await supabase.from("notifications").insert({
-                type: "gift", // Usando ícone de presente/coração para inspiração
+                type: "gift",
                 title: "Nova Inspiração ✨",
                 message: `${user} adicionou uma nova inspiração em ${category}: "${title}".`,
-                link: `/inspirations?id=${newInspiration.id}`
+                link: `/inspirations?id=${newInspiration.id}`,
+                image_url: photo_url // Adicionando imagem na notificação
             });
         }
 
@@ -135,8 +135,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 user_name: user
             });
 
-            // Buscar título para notificação
-            const { data: insp } = await supabase.from("inspirations").select("title").eq("id", inspirationId).single();
+            // Buscar título e foto para notificação
+            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
 
             // Notificar
             if (insp) {
@@ -144,7 +144,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     type: "gift",
                     title: "Nova Curtida ❤️",
                     message: `${user} curtiu sua inspiração "${insp.title}".`,
-                    link: `/inspirations?id=${inspirationId}`
+                    link: `/inspirations?id=${inspirationId}`,
+                    image_url: insp.photo_url // Adicionando imagem na notificação
                 });
             }
         }
@@ -159,8 +160,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 content
             });
 
-            // Buscar título para notificação
-            const { data: insp } = await supabase.from("inspirations").select("title").eq("id", inspirationId).single();
+            // Buscar título e foto para notificação
+            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
 
             // Notificar
             if (insp) {
@@ -168,7 +169,8 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     type: "gift",
                     title: "Novo Comentário 💬",
                     message: `${user} comentou em "${insp.title}": "${content}"`,
-                    link: `/inspirations?id=${inspirationId}`
+                    link: `/inspirations?id=${inspirationId}`,
+                    image_url: insp.photo_url // Adicionando imagem na notificação
                 });
             }
         }
@@ -188,6 +190,7 @@ export default function Inspirations() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [showAddInspiration, setShowAddInspiration] = useState(false);
     const [commentText, setCommentText] = useState("");
+    const [isZoomed, setIsZoomed] = useState(false); // Estado para Zoom
 
     const categories = ["todos", "meus_likes", "decoracao", "cerimonia", "festa", "vestidos", "lua_de_mel", "outros"];
 
@@ -206,6 +209,7 @@ export default function Inspirations() {
     const handleCloseDialog = (open: boolean) => {
         if (!open) {
             setSelectedImage(null);
+            setIsZoomed(false); // Reset zoom
             setSearchParams({}); // Limpa URL
         }
     };
@@ -334,18 +338,26 @@ export default function Inspirations() {
 
             {/* Lightbox Dialog Detalhado */}
             <Dialog open={!!selectedImage} onOpenChange={handleCloseDialog}>
-                {/* z-index aumentado para 60 para ficar acima do BottomNav (z-50) */}
+                {/* z-index aumentado para 150 para ficar acima do BottomNav (z-100) */}
                 <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[150]">
                     {selectedImage && (
                         <>
                             {/* Imagem (Esquerda/Topo) */}
-                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40%] md:h-full">
+                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40%] md:h-full group">
                                 <img
                                     src={selectedImage.photo_url}
                                     alt={selectedImage.title}
-                                    className="max-h-full max-w-full object-contain"
+                                    className="max-h-full max-w-full object-contain cursor-zoom-in"
+                                    onClick={() => setIsZoomed(true)}
                                 />
                                 <div className="absolute top-2 right-2 flex gap-2 z-10">
+                                    <button
+                                        onClick={() => setIsZoomed(true)}
+                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                        title="Zoom"
+                                    >
+                                        <ZoomIn className="h-4 w-4" />
+                                    </button>
                                     <button
                                         onClick={handleDownload}
                                         className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
@@ -465,6 +477,26 @@ export default function Inspirations() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Zoom Overlay */}
+            {isZoomed && selectedImage && (
+                <div
+                    className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
+                    onClick={() => setIsZoomed(false)}
+                >
+                    <button
+                        className="absolute top-4 right-4 p-2 bg-white/10 text-white rounded-full hover:bg-white/20"
+                        onClick={() => setIsZoomed(false)}
+                    >
+                        <X className="h-6 w-6" />
+                    </button>
+                    <img
+                        src={selectedImage.photo_url}
+                        alt={selectedImage.title}
+                        className="max-h-full max-w-full object-contain"
+                    />
+                </div>
+            )}
 
             {/* FAB para Adicionar Inspiração */}
             <div className="fixed bottom-24 right-6 z-50">

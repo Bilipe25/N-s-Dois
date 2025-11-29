@@ -140,6 +140,15 @@ export default function Notifications() {
                                     <p className="text-sm text-muted-foreground leading-snug break-words">
                                         {notification.message}
                                     </p>
+                                    {notification.image_url && (
+                                        <div className="pt-2">
+                                            <img
+                                                src={notification.image_url}
+                                                alt="Preview"
+                                                className="h-16 w-16 object-cover rounded-md border border-border"
+                                            />
+                                        </div>
+                                    )}
                                     {notification.link && (
                                         <div className="pt-2">
                                             <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs" asChild>
