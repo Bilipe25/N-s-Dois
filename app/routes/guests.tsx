@@ -19,10 +19,15 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Textarea } from "../components/ui/textarea";
-import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, Upload, PieChart as PieChartIcon, BarChart as BarChartIcon } from "lucide-react";
+import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, FileDown, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import type { Route } from "./+types/guests";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+
+// Registrar fontes (necessário para pdfmake no client-side)
+// @ts-ignore
+pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Convidados - Nós Dois" }];
@@ -30,17 +35,22 @@ export const meta: Route.MetaFunction = () => {
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const supabase = createClient(request);
-    const { data: guests, error } = await supabase
-        .from("guests")
-        .select("*")
-        .order("name", { ascending: true });
 
-    if (error) {
-        console.error("Error fetching guests:", error);
-        return { guests: [] };
+    // Buscar convidados e configurações em paralelo
+    const [guestsResult, configResult] = await Promise.all([
+        supabase.from("guests").select("*").order("name", { ascending: true }),
+        supabase.from("app_config").select("*").single()
+    ]);
+
+    if (guestsResult.error) {
+        console.error("Error fetching guests:", guestsResult.error);
+        return { guests: [], config: null };
     }
 
-    return { guests };
+    return {
+        guests: guestsResult.data || [],
+        config: configResult.data
+    };
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
@@ -88,39 +98,38 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 link: "/guests"
             });
         }
-    } else if (intent === "bulk_import") {
-        const csvData = formData.get("csv_data") as string;
-        if (!csvData) return null;
-
-        const lines = csvData.split("\n");
-        const guestsToInsert = [];
-
-        for (const line of lines) {
-            const [name, group_name, adults_count, children_count] = line.split(",").map(s => s.trim());
-            if (name) {
-                guestsToInsert.push({
-                    name,
-                    group_name: group_name || "Outros",
-                    adults_count: parseInt(adults_count) || 1,
-                    children_count: parseInt(children_count) || 0,
-                    rsvp_status: "pendente"
-                });
-            }
-        }
-
-        if (guestsToInsert.length > 0) {
-            await supabase.from("guests").insert(guestsToInsert);
-        }
     }
 
     return null;
 };
 
+// Função auxiliar para converter imagem URL para Base64
+const getBase64ImageFromURL = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.setAttribute("crossOrigin", "anonymous");
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0);
+            const dataURL = canvas.toDataURL("image/png");
+            resolve(dataURL);
+        };
+        img.onerror = error => {
+            reject(error);
+        };
+        img.src = url;
+    });
+};
+
 export default function Guests() {
-    const { guests } = useLoaderData<typeof loader>();
+    const { guests, config } = useLoaderData<typeof loader>();
     const [filter, setFilter] = useState<"todos" | "confirmado" | "pendente" | "recusado">("todos");
     const [groupFilter, setGroupFilter] = useState<string>("todos");
     const [showAddGuest, setShowAddGuest] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const filteredGuests = guests.filter((guest: any) => {
         const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
@@ -136,7 +145,150 @@ export default function Guests() {
     const confirmedChildren = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
     const confirmedTotal = confirmedAdults + confirmedChildren;
 
-    const groups = Array.from(new Set(guests.map((g: any) => g.group_name))).filter(Boolean);
+    const groups = Array.from(new Set(guests.map((g: any) => g.group_name))).filter(Boolean) as string[];
+
+    const handleExportPdf = async () => {
+        setIsExporting(true);
+        try {
+            let logoBase64 = null;
+            if (config?.logo_url) {
+                try {
+                    logoBase64 = await getBase64ImageFromURL(config.logo_url);
+                } catch (e) {
+                    console.error("Erro ao carregar logo:", e);
+                }
+            }
+
+            // Agrupar convidados
+            const groupedGuests: Record<string, any[]> = {};
+            guests.forEach((guest: any) => {
+                const group = guest.group_name || "Outros";
+                if (!groupedGuests[group]) groupedGuests[group] = [];
+                groupedGuests[group].push(guest);
+            });
+
+            const content: any[] = [];
+
+            // Cabeçalho
+            const headerColumns: any[] = [];
+            if (logoBase64) {
+                headerColumns.push({ image: logoBase64, width: 60, height: 60 });
+            }
+            headerColumns.push({
+                stack: [
+                    { text: 'Lista de Convidados', style: 'header', alignment: logoBase64 ? 'left' : 'center' },
+                    { text: 'Casamento', style: 'subheader', alignment: logoBase64 ? 'left' : 'center' },
+                    { text: config?.wedding_date ? new Date(config.wedding_date).toLocaleDateString('pt-BR') : '', style: 'small', alignment: logoBase64 ? 'left' : 'center' }
+                ],
+                margin: [logoBase64 ? 15 : 0, 10, 0, 0]
+            });
+
+            content.push({ columns: headerColumns, margin: [0, 0, 0, 20] });
+            content.push({ canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1, lineColor: '#e5e7eb' }], margin: [0, 0, 0, 20] });
+
+            // Resumo
+            content.push({ text: 'Resumo Geral', style: 'sectionHeader' });
+            content.push({
+                table: {
+                    widths: ['*', '*', '*', '*'],
+                    body: [
+                        [
+                            { text: 'Total Convidados', style: 'tableHeader' },
+                            { text: 'Confirmados', style: 'tableHeader' },
+                            { text: 'Adultos', style: 'tableHeader' },
+                            { text: 'Crianças', style: 'tableHeader' }
+                        ],
+                        [
+                            { text: totalGuests.toString(), alignment: 'center' },
+                            { text: confirmedTotal.toString(), alignment: 'center', color: 'green', bold: true },
+                            { text: totalAdults.toString(), alignment: 'center' },
+                            { text: totalChildren.toString(), alignment: 'center' }
+                        ]
+                    ]
+                },
+                layout: 'lightHorizontalLines',
+                margin: [0, 0, 0, 20]
+            });
+
+            // Listas por Grupo
+            Object.keys(groupedGuests).sort().forEach(group => {
+                const groupGuests = groupedGuests[group];
+                const groupAdults = groupGuests.reduce((acc, g) => acc + (g.adults_count || 0), 0);
+                const groupChildren = groupGuests.reduce((acc, g) => acc + (g.children_count || 0), 0);
+
+                content.push({
+                    text: `${group} (${groupGuests.length} convites)`,
+                    style: 'groupHeader',
+                    margin: [0, 10, 0, 5]
+                });
+
+                const tableBody: any[] = [
+                    [
+                        { text: 'Nome', style: 'tableHeader' },
+                        { text: 'Adultos', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Crianças', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Status', style: 'tableHeader', alignment: 'center' }
+                    ]
+                ];
+
+                groupGuests.forEach(guest => {
+                    let statusColor = 'gray';
+                    if (guest.rsvp_status === 'confirmado') statusColor = 'green';
+                    if (guest.rsvp_status === 'recusado') statusColor = 'red';
+                    if (guest.rsvp_status === 'pendente') statusColor = '#ca8a04'; // yellow-600
+
+                    tableBody.push([
+                        { text: guest.name, style: 'tableCell' },
+                        { text: guest.adults_count.toString(), style: 'tableCell', alignment: 'center' },
+                        { text: guest.children_count.toString(), style: 'tableCell', alignment: 'center' },
+                        { text: guest.rsvp_status.toUpperCase(), style: 'tableCell', alignment: 'center', color: statusColor, fontSize: 8, bold: true }
+                    ]);
+                });
+
+                // Subtotal do grupo
+                tableBody.push([
+                    { text: 'Total do Grupo', style: 'tableHeader', alignment: 'right' },
+                    { text: groupAdults.toString(), style: 'tableHeader', alignment: 'center' },
+                    { text: groupChildren.toString(), style: 'tableHeader', alignment: 'center' },
+                    { text: '', style: 'tableHeader' }
+                ]);
+
+                content.push({
+                    table: {
+                        headerRows: 1,
+                        widths: ['*', 'auto', 'auto', 'auto'],
+                        body: tableBody
+                    },
+                    layout: 'lightHorizontalLines',
+                    margin: [0, 0, 0, 15]
+                });
+            });
+
+            const docDefinition = {
+                content: content,
+                styles: {
+                    header: { fontSize: 22, bold: true, color: '#be123c' }, // rose-700
+                    subheader: { fontSize: 14, color: '#881337' }, // rose-900
+                    small: { fontSize: 10, color: '#6b7280' },
+                    sectionHeader: { fontSize: 14, bold: true, margin: [0, 0, 0, 10] as [number, number, number, number], color: '#374151' },
+                    groupHeader: { fontSize: 12, bold: true, color: '#be123c', decoration: 'underline' as const },
+                    tableHeader: { bold: true, fontSize: 10, color: 'black', fillColor: '#f3f4f6' },
+                    tableCell: { fontSize: 10, color: '#374151' }
+                },
+                defaultStyle: {
+                    font: 'Roboto'
+                }
+            };
+
+            pdfMake.createPdf(docDefinition).download('lista_convidados_casamento.pdf');
+
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            alert("Erro ao gerar PDF. Verifique o console.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     return (
         <div className="p-4 space-y-6 pb-20">
@@ -148,8 +300,17 @@ export default function Guests() {
                     </div>
                     <p className="text-xs text-muted-foreground">de {totalGuests} total</p>
                 </div>
-                <div className="bg-primary/10 p-2 rounded-full">
-                    <Users className="text-primary w-6 h-6" />
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportPdf}
+                        disabled={isExporting}
+                        className="gap-2 text-rose-700 border-rose-200 hover:bg-rose-50"
+                    >
+                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                        Exportar PDF
+                    </Button>
                 </div>
             </header>
 
@@ -181,7 +342,7 @@ export default function Guests() {
                 </Card>
             </div>
 
-            {/* Gráficos Detalhados (Collapsible ou sempre visível? Vamos colocar sempre visível por enquanto) */}
+            {/* Gráficos Detalhados */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
@@ -201,35 +362,6 @@ export default function Guests() {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* Ações em Massa */}
-            <div className="flex justify-end">
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-2" /> Importar CSV
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Importar Convidados</DialogTitle>
-                            <DialogDescription>
-                                Cole os dados no formato: Nome, Grupo, Adultos, Crianças (um por linha).
-                            </DialogDescription>
-                        </DialogHeader>
-                        <Form method="post" className="space-y-4">
-                            <Textarea
-                                name="csv_data"
-                                placeholder="Ex: Tio João, Família Noivo, 2, 0&#10;Prima Maria, Família Noiva, 1, 1"
-                                className="min-h-[200px]"
-                            />
-                            <Button type="submit" name="intent" value="bulk_import" className="w-full">
-                                Importar
-                            </Button>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
             </div>
 
             {/* Filtros */}
@@ -259,8 +391,6 @@ export default function Guests() {
                     ))}
                 </select>
             </div>
-
-
 
             {/* Lista de Convidados */}
             <div className="space-y-2">
