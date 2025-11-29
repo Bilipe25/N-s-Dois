@@ -57,11 +57,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
+  const vapidPublicKey = "BDjSK0SYyg0Xbsm03PlBGc8jawmjKeEYVVUn8ZB54Okdq3uUlec5RZGYjRMimMfEtvGg4IMitpYBvWIrC1WMuCw";
+
   return {
     logoUrl,
     ENV: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      VAPID_PUBLIC_KEY: vapidPublicKey,
     },
   };
 }
@@ -86,17 +89,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             __html: `window.ENV = ${JSON.stringify(data?.ENV)}`,
           }}
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/service-worker.js');
-                });
-              }
-            `,
-          }}
-        />
         <Scripts />
         <Toaster />
       </body>
@@ -105,6 +97,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const data = useLoaderData<typeof loader>();
+
+  // Lógica de Subscrição Push
+  if (typeof window !== "undefined" && 'serviceWorker' in navigator && 'PushManager' in window) {
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('Service Worker registrado:', registration);
+
+        // Verificar permissão
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+
+        if (Notification.permission === 'granted') {
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: data.ENV.VAPID_PUBLIC_KEY
+          });
+
+          // Enviar para o backend
+          await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ subscription }),
+          });
+          console.log('Push inscrito com sucesso!');
+        }
+      } catch (error) {
+        console.error('Erro no registro do SW ou Push:', error);
+      }
+    });
+  }
+
   return <Outlet />;
 }
 

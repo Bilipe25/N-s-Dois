@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLoaderData, Form, useActionData, useNavigation } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { sendPushToUser } from "@/services/push.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
                     link: "/bridal-shower"
                 });
+
+                // Enviar Push para Gabriel e Raabe
+                await sendPushToUser(request, "Gabriel", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
+                await sendPushToUser(request, "Raabe", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
 
                 const verses = [
                     "Nós amamos porque ele nos amou primeiro. (1 João 4:19)",

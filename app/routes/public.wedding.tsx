@@ -5,6 +5,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade, Navigation, Pagination } from "swiper/modules";
 import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User, CalendarPlus, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { sendPushToUser } from "@/services/push.server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,6 +103,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
             message: `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`,
             link: "/guests"
         });
+
+        // Enviar Push para Gabriel e Raabe
+        await sendPushToUser(request, "Gabriel", "Nova Confirmação de Presença 🎉", `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`, "/guests");
+        await sendPushToUser(request, "Raabe", "Nova Confirmação de Presença 🎉", `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`, "/guests");
 
         return { success: true, guestName: name };
     }
