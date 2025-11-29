@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Form, useNavigation, useActionData, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +59,22 @@ export const action = async ({ request }: Route.ActionArgs) => {
         side,
         photo_url: photoUrl
     });
+
+    if (!error) {
+        // Notificar
+        const session = await getSession(request.headers.get("Cookie"));
+        const user = session.get("user");
+
+        if (user) {
+            await supabase.from("notifications").insert({
+                type: "rsvp", // Usando tipo rsvp ou gift, ou criar um novo 'groomsmen' se necessário, mas rsvp/gift servem
+                title: "Novo Padrinho/Madrinha ✨",
+                message: `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`,
+                link: "/groomsmen",
+                image_url: photoUrl // Inclui a foto se houver
+            });
+        }
+    }
 
     if (error) {
         return { error: `Erro ao salvar: ${error.message}` };
