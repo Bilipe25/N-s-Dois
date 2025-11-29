@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Form, useNavigation, useActionData, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
-import { sendPushToUser } from "@/services/push.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +16,7 @@ export const meta: Route.MetaFunction = () => {
 
 export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
+    const { sendPushToUser } = await import("@/services/push.server");
     const name = formData.get("name") as string;
     const role = formData.get("role") as string;
     const side = formData.get("side") as string;
