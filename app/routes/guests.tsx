@@ -19,7 +19,7 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, FileDown, Loader2 } from "lucide-react";
+import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, FileDown, Loader2, Search } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import type { Route } from "./+types/guests";
 import pdfMake from "pdfmake/build/pdfmake";
@@ -124,11 +124,102 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
     });
 };
 
+// Componente para renderizar um item de convidado
+const GuestItem = ({ guest }: { guest: any }) => {
+    return (
+        <div className="flex items-center justify-between p-3 rounded-lg border bg-card border-border">
+            <div className="flex items-center gap-3">
+                <div className={`
+                  h-9 w-9 rounded-full flex flex-col items-center justify-center text-[10px] font-bold leading-tight
+                  ${guest.rsvp_status === 'confirmado' ? 'bg-green-100 text-green-700' :
+                        guest.rsvp_status === 'recusado' ? 'bg-red-100 text-red-700' :
+                            'bg-yellow-100 text-yellow-700'}
+                `}>
+                    <span>{guest.adults_count + (guest.children_count || 0)}</span>
+                    <span className="font-normal opacity-75 text-[8px]">Total</span>
+                </div>
+                <div>
+                    <p className="text-sm font-medium">{guest.name}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">{guest.group_name}</span>
+                        {(guest.children_count > 0) && (
+                            <span>({guest.adults_count} Ad. + {guest.children_count} Cr.)</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Abrir menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>Editar</span>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <a
+                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="cursor-pointer flex items-center text-green-600"
+                        >
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            <span>Enviar Convite</span>
+                        </a>
+                    </DropdownMenuItem>
+                    {guest.rsvp_status === 'pendente' && (
+                        <>
+                            <DropdownMenuItem asChild>
+                                <Form method="post" className="w-full cursor-pointer">
+                                    <input type="hidden" name="id" value={guest.id} />
+                                    <input type="hidden" name="status" value="confirmado" />
+                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
+                                        <Check className="mr-2 h-4 w-4 text-green-600" />
+                                        <span>Confirmar</span>
+                                    </button>
+                                </Form>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Form method="post" className="w-full cursor-pointer">
+                                    <input type="hidden" name="id" value={guest.id} />
+                                    <input type="hidden" name="status" value="recusado" />
+                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
+                                        <X className="mr-2 h-4 w-4 text-red-600" />
+                                        <span>Recusar</span>
+                                    </button>
+                                </Form>
+                            </DropdownMenuItem>
+                        </>
+                    )}
+                    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+                        <Form method="post" className="w-full cursor-pointer">
+                            <input type="hidden" name="id" value={guest.id} />
+                            <button type="submit" name="intent" value="delete" className="flex w-full items-center">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Excluir</span>
+                            </button>
+                        </Form>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    );
+};
+
 export default function Guests() {
     const { guests, config } = useLoaderData<typeof loader>();
     const [filter, setFilter] = useState<"todos" | "confirmado" | "pendente" | "recusado">("todos");
     const [groupFilter, setGroupFilter] = useState<string>("todos");
     const [showAddGuest, setShowAddGuest] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
     const [isExporting, setIsExporting] = useState(false);
 
     const filteredGuests = guests.filter((guest: any) => {
@@ -136,6 +227,11 @@ export default function Guests() {
         const matchesGroup = groupFilter === "todos" ? true : guest.group_name === groupFilter;
         return matchesStatus && matchesGroup;
     });
+
+    const searchResults = guests.filter((guest: any) =>
+        guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        guest.group_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const totalAdults = guests.reduce((acc: any, curr: any) => acc + (curr.adults_count || 0), 0);
     const totalChildren = guests.reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
@@ -400,94 +496,20 @@ export default function Guests() {
                     </div>
                 ) : (
                     filteredGuests.map((guest: any) => (
-                        <div
-                            key={guest.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-card border-border"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`
-                  h-9 w-9 rounded-full flex flex-col items-center justify-center text-[10px] font-bold leading-tight
-                  ${guest.rsvp_status === 'confirmado' ? 'bg-green-100 text-green-700' :
-                                        guest.rsvp_status === 'recusado' ? 'bg-red-100 text-red-700' :
-                                            'bg-yellow-100 text-yellow-700'}
-                `}>
-                                    <span>{guest.adults_count + (guest.children_count || 0)}</span>
-                                    <span className="font-normal opacity-75 text-[8px]">Total</span>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium">{guest.name}</p>
-                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                        <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">{guest.group_name}</span>
-                                        {(guest.children_count > 0) && (
-                                            <span>({guest.adults_count} Ad. + {guest.children_count} Cr.)</span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                        <span className="sr-only">Abrir menu</span>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                        <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            <span>Editar</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <a
-                                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="cursor-pointer flex items-center text-green-600"
-                                        >
-                                            <MessageCircle className="mr-2 h-4 w-4" />
-                                            <span>Enviar Convite</span>
-                                        </a>
-                                    </DropdownMenuItem>
-                                    {guest.rsvp_status === 'pendente' && (
-                                        <>
-                                            <DropdownMenuItem asChild>
-                                                <Form method="post" className="w-full cursor-pointer">
-                                                    <input type="hidden" name="id" value={guest.id} />
-                                                    <input type="hidden" name="status" value="confirmado" />
-                                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                                        <Check className="mr-2 h-4 w-4 text-green-600" />
-                                                        <span>Confirmar</span>
-                                                    </button>
-                                                </Form>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Form method="post" className="w-full cursor-pointer">
-                                                    <input type="hidden" name="id" value={guest.id} />
-                                                    <input type="hidden" name="status" value="recusado" />
-                                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                                        <X className="mr-2 h-4 w-4 text-red-600" />
-                                                        <span>Recusar</span>
-                                                    </button>
-                                                </Form>
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                                        <Form method="post" className="w-full cursor-pointer">
-                                            <input type="hidden" name="id" value={guest.id} />
-                                            <button type="submit" name="intent" value="delete" className="flex w-full items-center">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Excluir</span>
-                                            </button>
-                                        </Form>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+                        <GuestItem key={guest.id} guest={guest} />
                     ))
                 )}
+            </div>
+
+            {/* FAB para Buscar Convidado */}
+            <div className="fixed bottom-40 right-6 z-50">
+                <Button
+                    onClick={() => setShowSearch(true)}
+                    size="icon"
+                    className="h-12 w-12 rounded-full shadow-lg bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                >
+                    <Search className="h-5 w-5" />
+                </Button>
             </div>
 
             {/* FAB para Adicionar Convidado */}
@@ -500,6 +522,46 @@ export default function Guests() {
                     <Plus className="h-6 w-6" />
                 </Button>
             </div>
+
+            {/* Modal de Busca */}
+            <Dialog open={showSearch} onOpenChange={setShowSearch}>
+                <DialogContent className="max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Buscar Convidado</DialogTitle>
+                        <DialogDescription>
+                            Digite o nome ou grupo para filtrar.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar..."
+                                className="pl-8"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                            {searchTerm && searchResults.length === 0 ? (
+                                <div className="text-center py-4 text-muted-foreground text-sm">
+                                    Nenhum resultado encontrado.
+                                </div>
+                            ) : (
+                                (searchTerm ? searchResults : []).map((guest: any) => (
+                                    <GuestItem key={guest.id} guest={guest} />
+                                ))
+                            )}
+                            {!searchTerm && (
+                                <div className="text-center py-4 text-muted-foreground text-xs">
+                                    Digite para buscar...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Modal de Adicionar Convidado */}
             <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
