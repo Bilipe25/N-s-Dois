@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLoaderData, Form, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
+import { sendPushToUser } from "@/services/push.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +87,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 message: `${user} adicionou um novo convidado: ${name} (${group_name}).`,
                 link: "/guests"
             });
+
+            // Enviar Push
+            const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
+            await sendPushToUser(request, partnerName, "Novo Convidado ➕", `${user} adicionou um novo convidado: ${name} (${group_name}).`, "/guests");
         }
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
@@ -111,6 +116,14 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 message: `${guest.name} teve a presença marcada como "${status}".`,
                 link: "/guests"
             });
+
+            // Enviar Push
+            const session = await getSession(request.headers.get("Cookie"));
+            const user = session.get("user");
+            if (user) {
+                const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
+                await sendPushToUser(request, partnerName, "Atualização de RSVP 📩", `${guest.name} teve a presença marcada como "${status}".`, "/guests");
+            }
         }
     }
 

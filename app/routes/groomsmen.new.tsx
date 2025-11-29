@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Form, useNavigation, useActionData, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
+import { sendPushToUser } from "@/services/push.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +74,10 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 link: "/groomsmen",
                 image_url: photoUrl // Inclui a foto se houver
             });
+
+            // Enviar Push
+            const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
+            await sendPushToUser(request, partnerName, "Novo Padrinho/Madrinha ✨", `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`, "/groomsmen");
         }
     }
 
