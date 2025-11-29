@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Image as ImageIcon, X, Loader2, Heart, MessageCircle, Send } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, X, Loader2, Heart, MessageCircle, Send, Share2, Download, ZoomIn } from "lucide-react";
 import { toast } from "sonner";
 import type { Route } from "./+types/inspirations";
 
@@ -189,7 +189,7 @@ export default function Inspirations() {
     const [showAddInspiration, setShowAddInspiration] = useState(false);
     const [commentText, setCommentText] = useState("");
 
-    const categories = ["todos", "decoracao", "cerimonia", "festa", "vestidos", "lua_de_mel", "outros"];
+    const categories = ["todos", "meus_likes", "decoracao", "cerimonia", "festa", "vestidos", "lua_de_mel", "outros"];
 
     // Efeito para abrir inspiração via URL (notificação)
     useEffect(() => {
@@ -210,8 +210,11 @@ export default function Inspirations() {
         }
     };
 
+    const isLikedByUser = (likes: any[]) => likes.some((l: any) => l.user_name === user);
+
     const filteredInspirations = inspirations.filter((item: any) => {
         if (filter === "todos") return true;
+        if (filter === "meus_likes") return isLikedByUser(item.inspiration_likes || []);
         return item.category === filter;
     });
 
@@ -225,10 +228,46 @@ export default function Inspirations() {
         }
     };
 
-    const isLikedByUser = (likes: any[]) => likes.some((l: any) => l.user_name === user);
+    const handleShare = async () => {
+        if (selectedImage && navigator.share) {
+            try {
+                await navigator.share({
+                    title: selectedImage.title,
+                    text: selectedImage.notes || `Olha essa inspiração de ${selectedImage.category}!`,
+                    url: window.location.href, // Ou link direto se tiver
+                });
+            } catch (error) {
+                console.log('Error sharing', error);
+            }
+        } else {
+            toast.info("Compartilhamento não suportado neste navegador.");
+        }
+    };
+
+    const handleDownload = async () => {
+        if (selectedImage) {
+            try {
+                const response = await fetch(selectedImage.photo_url);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `inspiracao-${selectedImage.title.replace(/\s+/g, '-').toLowerCase()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast.success("Download iniciado!");
+            } catch (error) {
+                console.error("Erro no download:", error);
+                toast.error("Erro ao baixar imagem.");
+            }
+        }
+    };
 
     return (
-        <div className="p-4 space-y-6 pb-20">
+        <div className="p-4 space-y-6 pb-32"> {/* Aumentado padding bottom */}
             <header>
                 <p className="text-sm text-muted-foreground">Nossas ideias e referências</p>
             </header>
@@ -244,7 +283,7 @@ export default function Inspirations() {
                             : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                             }`}
                     >
-                        {cat.replace(/_/g, " ")}
+                        {cat === "meus_likes" ? "Meus Likes ❤️" : cat.replace(/_/g, " ")}
                     </button>
                 ))}
             </div>
@@ -252,7 +291,9 @@ export default function Inspirations() {
             {/* Galeria Masonry */}
             {filteredInspirations.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">
-                    Nenhuma inspiração encontrada nesta categoria.
+                    {filter === "meus_likes"
+                        ? "Você ainda não curtiu nenhuma inspiração."
+                        : "Nenhuma inspiração encontrada nesta categoria."}
                 </div>
             ) : (
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
@@ -285,7 +326,6 @@ export default function Inspirations() {
                                         </div>
                                     </div>
                                 </div>
-                                {/* Mobile Indicator (Always visible on mobile if needed, but keeping clean for now) */}
                             </div>
                         );
                     })}
@@ -294,26 +334,43 @@ export default function Inspirations() {
 
             {/* Lightbox Dialog Detalhado */}
             <Dialog open={!!selectedImage} onOpenChange={handleCloseDialog}>
-                <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90vh] md:h-[80vh] flex flex-col md:flex-row">
+                {/* z-index aumentado para 60 para ficar acima do BottomNav (z-50) */}
+                <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[60]">
                     {selectedImage && (
                         <>
                             {/* Imagem (Esquerda/Topo) */}
-                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40vh] md:h-full">
+                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40%] md:h-full">
                                 <img
                                     src={selectedImage.photo_url}
                                     alt={selectedImage.title}
                                     className="max-h-full max-w-full object-contain"
                                 />
-                                <button
-                                    onClick={() => handleCloseDialog(false)}
-                                    className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden z-10"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
+                                <div className="absolute top-2 right-2 flex gap-2 z-10">
+                                    <button
+                                        onClick={handleDownload}
+                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                                        title="Baixar Imagem"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={handleShare}
+                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                                        title="Compartilhar"
+                                    >
+                                        <Share2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleCloseDialog(false)}
+                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Detalhes e Chat (Direita/Baixo) */}
-                            <div className="w-full md:w-96 flex flex-col bg-background h-[50vh] md:h-full border-l">
+                            <div className="w-full md:w-96 flex flex-col bg-background h-[60%] md:h-full border-l">
                                 <div className="p-4 border-b flex-shrink-0">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
@@ -381,8 +438,8 @@ export default function Inspirations() {
                                     )}
                                 </div>
 
-                                {/* Input de Comentário */}
-                                <div className="p-3 border-t bg-background flex-shrink-0">
+                                {/* Input de Comentário - Fixed at bottom */}
+                                <div className="p-3 border-t bg-background flex-shrink-0 pb-safe">
                                     <Form
                                         method="post"
                                         className="flex gap-2"
