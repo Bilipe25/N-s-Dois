@@ -110,6 +110,64 @@ export default function Home() {
         </CardContent>
       </Card>
 
+      {/* Quick Links Grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+        <Link to="/checklist" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <CheckSquare className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Tarefas</span>
+        </Link>
+        <Link to="/guests" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Users className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Convidados</span>
+        </Link>
+        <Link to="/budget" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <DollarSign className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Gastos</span>
+        </Link>
+        <Link to="/suppliers" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Store className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Fornecedores</span>
+        </Link>
+        <Link to="/groomsmen" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <User className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Padrinhos</span>
+        </Link>
+        <Link to="/bridal-shower" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Gift className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Chá</span>
+        </Link>
+        <Link to="/inspirations" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Heart className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Inspirações</span>
+        </Link>
+        <Link to="/assets" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Package className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Nossos Bens</span>
+        </Link>
+        <Link to="/calendar" className="flex flex-col items-center gap-2 group">
+          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+            <Calendar className="h-6 w-6" />
+          </div>
+          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Agenda</span>
+        </Link>
+      </div>
+
       {/* Progresso Geral */}
       <div className="grid gap-4">
         <h2 className="text-lg font-semibold">Progresso</h2>
@@ -199,63 +257,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Quick Links Grid */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-        <Link to="/checklist" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <CheckSquare className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Tarefas</span>
-        </Link>
-        <Link to="/guests" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Users className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Convidados</span>
-        </Link>
-        <Link to="/budget" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <DollarSign className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Gastos</span>
-        </Link>
-        <Link to="/suppliers" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Store className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Fornecedores</span>
-        </Link>
-        <Link to="/groomsmen" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <User className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Padrinhos</span>
-        </Link>
-        <Link to="/bridal-shower" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Gift className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Chá</span>
-        </Link>
-        <Link to="/inspirations" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Heart className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Inspirações</span>
-        </Link>
-        <Link to="/assets" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Package className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Nossos Bens</span>
-        </Link>
-        <Link to="/calendar" className="flex flex-col items-center gap-2 group">
-          <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
-            <Calendar className="h-6 w-6" />
-          </div>
-          <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Agenda</span>
-        </Link>
-      </div>
+
 
       <Card className="border-l-4 border-l-primary shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
