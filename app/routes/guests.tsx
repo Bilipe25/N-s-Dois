@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLoaderData, Form, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { getSession } from "@/sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,19 @@ export const action = async ({ request }: Route.ActionArgs) => {
             children_count,
             rsvp_status: "pendente"
         });
+
+        // Notificar
+        const session = await getSession(request.headers.get("Cookie"));
+        const user = session.get("user");
+
+        if (user) {
+            await supabase.from("notifications").insert({
+                type: "rsvp",
+                title: "Novo Convidado ➕",
+                message: `${user} adicionou um novo convidado: ${name} (${group_name}).`,
+                link: "/guests"
+            });
+        }
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("guests").delete().eq("id", id);
