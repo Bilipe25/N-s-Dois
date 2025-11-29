@@ -142,6 +142,7 @@ export default function BridalShower() {
 
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
+    const [showAddGift, setShowAddGift] = useState(false);
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
     const copyToClipboard = () => {
@@ -150,7 +151,7 @@ export default function BridalShower() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative min-h-screen pb-20">
 
 
             {/* Compartilhamento */}
@@ -307,25 +308,6 @@ export default function BridalShower() {
                         </Button>
                     </div>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Adicionar Presente</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form method="post" className="space-y-3">
-                                <Input name="item_name" placeholder="Nome do Item (ex: Liquidificador)" required />
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input name="suggested_store" placeholder="Loja (Opcional)" />
-                                    <Input name="price_range" placeholder="Preço (ex: R$ 100)" />
-                                </div>
-                                <Input name="link" placeholder="Link do Produto (http://...)" />
-                                <Button type="submit" name="intent" value="add_gift" className="w-full">
-                                    <Plus className="mr-2 h-4 w-4" /> Adicionar à Lista
-                                </Button>
-                            </Form>
-                        </CardContent>
-                    </Card>
-
                     <div className="space-y-3">
                         {gifts.length === 0 ? (
                             <p className="text-center text-sm text-muted-foreground py-8">Lista vazia.</p>
@@ -378,8 +360,45 @@ export default function BridalShower() {
                             ))
                         )}
                     </div>
+
+                    {/* FAB para adicionar presente */}
+                    <div className="fixed bottom-6 right-6 z-50">
+                        <Button
+                            onClick={() => setShowAddGift(true)}
+                            size="icon"
+                            className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            <Plus className="h-6 w-6" />
+                        </Button>
+                    </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Modal de Adicionar Presente */}
+            <Dialog open={showAddGift} onOpenChange={setShowAddGift}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Presente</DialogTitle>
+                        <DialogDescription>
+                            Adicione um novo item à sua lista de presentes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGift(false)}>
+                        <Input name="item_name" placeholder="Nome do Item (ex: Liquidificador)" required />
+                        <div className="grid grid-cols-2 gap-2">
+                            <Input name="suggested_store" placeholder="Loja (Opcional)" />
+                            <Input name="price_range" placeholder="Preço (ex: R$ 100)" />
+                        </div>
+                        <Input name="link" placeholder="Link do Produto (http://...)" />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddGift(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add_gift">
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
 
             {/* Modal de Importação em Massa */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
