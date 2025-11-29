@@ -17,6 +17,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "../components/ui/textarea";
 import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, Upload, PieChart as PieChartIcon, BarChart as BarChartIcon } from "lucide-react";
@@ -119,6 +120,7 @@ export default function Guests() {
     const { guests } = useLoaderData<typeof loader>();
     const [filter, setFilter] = useState<"todos" | "confirmado" | "pendente" | "recusado">("todos");
     const [groupFilter, setGroupFilter] = useState<string>("todos");
+    const [showAddGuest, setShowAddGuest] = useState(false);
 
     const filteredGuests = guests.filter((guest: any) => {
         const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
@@ -258,48 +260,7 @@ export default function Guests() {
                 </select>
             </div>
 
-            {/* Adicionar Convidado */}
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Adicionar Convidado</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                    <Form method="post" className="space-y-2">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <Input name="name" placeholder="Nome completo" className="flex-1" required />
-                            <div className="flex gap-2 flex-1">
-                                <div className="flex-1 min-w-[120px]">
-                                    <select
-                                        name="group_name"
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        required
-                                    >
-                                        <option value="">Grupo...</option>
-                                        <option value="Família Noivo">Família Noivo</option>
-                                        <option value="Família Noiva">Família Noiva</option>
-                                        <option value="Amigos Noivo">Amigos Noivo</option>
-                                        <option value="Amigos Noiva">Amigos Noiva</option>
-                                        <option value="Igreja">Igreja</option>
-                                        <option value="Trabalho">Trabalho</option>
-                                        <option value="Outros">Outros</option>
-                                    </select>
-                                </div>
-                                <div className="w-16 relative">
-                                    <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Ad.</span>
-                                    <Input name="adults_count" type="number" min="1" defaultValue="1" className="h-10 px-2 text-center" />
-                                </div>
-                                <div className="w-16 relative">
-                                    <span className="absolute -top-2 left-1 text-[10px] bg-background px-1 text-muted-foreground">Cr.</span>
-                                    <Input name="children_count" type="number" min="0" defaultValue="0" className="h-10 px-2 text-center" />
-                                </div>
-                                <Button type="submit" name="intent" value="add" className="shrink-0 h-10 w-10 p-0">
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    </Form>
-                </CardContent>
-            </Card>
+
 
             {/* Lista de Convidados */}
             <div className="space-y-2">
@@ -398,6 +359,62 @@ export default function Guests() {
                     ))
                 )}
             </div>
+
+            {/* FAB para Adicionar Convidado */}
+            <div className="fixed bottom-24 right-6 z-50">
+                <Button
+                    onClick={() => setShowAddGuest(true)}
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </div>
+
+            {/* Modal de Adicionar Convidado */}
+            <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Convidado</DialogTitle>
+                        <DialogDescription>
+                            Adicione um novo convidado à sua lista.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGuest(false)}>
+                        <Input name="name" placeholder="Nome completo" required />
+                        <select
+                            name="group_name"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            required
+                        >
+                            <option value="">Grupo...</option>
+                            <option value="Família Noivo">Família Noivo</option>
+                            <option value="Família Noiva">Família Noiva</option>
+                            <option value="Amigos Noivo">Amigos Noivo</option>
+                            <option value="Amigos Noiva">Amigos Noiva</option>
+                            <option value="Igreja">Igreja</option>
+                            <option value="Trabalho">Trabalho</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Adultos</label>
+                                <Input name="adults_count" type="number" min="1" defaultValue="1" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Crianças</label>
+                                <Input name="children_count" type="number" min="0" defaultValue="0" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add">
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 }

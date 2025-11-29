@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Trash2, Image as ImageIcon, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Route } from "./+types/inspirations";
@@ -91,6 +91,7 @@ export default function Inspirations() {
     const [filter, setFilter] = useState<string>("todos");
     const [selectedImage, setSelectedImage] = useState<any>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [showAddInspiration, setShowAddInspiration] = useState(false);
 
     const categories = ["todos", "decoracao", "cerimonia", "festa", "vestidos", "lua_de_mel", "outros"];
 
@@ -131,53 +132,7 @@ export default function Inspirations() {
                 ))}
             </div>
 
-            {/* Adicionar Inspiração */}
-            <Card>
-                <CardContent className="p-3">
-                    <Form method="post" encType="multipart/form-data" className="space-y-3" onSubmit={() => setPreviewUrl(null)}>
-                        <div className="flex gap-3 items-start">
-                            <div className="relative h-20 w-20 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-dashed border-muted-foreground/50">
-                                {previewUrl ? (
-                                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
-                                ) : (
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground opacity-50" />
-                                )}
-                                <input
-                                    type="file"
-                                    name="photo"
-                                    accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={handleFileChange}
-                                    required
-                                />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <Input name="title" placeholder="Título (ex: Vestido Sereia)" required className="h-9" />
-                                <div className="flex gap-2">
-                                    <select
-                                        name="category"
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        required
-                                    >
-                                        <option value="">Categoria...</option>
-                                        <option value="decoracao">Decoração</option>
-                                        <option value="cerimonia">Cerimônia</option>
-                                        <option value="festa">Festa</option>
-                                        <option value="vestidos">Vestidos</option>
-                                        <option value="lua_de_mel">Lua de Mel</option>
-                                        <option value="outros">Outros</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <Input name="notes" placeholder="Notas (opcional)" className="text-sm h-9" />
-                        <Button type="submit" name="intent" value="add" className="w-full h-9" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                            Adicionar Inspiração
-                        </Button>
-                    </Form>
-                </CardContent>
-            </Card>
+
 
             {/* Galeria Masonry */}
             {filteredInspirations.length === 0 ? (
@@ -267,6 +222,72 @@ export default function Inspirations() {
                             </div>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* FAB para Adicionar Inspiração */}
+            <div className="fixed bottom-24 right-6 z-50">
+                <Button
+                    onClick={() => setShowAddInspiration(true)}
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </div>
+
+            {/* Modal de Adicionar Inspiração */}
+            <Dialog open={showAddInspiration} onOpenChange={setShowAddInspiration}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nova Inspiração</DialogTitle>
+                        <DialogDescription>
+                            Adicione uma foto e detalhes da sua inspiração.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" encType="multipart/form-data" className="space-y-4" onSubmit={() => { setPreviewUrl(null); setShowAddInspiration(false); }}>
+                        <div className="flex gap-4 items-start">
+                            <div className="relative h-24 w-24 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-dashed border-muted-foreground/50">
+                                {previewUrl ? (
+                                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                                ) : (
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground opacity-50" />
+                                )}
+                                <input
+                                    type="file"
+                                    name="photo"
+                                    accept="image/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleFileChange}
+                                    required
+                                />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <Input name="title" placeholder="Título (ex: Vestido Sereia)" required />
+                                <select
+                                    name="category"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    required
+                                >
+                                    <option value="">Categoria...</option>
+                                    <option value="decoracao">Decoração</option>
+                                    <option value="cerimonia">Cerimônia</option>
+                                    <option value="festa">Festa</option>
+                                    <option value="vestidos">Vestidos</option>
+                                    <option value="lua_de_mel">Lua de Mel</option>
+                                    <option value="outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                        <Input name="notes" placeholder="Notas (opcional)" />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddInspiration(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add" disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
                 </DialogContent>
             </Dialog>
         </div>

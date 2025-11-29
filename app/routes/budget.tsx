@@ -8,6 +8,7 @@ import { Plus, DollarSign, Download, Pencil, MoreHorizontal, Trash2, Filter } fr
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Route } from "./+types/budget";
 
 export const meta: Route.MetaFunction = () => {
@@ -144,6 +145,7 @@ export default function Budget() {
     const { items } = useLoaderData<typeof loader>();
     const submit = useSubmit();
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
+    const [showAddBudget, setShowAddBudget] = useState(false);
 
     const totalEstimated = items.reduce((acc: any, curr: any) => acc + (Number(curr.estimated_value) || 0), 0);
     const totalPaid = items.reduce((acc: any, curr: any) => acc + (Number(curr.paid_value) || 0), 0);
@@ -313,51 +315,7 @@ export default function Budget() {
                 )}
             </div>
 
-            {/* Adicionar Gasto */}
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Novo Item</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                    <Form method="post" className="space-y-2">
-                        <Input name="description" placeholder="Descrição (ex: Buffet)" required />
-                        <div className="flex gap-2">
-                            <Input
-                                name="category"
-                                list="categories"
-                                placeholder="Categoria (Selecione ou Digite)"
-                                required
-                                className="flex-1"
-                            />
-                            <datalist id="categories">
-                                <option value="Buffet" />
-                                <option value="Decoração" />
-                                <option value="Foto/Vídeo" />
-                                <option value="Local" />
-                                <option value="Roupas" />
-                                <option value="Música" />
-                                <option value="Cerimonial" />
-                                <option value="Doces/Bolo" />
-                                <option value="Papelaria" />
-                                <option value="Outros" />
-                            </datalist>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <span className="absolute left-3 top-2.5 text-muted-foreground text-xs">R$</span>
-                                <Input name="estimated_value" type="number" step="0.01" placeholder="Orçado" className="pl-8" />
-                            </div>
-                            <div className="relative flex-1">
-                                <span className="absolute left-3 top-2.5 text-muted-foreground text-xs">R$</span>
-                                <Input name="paid_value" type="number" step="0.01" placeholder="Pago" className="pl-8" />
-                            </div>
-                            <Button type="submit" name="intent" value="add" className="shrink-0">
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </Form>
-                </CardContent>
-            </Card>
+
 
             {/* Filtros e Lista */}
             <div className="space-y-4">
@@ -460,6 +418,67 @@ export default function Budget() {
                     )}
                 </div>
             </div>
-        </div>
+
+            {/* FAB para Adicionar Gasto */}
+            <div className="fixed bottom-24 right-6 z-50">
+                <Button
+                    onClick={() => setShowAddBudget(true)}
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </div>
+
+            {/* Modal de Adicionar Gasto */}
+            <Dialog open={showAddBudget} onOpenChange={setShowAddBudget}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Novo Gasto</DialogTitle>
+                        <DialogDescription>
+                            Adicione um novo item ao seu orçamento.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddBudget(false)}>
+                        <Input name="description" placeholder="Descrição (ex: Buffet)" required />
+                        <Input
+                            name="category"
+                            list="categories"
+                            placeholder="Categoria (Selecione ou Digite)"
+                            required
+                            className="w-full"
+                        />
+                        <datalist id="categories">
+                            <option value="Buffet" />
+                            <option value="Decoração" />
+                            <option value="Foto/Vídeo" />
+                            <option value="Local" />
+                            <option value="Roupas" />
+                            <option value="Música" />
+                            <option value="Cerimonial" />
+                            <option value="Doces/Bolo" />
+                            <option value="Papelaria" />
+                            <option value="Outros" />
+                        </datalist>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-muted-foreground text-xs">R$</span>
+                                <Input name="estimated_value" type="number" step="0.01" placeholder="Orçado" className="pl-8" />
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-muted-foreground text-xs">R$</span>
+                                <Input name="paid_value" type="number" step="0.01" placeholder="Pago" className="pl-8" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddBudget(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add">
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }

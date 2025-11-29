@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Calendar as CalendarIcon, User, Pencil, MoreHorizontal, ArrowUpDown, ListPlus, Paperclip, Download, X, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Route } from "./+types/checklist";
 
 const TASK_TEMPLATES = [
@@ -167,6 +168,7 @@ export default function Checklist() {
     const [filter, setFilter] = useState<"todos" | "pendente" | "concluido">("todos");
     const [sortOrder, setSortOrder] = useState<"urgency" | "recent" | "alpha">("urgency");
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
+    const [showAddTask, setShowAddTask] = useState(false);
 
     const filteredItems = items.filter((item: any) => {
         if (filter === "todos") return true;
@@ -291,22 +293,7 @@ export default function Checklist() {
                 </div>
             </div>
 
-            {/* Adicionar Tarefa Rápida */}
-            <Card>
-                <CardContent className="p-3">
-                    <Form method="post" className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                            <Input name="title" placeholder="Nova tarefa..." className="border-0 shadow-none focus-visible:ring-0 px-2 flex-1" required />
-                            <Input name="due_date" type="date" className="w-36 border-0 shadow-none focus-visible:ring-0 text-xs" />
-                        </div>
-                        <div className="flex justify-end">
-                            <Button type="submit" name="intent" value="add" size="sm" className="h-7 text-xs">
-                                <Plus className="h-3 w-3 mr-1" /> Adicionar
-                            </Button>
-                        </div>
-                    </Form>
-                </CardContent>
-            </Card>
+
 
             {/* Lista de Tarefas */}
             <div className="space-y-2">
@@ -482,6 +469,41 @@ export default function Checklist() {
                     })
                 )}
             </div>
+
+            {/* FAB para Adicionar Tarefa */}
+            <div className="fixed bottom-24 right-6 z-50">
+                <Button
+                    onClick={() => setShowAddTask(true)}
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </div>
+
+            {/* Modal de Adicionar Tarefa */}
+            <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nova Tarefa</DialogTitle>
+                        <DialogDescription>
+                            Adicione uma nova tarefa à sua lista.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" className="space-y-4" onSubmit={() => setShowAddTask(false)}>
+                        <div className="space-y-2">
+                            <Input name="title" placeholder="Título da tarefa" required />
+                            <Input name="due_date" type="date" className="w-full" />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddTask(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add">
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
