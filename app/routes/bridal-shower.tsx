@@ -124,6 +124,43 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 await supabase.from("bridal_shower_gifts").insert(giftsToInsert);
             }
         }
+    } else if (intent === "import_guests") {
+        const importText = formData.get("import_text") as string;
+        if (importText) {
+            const lines = importText.split('\n');
+            const guestsToInsert = [];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+
+                // Tenta dividir por | ou ;
+                let parts = [];
+                if (trimmedLine.includes('|')) {
+                    parts = trimmedLine.split('|');
+                } else if (trimmedLine.includes(';')) {
+                    parts = trimmedLine.split(';');
+                } else {
+                    // Se não tiver separador claro, assume que é tudo nome
+                    parts = [trimmedLine];
+                }
+
+                const name = parts[0]?.trim();
+                const phone = parts[1]?.trim() || null;
+
+                if (name) {
+                    guestsToInsert.push({
+                        name,
+                        phone,
+                        confirmed: false // Default to not confirmed
+                    });
+                }
+            }
+
+            if (guestsToInsert.length > 0) {
+                await supabase.from("bridal_shower_guests").insert(guestsToInsert);
+            }
+        }
     }
 
     return null;
@@ -143,6 +180,13 @@ export default function BridalShower() {
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
+
+    // Novos estados para convidados e busca
+    const [showAddGuest, setShowAddGuest] = useState(false);
+    const [showImportGuests, setShowImportGuests] = useState(false);
+    const [giftSearch, setGiftSearch] = useState("");
+    const [guestSearch, setGuestSearch] = useState("");
+
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
     const copyToClipboard = () => {
@@ -150,8 +194,18 @@ export default function BridalShower() {
         alert("Link copiado!");
     };
 
+    // Filtragem
+    const filteredGifts = gifts.filter((g: any) =>
+        g.item_name.toLowerCase().includes(giftSearch.toLowerCase()) ||
+        (g.suggested_store && g.suggested_store.toLowerCase().includes(giftSearch.toLowerCase()))
+    );
+
+    const filteredGuests = guests.filter((g: any) =>
+        g.name.toLowerCase().includes(guestSearch.toLowerCase())
+    );
+
     return (
-        <div className="space-y-6 relative min-h-screen pb-20">
+        <div className="space-y-6 relative min-h-screen pb-24"> {/* Aumentei o padding bottom */}
 
 
             {/* Compartilhamento */}
@@ -245,28 +299,22 @@ export default function BridalShower() {
 
                 {/* Aba de Convidados */}
                 <TabsContent value="guests" className="space-y-4 mt-4">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Adicionar Convidado</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Form method="post" className="flex gap-2">
-                                <div className="grid gap-2 flex-1">
-                                    <Input name="name" placeholder="Nome" required className="h-9" />
-                                    <Input name="phone" placeholder="Telefone (Opcional)" className="h-9" />
-                                </div>
-                                <Button type="submit" name="intent" value="add_guest" size="icon" className="h-auto">
-                                    <Plus className="h-5 w-5" />
-                                </Button>
-                            </Form>
-                        </CardContent>
-                    </Card>
+                    <div className="flex gap-2 mb-4">
+                        <Input
+                            placeholder="Buscar convidado..."
+                            value={guestSearch}
+                            onChange={(e) => setGuestSearch(e.target.value)}
+                            className="bg-white"
+                        />
+                    </div>
 
                     <div className="space-y-2">
-                        {guests.length === 0 ? (
-                            <p className="text-center text-sm text-muted-foreground py-8">Nenhum convidado ainda.</p>
+                        {filteredGuests.length === 0 ? (
+                            <p className="text-center text-sm text-muted-foreground py-8">
+                                {guests.length === 0 ? "Nenhum convidado ainda." : "Nenhum convidado encontrado."}
+                            </p>
                         ) : (
-                            guests.map((guest: any) => (
+                            filteredGuests.map((guest: any) => (
                                 <div key={guest.id} className="flex justify-between items-center p-3 bg-card border rounded-lg shadow-sm">
                                     <div>
                                         <p className="font-medium text-sm">{guest.name}</p>
@@ -298,21 +346,46 @@ export default function BridalShower() {
                             ))
                         )}
                     </div>
+
+                    {/* FABs para Convidados */}
+                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
+                        <Button
+                            onClick={() => setShowImportGuests(true)}
+                            size="icon"
+                            variant="secondary"
+                            className="h-10 w-10 rounded-full shadow-md"
+                            title="Importar Convidados"
+                        >
+                            <LinkIcon className="h-5 w-5" /> {/* Reusing LinkIcon as generic import/list icon since Lucide might not have 'Import' loaded */}
+                        </Button>
+                        <Button
+                            onClick={() => setShowAddGuest(true)}
+                            size="icon"
+                            className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            <Plus className="h-6 w-6" />
+                        </Button>
+                    </div>
                 </TabsContent>
 
                 {/* Aba de Presentes */}
                 <TabsContent value="gifts" className="space-y-4 mt-4">
-                    <div className="flex justify-end">
-                        <Button variant="outline" size="sm" onClick={() => setShowImport(true)} className="text-xs">
-                            <Plus className="mr-1 h-3 w-3" /> Importar em Massa
-                        </Button>
+                    <div className="flex gap-2 mb-4">
+                        <Input
+                            placeholder="Buscar presente..."
+                            value={giftSearch}
+                            onChange={(e) => setGiftSearch(e.target.value)}
+                            className="bg-white"
+                        />
                     </div>
 
                     <div className="space-y-3">
-                        {gifts.length === 0 ? (
-                            <p className="text-center text-sm text-muted-foreground py-8">Lista vazia.</p>
+                        {filteredGifts.length === 0 ? (
+                            <p className="text-center text-sm text-muted-foreground py-8">
+                                {gifts.length === 0 ? "Lista vazia." : "Nenhum presente encontrado."}
+                            </p>
                         ) : (
-                            gifts.map((gift: any) => (
+                            filteredGifts.map((gift: any) => (
                                 <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-card shadow-sm'}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
@@ -361,8 +434,17 @@ export default function BridalShower() {
                         )}
                     </div>
 
-                    {/* FAB para adicionar presente */}
-                    <div className="fixed bottom-6 right-6 z-50">
+                    {/* FABs para Presentes */}
+                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
+                        <Button
+                            onClick={() => setShowImport(true)}
+                            size="icon"
+                            variant="secondary"
+                            className="h-10 w-10 rounded-full shadow-md"
+                            title="Importar Presentes"
+                        >
+                            <LinkIcon className="h-5 w-5" />
+                        </Button>
                         <Button
                             onClick={() => setShowAddGift(true)}
                             size="icon"
@@ -400,7 +482,29 @@ export default function BridalShower() {
                 </DialogContent>
             </Dialog>
 
-            {/* Modal de Importação em Massa */}
+            {/* Modal de Adicionar Convidado */}
+            <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Adicionar Convidado</DialogTitle>
+                        <DialogDescription>
+                            Adicione um novo convidado à sua lista.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGuest(false)}>
+                        <Input name="name" placeholder="Nome" required />
+                        <Input name="phone" placeholder="Telefone (Opcional)" />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="add_guest">
+                                Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
                 <DialogContent>
                     <DialogHeader>
@@ -422,6 +526,33 @@ export default function BridalShower() {
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
                             <Button type="submit" name="intent" value="import_gifts">Importar Lista</Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Importação em Massa de Convidados */}
+            <Dialog open={showImportGuests} onOpenChange={setShowImportGuests}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Importar Convidados em Massa</DialogTitle>
+                        <DialogDescription>
+                            Cole sua lista de nomes abaixo. Cada linha será um convidado.<br />
+                            Opcional: <code>Nome | Telefone</code>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" onSubmit={() => setShowImportGuests(false)}>
+                        <div className="py-4">
+                            <textarea
+                                name="import_text"
+                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
+                                placeholder="Exemplo:&#10;João Silva&#10;Maria Souza | 11999999999&#10;Pedro"
+                                required
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="import_guests">Importar Lista</Button>
                         </DialogFooter>
                     </Form>
                 </DialogContent>
