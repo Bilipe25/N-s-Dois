@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useLoaderData, Form, useNavigation } from "react-router";
+import { useState, useEffect } from "react";
+import { useLoaderData, Form, useNavigation, useSearchParams, useNavigate, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { getSession } from "@/sessions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Image as ImageIcon, X, Loader2 } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, X, Loader2, Heart, MessageCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { Route } from "./+types/inspirations";
 
@@ -14,21 +15,52 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
+    const session = await getSession(request.headers.get("Cookie"));
+    const user = session.get("user");
+
+    if (!user) {
+        return redirect("/login");
+    }
+
     const supabase = createClient(request);
+
+    // Buscar inspirações
     const { data: inspirations, error } = await supabase
         .from("inspirations")
-        .select("*")
+        .select(`
+            *,
+            inspiration_likes (user_name),
+            inspiration_comments (
+                id,
+                user_name,
+                content,
+                created_at
+            )
+        `)
         .order("created_at", { ascending: false });
 
     if (error) {
         console.error("Error fetching inspirations:", error);
-        return { inspirations: [] };
+        return { inspirations: [], user };
     }
 
-    return { inspirations };
+    // Ordenar comentários por data (mais recentes primeiro)
+    const processedInspirations = inspirations.map((insp: any) => ({
+        ...insp,
+        inspiration_comments: insp.inspiration_comments.sort((a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+    }));
+
+    return { inspirations: processedInspirations, user };
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
+    const session = await getSession(request.headers.get("Cookie"));
+    const user = session.get("user");
+
+    if (!user) return redirect("/login");
+
     const formData = await request.formData();
     const intent = formData.get("intent");
     const supabase = createClient(request);
@@ -57,7 +89,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
         if (uploadError) {
             console.error("Upload error:", uploadError);
-            return null; // Ou retornar erro para exibir toast
+            return null;
         }
 
         const { data: publicUrlData } = supabase.storage
@@ -66,34 +98,117 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
         const photo_url = publicUrlData.publicUrl;
 
-        const { error: dbError } = await supabase.from("inspirations").insert({
+        const { data: newInspiration, error: dbError } = await supabase.from("inspirations").insert({
             title,
             category,
             notes,
             photo_url
-        });
+        }).select().single();
 
         if (dbError) console.error("DB Error:", dbError);
+
+        if (newInspiration) {
+            // Notificar o outro usuário
+            const otherUser = user === "Gabriel" ? "Raabe" : "Gabriel"; // Lógica simples baseada nos dois usuários
+            await supabase.from("notifications").insert({
+                type: "gift", // Usando ícone de presente/coração para inspiração
+                title: "Nova Inspiração ✨",
+                message: `${user} adicionou uma nova inspiração em ${category}: "${title}".`,
+                link: `/inspirations?id=${newInspiration.id}`
+            });
+        }
 
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("inspirations").delete().eq("id", id);
+    } else if (intent === "toggle_like") {
+        const inspirationId = formData.get("inspirationId") as string;
+        const hasLiked = formData.get("hasLiked") === "true";
+
+        if (hasLiked) {
+            await supabase.from("inspiration_likes")
+                .delete()
+                .match({ inspiration_id: inspirationId, user_name: user });
+        } else {
+            await supabase.from("inspiration_likes").insert({
+                inspiration_id: inspirationId,
+                user_name: user
+            });
+
+            // Buscar título para notificação
+            const { data: insp } = await supabase.from("inspirations").select("title").eq("id", inspirationId).single();
+
+            // Notificar
+            if (insp) {
+                await supabase.from("notifications").insert({
+                    type: "gift",
+                    title: "Nova Curtida ❤️",
+                    message: `${user} curtiu sua inspiração "${insp.title}".`,
+                    link: `/inspirations?id=${inspirationId}`
+                });
+            }
+        }
+    } else if (intent === "add_comment") {
+        const inspirationId = formData.get("inspirationId") as string;
+        const content = formData.get("content") as string;
+
+        if (content.trim()) {
+            await supabase.from("inspiration_comments").insert({
+                inspiration_id: inspirationId,
+                user_name: user,
+                content
+            });
+
+            // Buscar título para notificação
+            const { data: insp } = await supabase.from("inspirations").select("title").eq("id", inspirationId).single();
+
+            // Notificar
+            if (insp) {
+                await supabase.from("notifications").insert({
+                    type: "gift",
+                    title: "Novo Comentário 💬",
+                    message: `${user} comentou em "${insp.title}": "${content}"`,
+                    link: `/inspirations?id=${inspirationId}`
+                });
+            }
+        }
     }
 
     return null;
 };
 
 export default function Inspirations() {
-    const { inspirations } = useLoaderData<typeof loader>();
+    const { inspirations, user } = useLoaderData<typeof loader>();
     const navigation = useNavigation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const isSubmitting = navigation.state === "submitting";
 
     const [filter, setFilter] = useState<string>("todos");
     const [selectedImage, setSelectedImage] = useState<any>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [showAddInspiration, setShowAddInspiration] = useState(false);
+    const [commentText, setCommentText] = useState("");
 
     const categories = ["todos", "decoracao", "cerimonia", "festa", "vestidos", "lua_de_mel", "outros"];
+
+    // Efeito para abrir inspiração via URL (notificação)
+    useEffect(() => {
+        const idFromUrl = searchParams.get("id");
+        if (idFromUrl) {
+            const inspiration = inspirations.find((i: any) => i.id === idFromUrl);
+            if (inspiration) {
+                setSelectedImage(inspiration);
+            }
+        }
+    }, [searchParams, inspirations]);
+
+    // Limpar query param ao fechar dialog
+    const handleCloseDialog = (open: boolean) => {
+        if (!open) {
+            setSelectedImage(null);
+            setSearchParams({}); // Limpa URL
+        }
+    };
 
     const filteredInspirations = inspirations.filter((item: any) => {
         if (filter === "todos") return true;
@@ -109,6 +224,8 @@ export default function Inspirations() {
             setPreviewUrl(null);
         }
     };
+
+    const isLikedByUser = (likes: any[]) => likes.some((l: any) => l.user_name === user);
 
     return (
         <div className="p-4 space-y-6 pb-20">
@@ -132,8 +249,6 @@ export default function Inspirations() {
                 ))}
             </div>
 
-
-
             {/* Galeria Masonry */}
             {filteredInspirations.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground text-sm">
@@ -141,86 +256,155 @@ export default function Inspirations() {
                 </div>
             ) : (
                 <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-                    {filteredInspirations.map((item: any) => (
-                        <div
-                            key={item.id}
-                            className="break-inside-avoid relative group cursor-pointer rounded-lg overflow-hidden mb-4"
-                            onClick={() => setSelectedImage(item)}
-                        >
-                            <img
-                                src={item.photo_url}
-                                alt={item.title}
-                                className="w-full h-auto object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
-                                loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-                                <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                    {filteredInspirations.map((item: any) => {
+                        const liked = isLikedByUser(item.inspiration_likes || []);
+                        const commentsCount = item.inspiration_comments?.length || 0;
+
+                        return (
+                            <div
+                                key={item.id}
+                                className="break-inside-avoid relative group cursor-pointer rounded-lg overflow-hidden mb-4 shadow-sm border border-border"
+                                onClick={() => setSelectedImage(item)}
+                            >
+                                <img
+                                    src={item.photo_url}
+                                    alt={item.title}
+                                    className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+                                    loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                                    <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                                    <div className="flex items-center gap-3 mt-1 text-white/90 text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <Heart className={`h-3 w-3 ${liked ? "fill-rose-500 text-rose-500" : ""}`} />
+                                            <span>{item.inspiration_likes?.length || 0}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <MessageCircle className="h-3 w-3" />
+                                            <span>{commentsCount}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Mobile Indicator (Always visible on mobile if needed, but keeping clean for now) */}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
-            {/* Lightbox Dialog */}
-            <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-                <DialogContent className="max-w-3xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none">
+            {/* Lightbox Dialog Detalhado */}
+            <Dialog open={!!selectedImage} onOpenChange={handleCloseDialog}>
+                <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90vh] md:h-[80vh] flex flex-col md:flex-row">
                     {selectedImage && (
-                        <div className="flex flex-col md:flex-row h-[80vh] md:h-[600px]">
-                            <div className="flex-1 bg-black flex items-center justify-center relative">
+                        <>
+                            {/* Imagem (Esquerda/Topo) */}
+                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40vh] md:h-full">
                                 <img
                                     src={selectedImage.photo_url}
                                     alt={selectedImage.title}
                                     className="max-h-full max-w-full object-contain"
                                 />
                                 <button
-                                    onClick={() => setSelectedImage(null)}
-                                    className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden"
+                                    onClick={() => handleCloseDialog(false)}
+                                    className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden z-10"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
                             </div>
-                            <div className="w-full md:w-80 p-6 flex flex-col bg-background">
-                                <DialogHeader className="mb-4">
-                                    <DialogTitle className="text-xl font-serif">{selectedImage.title}</DialogTitle>
-                                    <DialogDescription className="capitalize text-primary font-medium">
-                                        {selectedImage.category.replace(/_/g, " ")}
-                                    </DialogDescription>
-                                </DialogHeader>
 
-                                <div className="flex-1 overflow-y-auto">
-                                    {selectedImage.notes ? (
-                                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            {/* Detalhes e Chat (Direita/Baixo) */}
+                            <div className="w-full md:w-96 flex flex-col bg-background h-[50vh] md:h-full border-l">
+                                <div className="p-4 border-b flex-shrink-0">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <DialogTitle className="text-lg font-serif">{selectedImage.title}</DialogTitle>
+                                            <DialogDescription className="capitalize text-primary font-medium text-xs">
+                                                {selectedImage.category.replace(/_/g, " ")}
+                                            </DialogDescription>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Form method="post" className="flex items-center">
+                                                <input type="hidden" name="intent" value="toggle_like" />
+                                                <input type="hidden" name="inspirationId" value={selectedImage.id} />
+                                                <input type="hidden" name="hasLiked" value={isLikedByUser(selectedImage.inspiration_likes || []).toString()} />
+                                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-rose-50">
+                                                    <Heart className={`h-5 w-5 transition-colors ${isLikedByUser(selectedImage.inspiration_likes || []) ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
+                                                </Button>
+                                            </Form>
+                                            <Form method="post" onSubmit={(e) => {
+                                                if (!confirm("Tem certeza que deseja excluir?")) e.preventDefault();
+                                            }}>
+                                                <input type="hidden" name="intent" value="delete" />
+                                                <input type="hidden" name="id" value={selectedImage.id} />
+                                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </Form>
+                                        </div>
+                                    </div>
+
+                                    {/* Likes Summary */}
+                                    <div className="text-xs text-muted-foreground mb-2">
+                                        {selectedImage.inspiration_likes?.length > 0 ? (
+                                            <span>
+                                                Curtido por <span className="font-medium text-foreground">{selectedImage.inspiration_likes.map((l: any) => l.user_name).join(" e ")}</span>
+                                            </span>
+                                        ) : (
+                                            <span>Seja o primeiro a curtir!</span>
+                                        )}
+                                    </div>
+
+                                    {selectedImage.notes && (
+                                        <p className="text-sm text-muted-foreground bg-secondary/50 p-2 rounded-md mb-2">
                                             {selectedImage.notes}
                                         </p>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground italic">Sem notas.</p>
                                     )}
                                 </div>
 
-                                <div className="mt-6 pt-4 border-t flex justify-between items-center">
-                                    <span className="text-xs text-muted-foreground">
-                                        Adicionado em {new Date(selectedImage.created_at).toLocaleDateString('pt-BR')}
-                                    </span>
-                                    <Form method="post">
-                                        <input type="hidden" name="id" value={selectedImage.id} />
-                                        <Button
-                                            type="submit"
-                                            name="intent"
-                                            value="delete"
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                if (!confirm("Tem certeza que deseja excluir?")) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                                {/* Lista de Comentários */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                    {selectedImage.inspiration_comments?.length === 0 ? (
+                                        <div className="text-center text-xs text-muted-foreground py-4">
+                                            Nenhum comentário ainda.
+                                        </div>
+                                    ) : (
+                                        selectedImage.inspiration_comments.map((comment: any) => (
+                                            <div key={comment.id} className={`flex flex-col ${comment.user_name === user ? "items-end" : "items-start"}`}>
+                                                <div className={`max-w-[85%] rounded-lg p-2 text-sm ${comment.user_name === user ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-secondary text-secondary-foreground rounded-tl-none"}`}>
+                                                    <p>{comment.content}</p>
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                                                    {comment.user_name} • {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Input de Comentário */}
+                                <div className="p-3 border-t bg-background flex-shrink-0">
+                                    <Form
+                                        method="post"
+                                        className="flex gap-2"
+                                        onSubmit={() => setCommentText("")} // Optimistic clear
+                                    >
+                                        <input type="hidden" name="intent" value="add_comment" />
+                                        <input type="hidden" name="inspirationId" value={selectedImage.id} />
+                                        <Input
+                                            name="content"
+                                            placeholder="Escreva um comentário..."
+                                            className="flex-1 h-9 text-sm"
+                                            value={commentText}
+                                            onChange={(e) => setCommentText(e.target.value)}
+                                            autoComplete="off"
+                                        />
+                                        <Button type="submit" size="icon" className="h-9 w-9" disabled={!commentText.trim()}>
+                                            <Send className="h-4 w-4" />
                                         </Button>
                                     </Form>
                                 </div>
                             </div>
-                        </div>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
