@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLoaderData, Form, useNavigation, useSearchParams, useNavigate, redirect } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
-import { sendPushToUser } from "@/services/push.server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +64,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const supabase = createClient(request);
+    const { sendPushToUser } = await import("@/services/push.server");
 
     if (intent === "add") {
         const title = formData.get("title") as string;

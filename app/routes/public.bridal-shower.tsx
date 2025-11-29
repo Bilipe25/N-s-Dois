@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLoaderData, Form, useActionData, useNavigation } from "react-router";
 import { createClient } from "@/lib/supabase";
-import { sendPushToUser } from "@/services/push.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const supabase = createClient(request);
+    const { sendPushToUser } = await import("@/services/push.server");
 
     if (intent === "reserve_gift") {
         const id = formData.get("id") as string;

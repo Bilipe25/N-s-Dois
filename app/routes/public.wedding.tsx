@@ -5,7 +5,6 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade, Navigation, Pagination } from "swiper/modules";
 import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User, CalendarPlus, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-import { sendPushToUser } from "@/services/push.server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +40,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const intent = formData.get("intent");
     const supabase = createClient(request);
+    const { sendPushToUser } = await import("@/services/push.server");
 
     if (intent === "search") {
         const query = formData.get("query") as string;
