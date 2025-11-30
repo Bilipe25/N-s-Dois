@@ -105,23 +105,37 @@ export function PushManager() {
     if (!isSupported) return null;
 
     return (
-        <div className="flex items-center gap-2">
-            <Button
-                variant={isSubscribed ? "outline" : "default"}
-                size="sm"
-                onClick={isSubscribed ? unsubscribe : subscribe}
-                disabled={isLoading}
-                className={isSubscribed ? "border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50" : ""}
-            >
-                {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : isSubscribed ? (
-                    <Bell className="h-4 w-4 mr-2" />
-                ) : (
-                    <BellOff className="h-4 w-4 mr-2" />
-                )}
-                {isSubscribed ? "Notificações Ativas" : "Ativar Notificações"}
-            </Button>
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg border border-border">
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${isSubscribed ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
+                        {isSubscribed ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium">Notificações Push</span>
+                        <span className="text-xs text-muted-foreground">
+                            {isSubscribed
+                                ? "Ativo neste dispositivo"
+                                : "Receba alertas sobre presentes e novidades"}
+                        </span>
+                    </div>
+                </div>
+                <Button
+                    variant={isSubscribed ? "outline" : "default"}
+                    size="sm"
+                    onClick={isSubscribed ? unsubscribe : subscribe}
+                    disabled={isLoading}
+                    className={isSubscribed ? "text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20" : ""}
+                >
+                    {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isSubscribed ? (
+                        "Desativar"
+                    ) : (
+                        "Ativar"
+                    )}
+                </Button>
+            </div>
         </div>
     );
 }

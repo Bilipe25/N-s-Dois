@@ -28,5 +28,4 @@ export default [
     route("public/bridal-shower", "routes/public.bridal-shower.tsx"),
     route("public/wedding", "routes/public.wedding.tsx"),
     route("api/subscribe", "routes/api.subscribe.tsx"),
-    route("test-push", "routes/test-push.tsx"),
 ] satisfies RouteConfig;
