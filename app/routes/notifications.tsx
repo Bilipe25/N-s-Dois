@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Gift, Users, Check, ExternalLink, Trash2, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { AnimatePresence } from "framer-motion";
+import { NotificationCard } from "@/components/notification-card";
 import type { Route } from "./+types/notifications";
 
 export const meta: Route.MetaFunction = () => {
@@ -122,64 +124,11 @@ export default function Notifications() {
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {filteredNotifications.map((notification) => (
-                        <Card key={notification.id} className={`transition-all ${!notification.read ? 'border-l-4 border-l-primary bg-primary/5' : 'opacity-80 hover:opacity-100'}`}>
-                            <CardContent className="p-4 flex gap-4 items-start">
-                                <div className={`p-2 rounded-full shrink-0 ${!notification.read ? 'bg-background shadow-sm' : 'bg-muted'}`}>
-                                    {getIcon(notification.type)}
-                                </div>
-                                <div className="flex-1 space-y-1 min-w-0">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <h3 className={`font-medium text-sm truncate ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                            {notification.title}
-                                        </h3>
-                                        <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                                            {new Date(notification.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground leading-snug break-words">
-                                        {notification.message}
-                                    </p>
-                                    {notification.image_url && (
-                                        <div className="pt-2">
-                                            <img
-                                                src={notification.image_url}
-                                                alt="Preview"
-                                                className="h-16 w-16 object-cover rounded-md border border-border"
-                                            />
-                                        </div>
-                                    )}
-                                    {notification.link && (
-                                        <div className="pt-2">
-                                            <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs" asChild>
-                                                <Link to={notification.link} className="flex items-center gap-1">
-                                                    Ver detalhes <ExternalLink className="h-3 w-3" />
-                                                </Link>
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex flex-col gap-1 shrink-0">
-                                    {!notification.read && (
-                                        <Form method="post">
-                                            <input type="hidden" name="intent" value="mark_read" />
-                                            <input type="hidden" name="id" value={notification.id} />
-                                            <Button type="submit" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" title="Marcar como lida">
-                                                <Check className="h-3 w-3" />
-                                            </Button>
-                                        </Form>
-                                    )}
-                                    <Form method="post">
-                                        <input type="hidden" name="intent" value="delete" />
-                                        <input type="hidden" name="id" value={notification.id} />
-                                        <Button type="submit" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" title="Excluir">
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    </Form>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    <AnimatePresence mode="popLayout">
+                        {filteredNotifications.map((notification) => (
+                            <NotificationCard key={notification.id} notification={notification} />
+                        ))}
+                    </AnimatePresence>
                 </div>
             )}
         </div>
