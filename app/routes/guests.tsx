@@ -90,7 +90,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
             // Enviar Push
             const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-            await sendPushToUser(request, partnerName, "Novo Convidado ➕", `${user} adicionou um novo convidado: ${name} (${group_name}).`, "/guests");
+            await sendPushToUser(request, "all", "Novo Convidado ➕", `${user} adicionou um novo convidado: ${name} (${group_name}).`, "/guests");
         }
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
@@ -122,7 +122,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
             const user = session.get("user");
             if (user) {
                 const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-                await sendPushToUser(request, partnerName, "Atualização de RSVP 📩", `${guest.name} teve a presença marcada como "${status}".`, "/guests");
+                await sendPushToUser(request, "all", "Atualização de RSVP 📩", `${guest.name} teve a presença marcada como "${status}".`, "/guests");
             }
         }
     }
