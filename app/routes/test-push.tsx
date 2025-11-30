@@ -19,14 +19,14 @@ export const action = async ({ request }: any) => {
 
     try {
         console.log("Iniciando teste de push para:", user);
-        await sendPushToUser(
+        const result = await sendPushToUser(
             request,
             user,
             "Teste de Push 🔔",
             "Se você recebeu isso, o sistema está funcionando!",
             "/test-push"
         );
-        return { success: true, message: "Comando de envio executado. Verifique o terminal para logs da Edge Function." };
+        return { success: true, message: "Comando executado.", apiResult: result };
     } catch (error: any) {
         console.error("Erro no action de teste:", error);
         return { error: error.message };
@@ -58,8 +58,13 @@ export default function TestPush() {
             </Form>
 
             {actionData?.success && (
-                <div className="p-4 bg-green-100 text-green-800 rounded-md">
-                    {actionData.message}
+                <div className="p-4 bg-green-100 text-green-800 rounded-md space-y-2">
+                    <p>{actionData.message}</p>
+                    {actionData.apiResult && (
+                        <pre className="text-xs bg-black/10 p-2 rounded overflow-auto">
+                            {JSON.stringify(actionData.apiResult, null, 2)}
+                        </pre>
+                    )}
                 </div>
             )}
 

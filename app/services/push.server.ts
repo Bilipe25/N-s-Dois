@@ -26,10 +26,13 @@ export async function sendPushToUser(
             if (error instanceof Error) {
                 console.error("Stack:", error.stack);
             }
+            return { error: error.message };
         } else {
             console.log("Push enviado com sucesso. Resposta da Function:", data);
+            return data;
         }
     } catch (err) {
         console.error("Exceção CRÍTICA ao enviar push:", err);
+        return { error: "Exception in sendPushToUser" };
     }
 }
