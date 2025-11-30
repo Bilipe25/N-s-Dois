@@ -1,4 +1,4 @@
-import { ActionFunctionArgs, json } from "react-router";
+import type { ActionFunctionArgs } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
 
@@ -7,13 +7,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const user = session.get("user");
 
     if (!user) {
-        return json({ error: "Unauthorized" }, { status: 401 });
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { subscription } = await request.json();
 
     if (!subscription) {
-        return json({ error: "No subscription provided" }, { status: 400 });
+        return Response.json({ error: "No subscription provided" }, { status: 400 });
     }
 
     const supabase = createClient(request);
@@ -25,19 +25,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const { error } = await supabase
         .from("push_subscriptions")
-        .insert({
+        .upsert({
             user_name: user,
             subscription
-        });
+        }, { onConflict: 'user_name, subscription' });
 
     if (error) {
         // Se for erro de duplicidade (código 23505 no Postgres), ignoramos
         if (error.code === '23505') {
-            return json({ success: true, message: "Already subscribed" });
+            return Response.json({ success: true, message: "Already subscribed" });
         }
         console.error("Erro ao salvar subscrição:", error);
-        return json({ error: "Database error" }, { status: 500 });
+        return Response.json({ error: "Database error" }, { status: 500 });
     }
 
-    return json({ success: true });
+    return Response.json({ success: true });
 };

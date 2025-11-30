@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, ArrowLeft, UploadCloud, Image as ImageIcon } from "lucide-react";
+import { Save, ArrowLeft, UploadCloud, Image as ImageIcon, Bell } from "lucide-react";
 import { Link } from "react-router";
+import { PushManager } from "@/components/push-manager";
 import type { Route } from "./+types/settings";
 
 export const meta: Route.MetaFunction = () => {
@@ -183,6 +184,18 @@ export default function Settings() {
     return (
         <div className="p-4 space-y-6 pb-20">
 
+            {/* Seção de Notificações */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Bell className="w-4 h-4" /> Notificações
+                    </CardTitle>
+                    <CardDescription>Gerencie as notificações neste dispositivo</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <PushManager />
+                </CardContent>
+            </Card>
 
             {actionData?.error && (
                 <div className="bg-destructive/10 text-destructive p-4 rounded-lg text-sm font-medium border border-destructive/20">
