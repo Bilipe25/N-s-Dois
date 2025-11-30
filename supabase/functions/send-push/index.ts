@@ -45,11 +45,17 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar subscrições do usuário
-    const { data: subscriptions, error } = await supabase
+    // Buscar subscrições
+    let query = supabase
       .from("push_subscriptions")
-      .select("subscription")
-      .eq("user_name", userName);
+      .select("subscription");
+
+    // Se userName for "all", pega de todos. Se não, filtra.
+    if (userName !== "all") {
+      query = query.eq("user_name", userName);
+    }
+
+    const { data: subscriptions, error } = await query;
 
     if (error) {
       throw error;
