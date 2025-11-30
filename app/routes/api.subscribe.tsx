@@ -36,7 +36,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             return Response.json({ success: true, message: "Already subscribed" });
         }
         console.error("Erro ao salvar subscrição:", error);
-        return Response.json({ error: "Database error" }, { status: 500 });
+        return Response.json({
+            error: "Database error",
+            details: error.message,
+            code: error.code,
+            hint: error.hint
+        }, { status: 500 });
     }
 
     return Response.json({ success: true });
