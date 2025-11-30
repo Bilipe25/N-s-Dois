@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, Form, Link, useSubmit } from "react-router";
+import { useLoaderData, Form, Link, useSubmit, useFetcher } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,90 @@ const InlineCurrencyInput = ({ id, value, field, submit, className }: any) => {
         </span>
     );
 };
+
+// Componente extraído para gerenciar estado e Optimistic UI
+function BudgetItem({ item, submit }: any) {
+    const fetcher = useFetcher();
+
+    // Optimistic Delete
+    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === item.id;
+
+    if (isDeleting) return null;
+
+    const itemProgress = item.estimated_value > 0 ? (item.paid_value / item.estimated_value) * 100 : 0;
+
+    return (
+        <div className="p-3 rounded-lg border bg-card border-border space-y-2">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="font-medium">{item.description}</p>
+                    <p className="text-xs text-muted-foreground">{item.category}</p>
+                </div>
+                <div className="text-right flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-1">Pago:</span>
+                        <InlineCurrencyInput
+                            id={item.id}
+                            value={item.paid_value}
+                            field="paid_value"
+                            submit={submit}
+                            className="font-bold text-sm w-20 text-right"
+                        />
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-1">Orçado:</span>
+                        <InlineCurrencyInput
+                            id={item.id}
+                            value={item.estimated_value}
+                            field="estimated_value"
+                            submit={submit}
+                            className="text-[10px] text-muted-foreground w-16 text-right"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div
+                    className={`h-full rounded-full ${itemProgress >= 100 ? 'bg-green-500' : 'bg-primary'
+                        }`}
+                    style={{ width: `${Math.min(itemProgress, 100)}%` }}
+                />
+            </div>
+            <div className="flex justify-end">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                            <Link to={`/budget/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
+                                <Pencil className="h-4 w-4" />
+                                <span>Editar</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <fetcher.Form method="post" className="w-full flex">
+                                <input type="hidden" name="id" value={item.id} />
+                                <button
+                                    type="submit"
+                                    name="intent"
+                                    value="delete"
+                                    className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>Excluir</span>
+                                </button>
+                            </fetcher.Form>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+    );
+}
 
 export default function Budget() {
     const { items } = useLoaderData<typeof loader>();
@@ -341,80 +425,9 @@ export default function Budget() {
                             Nenhum item encontrado.
                         </div>
                     ) : (
-                        filteredItems.map((item: any) => {
-                            const itemProgress = item.estimated_value > 0 ? (item.paid_value / item.estimated_value) * 100 : 0;
-                            return (
-                                <div key={item.id} className="p-3 rounded-lg border bg-card border-border space-y-2">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-medium">{item.description}</p>
-                                            <p className="text-xs text-muted-foreground">{item.category}</p>
-                                        </div>
-                                        <div className="text-right flex flex-col items-end gap-1">
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-[10px] text-muted-foreground mr-1">Pago:</span>
-                                                <InlineCurrencyInput
-                                                    id={item.id}
-                                                    value={item.paid_value}
-                                                    field="paid_value"
-                                                    submit={submit}
-                                                    className="font-bold text-sm w-20 text-right"
-                                                />
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-[10px] text-muted-foreground mr-1">Orçado:</span>
-                                                <InlineCurrencyInput
-                                                    id={item.id}
-                                                    value={item.estimated_value}
-                                                    field="estimated_value"
-                                                    submit={submit}
-                                                    className="text-[10px] text-muted-foreground w-16 text-right"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full ${itemProgress >= 100 ? 'bg-green-500' : 'bg-primary'
-                                                }`}
-                                            style={{ width: `${Math.min(itemProgress, 100)}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
-                                                    <Link to={`/budget/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
-                                                        <Pencil className="h-4 w-4" />
-                                                        <span>Editar</span>
-                                                    </Link>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem asChild>
-                                                    <Form method="post" className="w-full flex">
-                                                        <input type="hidden" name="id" value={item.id} />
-                                                        <button
-                                                            type="submit"
-                                                            name="intent"
-                                                            value="delete"
-                                                            className="flex w-full items-center gap-2 text-destructive cursor-pointer"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                            <span>Excluir</span>
-                                                        </button>
-                                                    </Form>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </div>
-                            );
-                        })
+                        filteredItems.map((item: any) => (
+                            <BudgetItem key={item.id} item={item} submit={submit} />
+                        ))
                     )}
                 </div>
             </div>

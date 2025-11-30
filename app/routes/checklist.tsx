@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, Form, useSubmit, Link } from "react-router";
+import { useLoaderData, Form, useSubmit, Link, useFetcher } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -162,6 +162,190 @@ export const action = async ({ request }: Route.ActionArgs) => {
     return null;
 };
 
+// Componente extraído para gerenciar estado e Optimistic UI
+function ChecklistItem({ item, isOverdue, toggleExpand, expandedItems }: any) {
+    const fetcher = useFetcher();
+
+    // Optimistic Status
+    let status = item.status;
+    if (fetcher.formData?.get("intent") === "toggle" && fetcher.formData.get("id") === item.id) {
+        status = status === "concluido" ? "pendente" : "concluido";
+    }
+
+    // Optimistic Delete
+    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === item.id;
+
+    if (isDeleting) return null;
+
+    const overdue = status !== 'concluido' && isOverdue(item.due_date);
+    const subtasks = item.subtasks || [];
+    const completedSubtasks = subtasks.filter((s: any) => s.done).length;
+
+    return (
+        <div
+            className={`flex flex-col p-3 rounded-lg border transition-all hover:scale-[1.02] duration-300 hover:shadow-md ${status === 'concluido' ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-border'
+                }`}
+        >
+            <div className="flex items-center gap-3">
+                <fetcher.Form method="post">
+                    <input type="hidden" name="intent" value="toggle" />
+                    <input type="hidden" name="id" value={item.id} />
+                    <input type="hidden" name="currentStatus" value={status} />
+                    <button
+                        type="submit"
+                        className={`h-5 w-5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${status === 'concluido' ? 'bg-primary border-primary text-primary-foreground' : 'border-input hover:bg-secondary'
+                            }`}
+                    >
+                        {status === 'concluido' && <Plus className="h-3 w-3 rotate-45" />}
+                    </button>
+                </fetcher.Form>
+
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(item.id)}>
+                    <div className="flex justify-between items-start">
+                        <p className={`text-sm font-medium truncate ${status === 'concluido' ? 'line-through' : ''}`}>
+                            {item.title}
+                        </p>
+                        {item.due_date && (
+                            <span className={`flex items-center gap-1 text-[10px] whitespace-nowrap ml-2 ${overdue ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
+                                <CalendarIcon className="h-3 w-3" />
+                                {new Date(item.due_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1">
+                        {subtasks.length > 0 && (
+                            <span className="bg-secondary px-1.5 py-0.5 rounded flex items-center gap-1">
+                                {completedSubtasks}/{subtasks.length} sub-tarefas
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                            <Link to={`/checklist/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
+                                <Pencil className="h-4 w-4" />
+                                <span>Editar</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <fetcher.Form method="post" className="w-full flex">
+                                <input type="hidden" name="id" value={item.id} />
+                                <button
+                                    type="submit"
+                                    name="intent"
+                                    value="delete"
+                                    className="flex w-full items-center gap-2 text-destructive cursor-pointer"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>Excluir</span>
+                                </button>
+                            </fetcher.Form>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            {/* Subtarefas (Expandido) */}
+            {expandedItems.includes(item.id) && (
+                <div className="mt-3 pl-8 space-y-2 border-l-2 border-secondary ml-2.5">
+                    {subtasks.map((sub: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                            <Form method="post" className="flex items-center gap-2 flex-1">
+                                <input type="hidden" name="id" value={item.id} />
+                                <input type="hidden" name="subtask_idx" value={idx} />
+                                <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
+                                <button
+                                    type="submit"
+                                    name="intent"
+                                    value="toggle_subtask"
+                                    className={`h-4 w-4 rounded border flex items-center justify-center ${sub.done ? 'bg-primary border-primary text-primary-foreground' : 'border-input'}`}
+                                >
+                                    {sub.done && <Plus className="h-2 w-2 rotate-45" />}
+                                </button>
+                                <span className={sub.done ? 'line-through text-muted-foreground' : ''}>{sub.title}</span>
+                            </Form>
+                            <Form method="post">
+                                <input type="hidden" name="id" value={item.id} />
+                                <input type="hidden" name="subtask_idx" value={idx} />
+                                <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
+                                <button type="submit" name="intent" value="delete_subtask" className="text-destructive opacity-50 hover:opacity-100">
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            </Form>
+                        </div>
+                    ))}
+
+                    <Form method="post" className="flex gap-2 mt-2">
+                        <input type="hidden" name="id" value={item.id} />
+                        <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
+                        <Input name="subtask_title" placeholder="Nova subtarefa..." className="h-7 text-xs" required />
+                        <Button type="submit" name="intent" value="add_subtask" size="sm" className="h-7 w-7 p-0">
+                            <Plus className="h-3 w-3" />
+                        </Button>
+                    </Form>
+
+                    {/* Anexos */}
+                    <div className="mt-4 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Paperclip className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs font-medium text-muted-foreground">Anexos</span>
+                        </div>
+
+                        <div className="space-y-2">
+                            {(item.attachments || []).map((att: any, attIdx: number) => (
+                                <div key={attIdx} className="flex items-center justify-between bg-secondary/30 p-2 rounded text-xs group">
+                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline truncate flex-1">
+                                        <span className="truncate max-w-[150px]">{att.name}</span>
+                                    </a>
+                                    <div className="flex items-center gap-2">
+                                        <a href={att.url} download target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                            <Download className="h-3 w-3" />
+                                        </a>
+                                        <Form method="post">
+                                            <input type="hidden" name="id" value={item.id} />
+                                            <input type="hidden" name="url" value={att.url} />
+                                            <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
+                                            <button type="submit" name="intent" value="delete_attachment" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </Form>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Form method="post" encType="multipart/form-data" className="mt-2">
+                            <input type="hidden" name="id" value={item.id} />
+                            <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
+                            <div className="flex items-center gap-2">
+                                <label className="cursor-pointer bg-secondary hover:bg-secondary/80 text-secondary-foreground px-2 py-1 rounded text-[10px] flex items-center gap-1 transition-colors">
+                                    <Paperclip className="h-3 w-3" />
+                                    Adicionar Anexo
+                                    <input
+                                        type="file"
+                                        name="file"
+                                        className="hidden"
+                                        onChange={(e) => e.target.form?.requestSubmit()}
+                                    />
+                                </label>
+                                <input type="hidden" name="intent" value="upload_attachment" />
+                            </div>
+                        </Form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Checklist() {
     const { items } = useLoaderData<typeof loader>();
     const submit = useSubmit();
@@ -302,171 +486,15 @@ export default function Checklist() {
                         Nenhuma tarefa encontrada.
                     </div>
                 ) : (
-                    filteredItems.map((item: any) => {
-                        const overdue = item.status !== 'concluido' && isOverdue(item.due_date);
-                        const subtasks = item.subtasks || [];
-                        const completedSubtasks = subtasks.filter((s: any) => s.done).length;
-
-                        return (
-                            <div
-                                key={item.id}
-                                className={`flex flex-col p-3 rounded-lg border transition-all hover:scale-[1.02] duration-300 hover:shadow-md ${item.status === 'concluido' ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-border'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        onClick={() => handleToggle(item.id, item.status)}
-                                        className={`h-5 w-5 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0 ${item.status === 'concluido' ? 'bg-primary border-primary text-primary-foreground' : 'border-input hover:bg-secondary'
-                                            }`}
-                                    >
-                                        {item.status === 'concluido' && <Plus className="h-3 w-3 rotate-45" />}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(item.id)}>
-                                        <div className="flex justify-between items-start">
-                                            <p className={`text-sm font-medium truncate ${item.status === 'concluido' ? 'line-through' : ''}`}>
-                                                {item.title}
-                                            </p>
-                                            {item.due_date && (
-                                                <span className={`flex items-center gap-1 text-[10px] whitespace-nowrap ml-2 ${overdue ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
-                                                    <CalendarIcon className="h-3 w-3" />
-                                                    {new Date(item.due_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1">
-                                            {subtasks.length > 0 && (
-                                                <span className="bg-secondary px-1.5 py-0.5 rounded flex items-center gap-1">
-                                                    {completedSubtasks}/{subtasks.length} sub-tarefas
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link to={`/checklist/${item.id}`} className="flex items-center gap-2 cursor-pointer w-full">
-                                                    <Pencil className="h-4 w-4" />
-                                                    <span>Editar</span>
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Form method="post" className="w-full flex">
-                                                    <input type="hidden" name="id" value={item.id} />
-                                                    <button
-                                                        type="submit"
-                                                        name="intent"
-                                                        value="delete"
-                                                        className="flex w-full items-center gap-2 text-destructive cursor-pointer"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                        <span>Excluir</span>
-                                                    </button>
-                                                </Form>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-
-                                {/* Subtarefas (Expandido) */}
-                                {expandedItems.includes(item.id) && (
-                                    <div className="mt-3 pl-8 space-y-2 border-l-2 border-secondary ml-2.5">
-                                        {subtasks.map((sub: any, idx: number) => (
-                                            <div key={idx} className="flex items-center gap-2 text-sm">
-                                                <Form method="post" className="flex items-center gap-2 flex-1">
-                                                    <input type="hidden" name="id" value={item.id} />
-                                                    <input type="hidden" name="subtask_idx" value={idx} />
-                                                    <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
-                                                    <button
-                                                        type="submit"
-                                                        name="intent"
-                                                        value="toggle_subtask"
-                                                        className={`h-4 w-4 rounded border flex items-center justify-center ${sub.done ? 'bg-primary border-primary text-primary-foreground' : 'border-input'}`}
-                                                    >
-                                                        {sub.done && <Plus className="h-2 w-2 rotate-45" />}
-                                                    </button>
-                                                    <span className={sub.done ? 'line-through text-muted-foreground' : ''}>{sub.title}</span>
-                                                </Form>
-                                                <Form method="post">
-                                                    <input type="hidden" name="id" value={item.id} />
-                                                    <input type="hidden" name="subtask_idx" value={idx} />
-                                                    <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
-                                                    <button type="submit" name="intent" value="delete_subtask" className="text-destructive opacity-50 hover:opacity-100">
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </button>
-                                                </Form>
-                                            </div>
-                                        ))}
-
-                                        <Form method="post" className="flex gap-2 mt-2">
-                                            <input type="hidden" name="id" value={item.id} />
-                                            <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
-                                            <Input name="subtask_title" placeholder="Nova subtarefa..." className="h-7 text-xs" required />
-                                            <Button type="submit" name="intent" value="add_subtask" size="sm" className="h-7 w-7 p-0">
-                                                <Plus className="h-3 w-3" />
-                                            </Button>
-                                        </Form>
-
-                                        {/* Anexos */}
-                                        <div className="mt-4 pt-2 border-t border-border/50">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Paperclip className="h-3 w-3 text-muted-foreground" />
-                                                <span className="text-xs font-medium text-muted-foreground">Anexos</span>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                {(item.attachments || []).map((att: any, attIdx: number) => (
-                                                    <div key={attIdx} className="flex items-center justify-between bg-secondary/30 p-2 rounded text-xs group">
-                                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline truncate flex-1">
-                                                            <span className="truncate max-w-[150px]">{att.name}</span>
-                                                        </a>
-                                                        <div className="flex items-center gap-2">
-                                                            <a href={att.url} download target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                                                                <Download className="h-3 w-3" />
-                                                            </a>
-                                                            <Form method="post">
-                                                                <input type="hidden" name="id" value={item.id} />
-                                                                <input type="hidden" name="url" value={att.url} />
-                                                                <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
-                                                                <button type="submit" name="intent" value="delete_attachment" className="text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <X className="h-3 w-3" />
-                                                                </button>
-                                                            </Form>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <Form method="post" encType="multipart/form-data" className="mt-2">
-                                                <input type="hidden" name="id" value={item.id} />
-                                                <input type="hidden" name="current_attachments" value={JSON.stringify(item.attachments || [])} />
-                                                <div className="flex items-center gap-2">
-                                                    <label className="cursor-pointer bg-secondary hover:bg-secondary/80 text-secondary-foreground px-2 py-1 rounded text-[10px] flex items-center gap-1 transition-colors">
-                                                        <Paperclip className="h-3 w-3" />
-                                                        Adicionar Anexo
-                                                        <input
-                                                            type="file"
-                                                            name="file"
-                                                            className="hidden"
-                                                            onChange={(e) => e.target.form?.requestSubmit()}
-                                                        />
-                                                    </label>
-                                                    <input type="hidden" name="intent" value="upload_attachment" />
-                                                </div>
-                                            </Form>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })
+                    filteredItems.map((item: any) => (
+                        <ChecklistItem
+                            key={item.id}
+                            item={item}
+                            isOverdue={isOverdue}
+                            toggleExpand={toggleExpand}
+                            expandedItems={expandedItems}
+                        />
+                    ))
                 )}
             </div>
 
