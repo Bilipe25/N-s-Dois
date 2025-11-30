@@ -117,6 +117,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 link: `/inspirations?id=${newInspiration.id}`,
                 image_url: photo_url // Adicionando imagem na notificação
             });
+
+            // Enviar Push
+            await sendPushToUser(request, user === "Gabriel" ? "Raabe" : "Gabriel", "Nova Inspiração ✨", `${user} adicionou uma nova inspiração em ${category}: "${title}".`, `/inspirations?id=${newInspiration.id}`, photo_url);
         }
 
     } else if (intent === "delete") {
@@ -148,6 +151,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     link: `/inspirations?id=${inspirationId}`,
                     image_url: insp.photo_url // Adicionando imagem na notificação
                 });
+
+                // Enviar Push
+                await sendPushToUser(request, user === "Gabriel" ? "Raabe" : "Gabriel", "Nova Curtida ❤️", `${user} curtiu sua inspiração "${insp.title}".`, `/inspirations?id=${inspirationId}`, insp.photo_url);
             }
         }
     } else if (intent === "add_comment") {
@@ -173,6 +179,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     link: `/inspirations?id=${inspirationId}`,
                     image_url: insp.photo_url // Adicionando imagem na notificação
                 });
+
+                // Enviar Push
+                await sendPushToUser(request, user === "Gabriel" ? "Raabe" : "Gabriel", "Novo Comentário 💬", `${user} comentou em "${insp.title}": "${content}"`, `/inspirations?id=${inspirationId}`, insp.photo_url);
             }
         }
     }
