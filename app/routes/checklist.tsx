@@ -240,9 +240,38 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                                 </fetcher.Form>
                             </DialogTitle>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Badge variant="secondary" className={`capitalize font-normal ${CATEGORIES.find(c => c.id === item.category)?.color || "bg-slate-100"}`}>
-                                    {CATEGORIES.find(c => c.id === item.category)?.label || item.category || "Geral"}
-                                </Badge>
+                                <fetcher.Form method="post">
+                                    <input type="hidden" name="intent" value="update" />
+                                    <input type="hidden" name="id" value={item.id} />
+                                    <input type="hidden" name="title" value={item.title} />
+                                    <input type="hidden" name="notes" value={item.notes || ""} />
+                                    <input type="hidden" name="due_date" value={item.due_date || ""} />
+
+                                    <Select
+                                        name="category"
+                                        defaultValue={item.category || "geral"}
+                                        onValueChange={(value) => {
+                                            const formData = new FormData();
+                                            formData.append("intent", "update");
+                                            formData.append("id", item.id);
+                                            formData.append("title", item.title);
+                                            formData.append("notes", item.notes || "");
+                                            formData.append("due_date", item.due_date || "");
+                                            formData.append("category", value);
+                                            fetcher.submit(formData, { method: "post" });
+                                        }}
+                                    >
+                                        <SelectTrigger className={`h-6 text-xs border-none px-2 capitalize w-fit gap-2 ${CATEGORIES.find(c => c.id === item.category)?.color || "bg-slate-100"}`}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CATEGORIES.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </fetcher.Form>
+
                                 {item.due_date && (
                                     <span className="flex items-center gap-1">
                                         <CalendarIcon className="h-3 w-3" />
