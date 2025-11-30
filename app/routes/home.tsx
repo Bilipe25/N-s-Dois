@@ -9,6 +9,10 @@ export const meta: Route.MetaFunction = () => {
   return [{ title: "Dashboard - Nós Dois" }];
 };
 
+export const headers: Route.HeadersFunction = () => ({
+  "Cache-Control": "public, max-age=300, s-maxage=3600", // Cache de 5 min no browser
+});
+
 export const loader = async ({ request }: Route.LoaderArgs) => {
   const session = await getSession(request.headers.get("Cookie"));
   const user = session.get("user") || "Amor";
