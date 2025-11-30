@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+// import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Route } from "./+types/checklist";
 
 const CATEGORIES = [
@@ -208,7 +208,7 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+            <DialogContent className="w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-lg">
                 <DialogHeader className="p-6 pb-2">
                     <div className="flex justify-between items-start gap-4">
                         <div className="space-y-1 flex-1">
@@ -264,7 +264,7 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                     </div>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 p-6 pt-2">
+                <div className="flex-1 overflow-y-auto p-6 pt-2">
                     <div className="space-y-6">
                         {/* Notas / Descrição */}
                         <div className="space-y-2">
@@ -398,7 +398,7 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                             </div>
                         </div>
                     </div>
-                </ScrollArea>
+                </div>
 
                 <DialogFooter className="p-4 border-t bg-secondary/10">
                     <div className="flex justify-between w-full items-center">
@@ -434,7 +434,7 @@ function TaskCard({ item, onClick }: any) {
 
     return (
         <div
-            className={`group relative bg-card border rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 ${status === 'concluido' ? 'opacity-60 bg-secondary/20' : ''}`}
+            className={`group relative bg-card border rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-200 max-w-full ${status === 'concluido' ? 'opacity-60 bg-secondary/20' : ''}`}
         >
             <div className="flex items-start gap-3">
                 <fetcher.Form method="post" onClick={(e) => e.stopPropagation()}>
@@ -451,7 +451,7 @@ function TaskCard({ item, onClick }: any) {
 
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick}>
                     <div className="flex flex-col gap-1">
-                        <span className={`text-sm font-medium truncate ${status === 'concluido' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        <span className={`text-sm font-medium break-words ${status === 'concluido' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                             {item.title}
                         </span>
 
