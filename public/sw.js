@@ -4,8 +4,8 @@ self.addEventListener("push", (event) => {
     const title = data.title || "Nós Dois";
     const options = {
         body: data.body || "Nova notificação",
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
+        icon: data.icon || "/favicon.ico",
+        badge: data.icon || "/favicon.ico",
         image: data.image,
         tag: "nos-dois-notification", // Agrupa notificações para não spammar
         renotify: true, // Vibra/toca som mesmo se substituir uma antiga
