@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLoaderData, Form, useNavigation, useSearchParams, useNavigate, redirect } from "react-router";
+import { useLoaderData, Form, useNavigation, useSearchParams, useNavigate, redirect, useFetcher } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
 import { Card, CardContent } from "@/components/ui/card";
@@ -189,6 +189,178 @@ export const action = async ({ request }: Route.ActionArgs) => {
     return null;
 };
 
+// Componente extraído para gerenciar estado e Optimistic UI
+function InspirationDetails({ selectedImage, user, handleCloseDialog, handleDownload, handleShare, setIsZoomed }: any) {
+    const fetcher = useFetcher();
+    const [commentText, setCommentText] = useState("");
+
+    // Optimistic Likes
+    const isLikedOriginal = selectedImage.inspiration_likes?.some((l: any) => l.user_name === user);
+    let isLiked = isLikedOriginal;
+    let likesCount = selectedImage.inspiration_likes?.length || 0;
+    let likedBy = selectedImage.inspiration_likes?.map((l: any) => l.user_name) || [];
+
+    if (fetcher.formData?.get("intent") === "toggle_like" && fetcher.formData.get("inspirationId") === selectedImage.id) {
+        if (isLiked) {
+            isLiked = false;
+            likesCount--;
+            likedBy = likedBy.filter((name: string) => name !== user);
+        } else {
+            isLiked = true;
+            likesCount++;
+            likedBy = [...likedBy, user];
+        }
+    }
+
+    // Optimistic Comments
+    let comments = [...(selectedImage.inspiration_comments || [])];
+    if (fetcher.formData?.get("intent") === "add_comment" && fetcher.formData.get("inspirationId") === selectedImage.id) {
+        const newComment = {
+            id: "temp-" + Date.now(),
+            user_name: user,
+            content: fetcher.formData.get("content"),
+            created_at: new Date().toISOString()
+        };
+        comments = [newComment, ...comments]; // Adiciona no topo (ordem decrescente)
+    }
+
+    return (
+        <>
+            {/* Imagem (Esquerda/Topo) */}
+            <div className="flex-1 bg-black flex items-center justify-center relative h-[40%] md:h-full group">
+                <img
+                    src={selectedImage.photo_url}
+                    alt={selectedImage.title}
+                    className="max-h-full max-w-full object-contain cursor-zoom-in"
+                    onClick={() => setIsZoomed(true)}
+                />
+                <div className="absolute top-2 right-2 flex gap-2 z-10">
+                    <button
+                        onClick={() => setIsZoomed(true)}
+                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        title="Zoom"
+                    >
+                        <ZoomIn className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={handleDownload}
+                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                        title="Baixar Imagem"
+                    >
+                        <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={handleShare}
+                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+                        title="Compartilhar"
+                    >
+                        <Share2 className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => handleCloseDialog(false)}
+                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Detalhes e Chat (Direita/Baixo) */}
+            <div className="w-full md:w-96 flex flex-col bg-background h-[60%] md:h-full border-l">
+                <div className="p-4 border-b flex-shrink-0">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <DialogTitle className="text-lg font-serif">{selectedImage.title}</DialogTitle>
+                            <DialogDescription className="capitalize text-primary font-medium text-xs">
+                                {selectedImage.category.replace(/_/g, " ")}
+                            </DialogDescription>
+                        </div>
+                        <div className="flex gap-2">
+                            <fetcher.Form method="post" className="flex items-center">
+                                <input type="hidden" name="intent" value="toggle_like" />
+                                <input type="hidden" name="inspirationId" value={selectedImage.id} />
+                                <input type="hidden" name="hasLiked" value={isLikedOriginal.toString()} />
+                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-rose-50">
+                                    <Heart className={`h-5 w-5 transition-colors ${isLiked ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
+                                </Button>
+                            </fetcher.Form>
+                            <Form method="post" onSubmit={(e) => {
+                                if (!confirm("Tem certeza que deseja excluir?")) e.preventDefault();
+                            }}>
+                                <input type="hidden" name="intent" value="delete" />
+                                <input type="hidden" name="id" value={selectedImage.id} />
+                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </Form>
+                        </div>
+                    </div>
+
+                    {/* Likes Summary */}
+                    <div className="text-xs text-muted-foreground mb-2">
+                        {likesCount > 0 ? (
+                            <span>
+                                Curtido por <span className="font-medium text-foreground">{likedBy.join(" e ")}</span>
+                            </span>
+                        ) : (
+                            <span>Seja o primeiro a curtir!</span>
+                        )}
+                    </div>
+
+                    {selectedImage.notes && (
+                        <p className="text-sm text-muted-foreground bg-secondary/50 p-2 rounded-md mb-2">
+                            {selectedImage.notes}
+                        </p>
+                    )}
+                </div>
+
+                {/* Lista de Comentários */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {comments.length === 0 ? (
+                        <div className="text-center text-xs text-muted-foreground py-4">
+                            Nenhum comentário ainda.
+                        </div>
+                    ) : (
+                        comments.map((comment: any) => (
+                            <div key={comment.id} className={`flex flex-col ${comment.user_name === user ? "items-end" : "items-start"}`}>
+                                <div className={`max-w-[85%] rounded-lg p-2 text-sm ${comment.user_name === user ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-secondary text-secondary-foreground rounded-tl-none"}`}>
+                                    <p>{comment.content}</p>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                                    {comment.user_name} • {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Input de Comentário - Fixed at bottom */}
+                <div className="p-3 border-t bg-background flex-shrink-0 pb-safe">
+                    <fetcher.Form
+                        method="post"
+                        className="flex gap-2"
+                        onSubmit={() => setCommentText("")} // Optimistic clear
+                    >
+                        <input type="hidden" name="intent" value="add_comment" />
+                        <input type="hidden" name="inspirationId" value={selectedImage.id} />
+                        <Input
+                            name="content"
+                            placeholder="Escreva um comentário..."
+                            className="flex-1 h-9 text-sm"
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            autoComplete="off"
+                        />
+                        <Button type="submit" size="icon" className="h-9 w-9" disabled={!commentText.trim()}>
+                            <Send className="h-4 w-4" />
+                        </Button>
+                    </fetcher.Form>
+                </div>
+            </div>
+        </>
+    );
+}
+
 export default function Inspirations() {
     const { inspirations, user } = useLoaderData<typeof loader>();
     const navigation = useNavigation();
@@ -351,139 +523,14 @@ export default function Inspirations() {
                 {/* z-index aumentado para 150 para ficar acima do BottomNav (z-100) */}
                 <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[150]">
                     {selectedImage && (
-                        <>
-                            {/* Imagem (Esquerda/Topo) */}
-                            <div className="flex-1 bg-black flex items-center justify-center relative h-[40%] md:h-full group">
-                                <img
-                                    src={selectedImage.photo_url}
-                                    alt={selectedImage.title}
-                                    className="max-h-full max-w-full object-contain cursor-zoom-in"
-                                    onClick={() => setIsZoomed(true)}
-                                />
-                                <div className="absolute top-2 right-2 flex gap-2 z-10">
-                                    <button
-                                        onClick={() => setIsZoomed(true)}
-                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                                        title="Zoom"
-                                    >
-                                        <ZoomIn className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={handleDownload}
-                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
-                                        title="Baixar Imagem"
-                                    >
-                                        <Download className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={handleShare}
-                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
-                                        title="Compartilhar"
-                                    >
-                                        <Share2 className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleCloseDialog(false)}
-                                        className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Detalhes e Chat (Direita/Baixo) */}
-                            <div className="w-full md:w-96 flex flex-col bg-background h-[60%] md:h-full border-l">
-                                <div className="p-4 border-b flex-shrink-0">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <DialogTitle className="text-lg font-serif">{selectedImage.title}</DialogTitle>
-                                            <DialogDescription className="capitalize text-primary font-medium text-xs">
-                                                {selectedImage.category.replace(/_/g, " ")}
-                                            </DialogDescription>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Form method="post" className="flex items-center">
-                                                <input type="hidden" name="intent" value="toggle_like" />
-                                                <input type="hidden" name="inspirationId" value={selectedImage.id} />
-                                                <input type="hidden" name="hasLiked" value={isLikedByUser(selectedImage.inspiration_likes || []).toString()} />
-                                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-rose-50">
-                                                    <Heart className={`h-5 w-5 transition-colors ${isLikedByUser(selectedImage.inspiration_likes || []) ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} />
-                                                </Button>
-                                            </Form>
-                                            <Form method="post" onSubmit={(e) => {
-                                                if (!confirm("Tem certeza que deseja excluir?")) e.preventDefault();
-                                            }}>
-                                                <input type="hidden" name="intent" value="delete" />
-                                                <input type="hidden" name="id" value={selectedImage.id} />
-                                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </Form>
-                                        </div>
-                                    </div>
-
-                                    {/* Likes Summary */}
-                                    <div className="text-xs text-muted-foreground mb-2">
-                                        {selectedImage.inspiration_likes?.length > 0 ? (
-                                            <span>
-                                                Curtido por <span className="font-medium text-foreground">{selectedImage.inspiration_likes.map((l: any) => l.user_name).join(" e ")}</span>
-                                            </span>
-                                        ) : (
-                                            <span>Seja o primeiro a curtir!</span>
-                                        )}
-                                    </div>
-
-                                    {selectedImage.notes && (
-                                        <p className="text-sm text-muted-foreground bg-secondary/50 p-2 rounded-md mb-2">
-                                            {selectedImage.notes}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Lista de Comentários */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                    {selectedImage.inspiration_comments?.length === 0 ? (
-                                        <div className="text-center text-xs text-muted-foreground py-4">
-                                            Nenhum comentário ainda.
-                                        </div>
-                                    ) : (
-                                        selectedImage.inspiration_comments.map((comment: any) => (
-                                            <div key={comment.id} className={`flex flex-col ${comment.user_name === user ? "items-end" : "items-start"}`}>
-                                                <div className={`max-w-[85%] rounded-lg p-2 text-sm ${comment.user_name === user ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-secondary text-secondary-foreground rounded-tl-none"}`}>
-                                                    <p>{comment.content}</p>
-                                                </div>
-                                                <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                                                    {comment.user_name} • {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-
-                                {/* Input de Comentário - Fixed at bottom */}
-                                <div className="p-3 border-t bg-background flex-shrink-0 pb-safe">
-                                    <Form
-                                        method="post"
-                                        className="flex gap-2"
-                                        onSubmit={() => setCommentText("")} // Optimistic clear
-                                    >
-                                        <input type="hidden" name="intent" value="add_comment" />
-                                        <input type="hidden" name="inspirationId" value={selectedImage.id} />
-                                        <Input
-                                            name="content"
-                                            placeholder="Escreva um comentário..."
-                                            className="flex-1 h-9 text-sm"
-                                            value={commentText}
-                                            onChange={(e) => setCommentText(e.target.value)}
-                                            autoComplete="off"
-                                        />
-                                        <Button type="submit" size="icon" className="h-9 w-9" disabled={!commentText.trim()}>
-                                            <Send className="h-4 w-4" />
-                                        </Button>
-                                    </Form>
-                                </div>
-                            </div>
-                        </>
+                        <InspirationDetails
+                            selectedImage={selectedImage}
+                            user={user}
+                            handleCloseDialog={handleCloseDialog}
+                            handleDownload={handleDownload}
+                            handleShare={handleShare}
+                            setIsZoomed={setIsZoomed}
+                        />
                     )}
                 </DialogContent>
             </Dialog>

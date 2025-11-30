@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLoaderData, Form, Link } from "react-router";
+import { useLoaderData, Form, Link, useFetcher } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,13 +153,26 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
 
 // Componente para renderizar um item de convidado
 const GuestItem = ({ guest }: { guest: any }) => {
+    const fetcher = useFetcher();
+
+    // Optimistic RSVP
+    let rsvpStatus = guest.rsvp_status;
+    if (fetcher.formData?.get("intent") === "rsvp_action" && fetcher.formData.get("id") === guest.id) {
+        rsvpStatus = fetcher.formData.get("status");
+    }
+
+    // Optimistic Delete
+    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === guest.id;
+
+    if (isDeleting) return null;
+
     return (
         <div className="flex items-center justify-between p-3 rounded-lg border bg-card border-border">
             <div className="flex items-center gap-3">
                 <div className={`
                   h-9 w-9 rounded-full flex flex-col items-center justify-center text-[10px] font-bold leading-tight
-                  ${guest.rsvp_status === 'confirmado' ? 'bg-green-100 text-green-700' :
-                        guest.rsvp_status === 'recusado' ? 'bg-red-100 text-red-700' :
+                  ${rsvpStatus === 'confirmado' ? 'bg-green-100 text-green-700' :
+                        rsvpStatus === 'recusado' ? 'bg-red-100 text-red-700' :
                             'bg-yellow-100 text-yellow-700'}
                 `}>
                     <span>{guest.adults_count + (guest.children_count || 0)}</span>
@@ -201,38 +214,38 @@ const GuestItem = ({ guest }: { guest: any }) => {
                             <span>Enviar Convite</span>
                         </a>
                     </DropdownMenuItem>
-                    {guest.rsvp_status === 'pendente' && (
+                    {rsvpStatus === 'pendente' && (
                         <>
                             <DropdownMenuItem asChild>
-                                <Form method="post" className="w-full cursor-pointer">
+                                <fetcher.Form method="post" className="w-full cursor-pointer">
                                     <input type="hidden" name="id" value={guest.id} />
                                     <input type="hidden" name="status" value="confirmado" />
                                     <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
                                         <Check className="mr-2 h-4 w-4 text-green-600" />
                                         <span>Confirmar</span>
                                     </button>
-                                </Form>
+                                </fetcher.Form>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Form method="post" className="w-full cursor-pointer">
+                                <fetcher.Form method="post" className="w-full cursor-pointer">
                                     <input type="hidden" name="id" value={guest.id} />
                                     <input type="hidden" name="status" value="recusado" />
                                     <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
                                         <X className="mr-2 h-4 w-4 text-red-600" />
                                         <span>Recusar</span>
                                     </button>
-                                </Form>
+                                </fetcher.Form>
                             </DropdownMenuItem>
                         </>
                     )}
                     <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                        <Form method="post" className="w-full cursor-pointer">
+                        <fetcher.Form method="post" className="w-full cursor-pointer">
                             <input type="hidden" name="id" value={guest.id} />
                             <button type="submit" name="intent" value="delete" className="flex w-full items-center">
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Excluir</span>
                             </button>
-                        </Form>
+                        </fetcher.Form>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
