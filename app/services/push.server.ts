@@ -23,11 +23,13 @@ export async function sendPushToUser(
 
         if (error) {
             console.error("Erro ao invocar Edge Function send-push:", error);
-            // Não lançar erro para não quebrar o fluxo principal da aplicação
+            if (error instanceof Error) {
+                console.error("Stack:", error.stack);
+            }
         } else {
-            // console.log("Push enviado com sucesso:", data);
+            console.log("Push enviado com sucesso. Resposta da Function:", data);
         }
     } catch (err) {
-        console.error("Exceção ao enviar push:", err);
+        console.error("Exceção CRÍTICA ao enviar push:", err);
     }
 }
