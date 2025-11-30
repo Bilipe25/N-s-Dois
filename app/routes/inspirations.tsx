@@ -55,6 +55,35 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { inspirations: processedInspirations, user };
 };
 
+export const clientLoader = async ({ request, serverLoader }: Route.ClientLoaderArgs) => {
+    const cacheKey = "inspirations-data";
+
+    // Tenta pegar do cache primeiro (se não for uma navegação forçada)
+    if (!new URL(request.url).searchParams.get("_data")) {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            // Cache válido por 5 minutos
+            if (Date.now() - timestamp < 5 * 60 * 1000) {
+                return data;
+            }
+        }
+    }
+
+    // Se não tiver cache ou expirou, chama o loader do servidor
+    const data = await serverLoader();
+
+    // Salva no cache
+    sessionStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+    }));
+
+    return data;
+};
+
+clientLoader.hydrate = true; // Habilita hidratação com dados do clientLoader
+
 export const action = async ({ request }: Route.ActionArgs) => {
     const session = await getSession(request.headers.get("Cookie"));
     const user = session.get("user");
@@ -498,6 +527,7 @@ export default function Inspirations() {
                                     alt={item.title}
                                     className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
                                     loading="lazy"
+                                    decoding="async"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                                     <p className="text-white text-sm font-medium truncate">{item.title}</p>

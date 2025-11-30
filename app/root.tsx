@@ -26,6 +26,10 @@ export const links: Route.LinksFunction = () => [
   { rel: "manifest", href: "/manifest.json" },
 ];
 
+export const headers: Route.HeadersFunction = () => ({
+  "Cache-Control": "public, max-age=3600, s-maxage=86400", // Cache de 1 hora no browser, 1 dia na CDN
+});
+
 export async function loader({ request }: Route.LoaderArgs) {
   // Precisamos criar o cliente aqui para buscar a config, mas cuidado com loops se usar auth
   // Vamos usar fetch direto ou criar cliente anonimo simples se possivel, ou apenas passar ENV
