@@ -67,7 +67,15 @@ serve(async (req: Request) => {
       });
     }
 
-    const payload = JSON.stringify({ title, body, url, image });
+    // Buscar logo do app
+    const { data: appConfig } = await supabase
+      .from("app_config")
+      .select("logo_url")
+      .single();
+
+    const icon = appConfig?.logo_url || "/favicon.ico";
+
+    const payload = JSON.stringify({ title, body, url, image, icon });
 
     const promises = subscriptions.map(async (sub: any) => {
       try {
