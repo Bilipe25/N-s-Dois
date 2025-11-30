@@ -4,8 +4,10 @@ self.addEventListener("push", (event) => {
     const title = data.title || "Nós Dois";
     const options = {
         body: data.body || "Nova notificação",
-        icon: "/icon.png", // Certifique-se de ter um ícone ou use um placeholder
-        badge: "/icon.png",
+        icon: "/favicon.ico",
+        badge: "/favicon.ico",
+        image: data.image, // Suporte a imagem grande
+        requireInteraction: true, // Mantém a notificação na tela até o usuário interagir
         data: {
             url: data.url || "/"
         }
