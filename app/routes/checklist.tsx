@@ -225,9 +225,19 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                                         )}
                                     </button>
                                 </fetcher.Form>
-                                <span className={status === 'concluido' ? 'line-through text-muted-foreground' : ''}>
-                                    {item.title}
-                                </span>
+                                <fetcher.Form method="post" className="flex-1">
+                                    <input type="hidden" name="intent" value="update" />
+                                    <input type="hidden" name="id" value={item.id} />
+                                    <input type="hidden" name="category" value={item.category || "geral"} />
+                                    <input type="hidden" name="notes" value={item.notes || ""} />
+                                    <input type="hidden" name="due_date" value={item.due_date || ""} />
+                                    <Input
+                                        name="title"
+                                        defaultValue={item.title}
+                                        className={`h-auto p-0 text-xl font-semibold border-none shadow-none focus-visible:ring-0 bg-transparent ${status === 'concluido' ? 'line-through text-muted-foreground' : ''}`}
+                                        onBlur={(e) => e.target.form?.requestSubmit()}
+                                    />
+                                </fetcher.Form>
                             </DialogTitle>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Badge variant="secondary" className={`capitalize font-normal ${CATEGORIES.find(c => c.id === item.category)?.color || "bg-slate-100"}`}>
@@ -330,20 +340,20 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                                     </div>
                                 ))}
 
-                                <fetcher.Form method="post" className="flex items-center gap-2 mt-2" onSubmit={(e) => {
-                                    // Limpar input após submit (opcional, requer estado local ou ref)
+                                <fetcher.Form method="post" className="flex items-center gap-2 mt-3 p-2 border border-dashed rounded-md hover:bg-secondary/50 transition-colors" onSubmit={(e) => {
                                     const form = e.currentTarget;
                                     requestAnimationFrame(() => form.reset());
                                 }}>
                                     <input type="hidden" name="intent" value="add_subtask" />
                                     <input type="hidden" name="id" value={item.id} />
                                     <input type="hidden" name="subtasks_json" value={JSON.stringify(subtasks)} />
-                                    <Plus className="h-4 w-4 text-muted-foreground" />
+                                    <Plus className="h-4 w-4 text-primary" />
                                     <Input
                                         name="subtask_title"
-                                        placeholder="Adicionar subtarefa..."
-                                        className="h-8 text-sm border-none shadow-none focus-visible:ring-0 px-0 placeholder:text-muted-foreground/70"
+                                        placeholder="Adicionar item..."
+                                        className="h-8 text-sm border-none shadow-none focus-visible:ring-0 px-0 bg-transparent placeholder:text-muted-foreground"
                                     />
+                                    <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-xs">Adicionar</Button>
                                 </fetcher.Form>
                             </div>
                         </div>
@@ -405,8 +415,8 @@ function TaskDetailsDialog({ item, open, onOpenChange }: any) {
                         <div className="text-xs text-muted-foreground">
                             Criado em {new Date(item.created_at).toLocaleDateString()}
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                            Fechar
+                        <Button className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+                            Concluído
                         </Button>
                     </div>
                 </DialogFooter>
@@ -541,7 +551,7 @@ export default function Checklist() {
             <header className="flex flex-col gap-4">
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="text-2xl font-serif text-primary">Checklist</h1>
+                        {/* <h1 className="text-2xl font-serif text-primary">Checklist</h1> */}
                         <p className="text-sm text-muted-foreground">Organize cada detalhe do grande dia.</p>
                     </div>
                     <div className="text-right">
