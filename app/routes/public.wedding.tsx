@@ -105,8 +105,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         });
 
         // Enviar Push para Gabriel e Raabe
-        await sendPushToUser(request, "Gabriel", "Nova Confirmação de Presença 🎉", `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`, "/guests");
-        await sendPushToUser(request, "Raabe", "Nova Confirmação de Presença 🎉", `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`, "/guests");
+        await sendPushToUser(request, "all", "Nova Confirmação de Presença 🎉", `${name} confirmou presença para ${adultsCount + childrenCount} pessoas.`, "/guests");
 
         return { success: true, guestName: name };
     }

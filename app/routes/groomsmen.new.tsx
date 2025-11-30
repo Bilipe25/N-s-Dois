@@ -77,7 +77,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
             // Enviar Push
             const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-            await sendPushToUser(request, partnerName, "Novo Padrinho/Madrinha ✨", `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`, "/groomsmen");
+            await sendPushToUser(request, "all", "Novo Padrinho/Madrinha ✨", `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`, "/groomsmen");
         }
     }
 

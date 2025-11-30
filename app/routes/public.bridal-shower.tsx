@@ -63,8 +63,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 });
 
                 // Enviar Push para Gabriel e Raabe
-                await sendPushToUser(request, "Gabriel", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
-                await sendPushToUser(request, "Raabe", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
+                await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
 
                 const verses = [
                     "Nós amamos porque ele nos amou primeiro. (1 João 4:19)",
