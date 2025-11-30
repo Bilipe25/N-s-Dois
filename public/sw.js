@@ -6,11 +6,18 @@ self.addEventListener("push", (event) => {
         body: data.body || "Nova notificação",
         icon: "/favicon.ico",
         badge: "/favicon.ico",
-        image: data.image, // Suporte a imagem grande
-        requireInteraction: true, // Mantém a notificação na tela até o usuário interagir
+        image: data.image,
+        tag: "nos-dois-notification", // Agrupa notificações para não spammar
+        renotify: true, // Vibra/toca som mesmo se substituir uma antiga
+        vibrate: [100, 50, 100], // Padrão de vibração
+        requireInteraction: true, // Mantém na tela
         data: {
             url: data.url || "/"
-        }
+        },
+        actions: [
+            { action: "open", title: "Ver Detalhes" },
+            { action: "close", title: "Fechar" }
+        ]
     };
 
     event.waitUntil(
@@ -21,12 +28,18 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
+    if (event.action === "close") return;
+
     event.waitUntil(
         clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
             // Tenta focar em uma janela já aberta
             for (const client of clientList) {
-                if (client.url === event.notification.data.url && "focus" in client) {
-                    return client.focus();
+                if ("focus" in client) {
+                    // Se a URL bater, foca nela. Se não, navega.
+                    if (client.url === event.notification.data.url) {
+                        return client.focus();
+                    }
+                    return client.navigate(event.notification.data.url).then(c => c.focus());
                 }
             }
             // Se não houver janela aberta, abre uma nova
