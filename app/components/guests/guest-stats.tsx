@@ -8,13 +8,13 @@ interface GuestStatsProps {
 }
 
 export function GuestStats({ guests }: GuestStatsProps) {
-    const totalAdults = guests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0), 0);
-    const totalChildren = guests.reduce((acc: number, curr: Guest) => acc + (curr.children_count || 0), 0);
+    const totalAdults = guests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
+    const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
     const totalGuests = totalAdults + totalChildren;
 
-    const confirmedGuests = guests.filter((g: Guest) => g.rsvp_status === 'confirmado');
-    const confirmedAdults = confirmedGuests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0), 0);
-    const confirmedChildren = confirmedGuests.reduce((acc: number, curr: Guest) => acc + (curr.children_count || 0), 0);
+    const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
+    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
+    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
     const confirmedTotal = confirmedAdults + confirmedChildren;
 
     const pendingCount = guests.filter(g => g.rsvp_status === 'pendente').length;
