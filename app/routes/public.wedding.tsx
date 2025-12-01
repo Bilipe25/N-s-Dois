@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { VideoHero } from "@/components/VideoHero";
 import type { Route } from "./+types/public.wedding";
 
 // Import Swiper styles
@@ -247,21 +248,10 @@ export default function PublicWedding() {
     return (
         <div className="min-h-screen bg-[#FDFCF8] font-sans text-stone-800 overflow-x-hidden selection:bg-rose-200">
             {/* Hero Section with Video Background */}
-            <section className="relative h-screen w-full overflow-hidden flex items-center justify-center">
-                <div className="absolute inset-0 z-0">
-                    <video
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="w-full h-full object-cover opacity-90 scale-105"
-                        poster={photos[0]}
-                    >
-                        <source src="https://videos.pexels.com/video-files/5699956/5699956-hd_1080_1920_30fps.mp4" type="video/mp4" />
-                        Your browser does not support the video tag.
-                    </video>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-                </div>
+            <VideoHero
+                videoUrl="https://hyvszjcasxorqedcffhb.supabase.co/storage/v1/object/public/videos/convite.mp4"
+                posterUrl={photos[0]}
+            >
 
                 <div className="relative z-10 text-center text-white space-y-8 px-4 w-full max-w-4xl mx-auto">
                     <motion.div
@@ -466,7 +456,7 @@ export default function PublicWedding() {
                 <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce text-white/70">
                     <span className="text-sm tracking-widest uppercase">Role para ver mais</span>
                 </div>
-            </section>
+            </VideoHero>
 
             {/* Photo Slider Section */}
             <section className="py-24 bg-[#FDFCF8] relative overflow-hidden">
