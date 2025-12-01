@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, Gift, Users, Check, ExternalLink, Trash2, DollarSign, MailOpen, X } from "lucide-react";
 import { memo, useState, useEffect } from "react";
 
-interface Notification {
+export interface Notification {
     id: string;
     type: string;
     title: string;
@@ -34,6 +34,7 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
     const fetcher = useFetcher();
     const controls = useAnimation();
     const [isVisible, setIsVisible] = useState(true);
+    const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
     // Optimistic UI state
     const isRead = fetcher.formData?.get("intent") === "mark_read" ? true : notification.read;
@@ -44,6 +45,16 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
             setIsVisible(false);
         }
     }, [isDeleting]);
+
+    const handleDrag = (event: any, info: PanInfo) => {
+        if (info.offset.x > 50) {
+            setSwipeDirection("right");
+        } else if (info.offset.x < -50) {
+            setSwipeDirection("left");
+        } else {
+            setSwipeDirection(null);
+        }
+    };
 
     const handleDragEnd = async (event: any, info: PanInfo) => {
         const threshold = 100; // Pixels to trigger action
@@ -68,6 +79,7 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
         } else {
             // Reset if not enough swipe
             controls.start({ x: 0 });
+            setSwipeDirection(null);
         }
     };
 
@@ -78,16 +90,17 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
             layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="relative touch-pan-y" // Important for mobile scrolling
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="relative touch-pan-y mb-3" // Important for mobile scrolling
         >
             {/* Background Actions */}
-            <div className="absolute inset-0 flex items-center justify-between px-4 rounded-lg overflow-hidden">
-                <div className="flex items-center gap-2 text-green-600 font-medium opacity-50">
+            <div className={`absolute inset-0 flex items-center justify-between px-6 rounded-xl overflow-hidden transition-colors duration-300 ${swipeDirection === "right" ? "bg-green-100" : swipeDirection === "left" ? "bg-red-100" : "bg-transparent"
+                }`}>
+                <div className={`flex items-center gap-2 text-green-700 font-medium transition-opacity duration-300 ${swipeDirection === "right" ? "opacity-100" : "opacity-30"}`}>
                     <MailOpen className="h-5 w-5" />
                     <span className="text-sm">Marcar como lida</span>
                 </div>
-                <div className="flex items-center gap-2 text-red-600 font-medium opacity-50">
+                <div className={`flex items-center gap-2 text-red-700 font-medium transition-opacity duration-300 ${swipeDirection === "left" ? "opacity-100" : "opacity-30"}`}>
                     <span className="text-sm">Excluir</span>
                     <Trash2 className="h-5 w-5" />
                 </div>
@@ -98,28 +111,29 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }} // Snap back
                 dragElastic={0.7}
+                onDrag={handleDrag}
                 onDragEnd={handleDragEnd}
                 animate={controls}
                 style={{ x: 0 }}
-                className="relative bg-background rounded-lg shadow-sm"
+                className="relative bg-background rounded-xl shadow-sm z-10"
             >
-                <Card className={`transition-all border-l-4 ${!isRead ? 'border-l-primary bg-primary/5' : 'border-l-transparent opacity-90'}`}>
+                <Card className={`transition-all border-none shadow-md ${!isRead ? 'bg-white ring-1 ring-rose-100' : 'bg-stone-50 opacity-80'}`}>
                     <CardContent className="p-4 flex gap-4 items-start">
-                        <div className={`p-2 rounded-full shrink-0 ${!isRead ? 'bg-background shadow-sm' : 'bg-muted'}`}>
+                        <div className={`p-2.5 rounded-full shrink-0 transition-colors ${!isRead ? 'bg-rose-50 text-rose-500' : 'bg-stone-200 text-stone-500'}`}>
                             {getIcon(notification.type)}
                         </div>
 
-                        <div className="flex-1 space-y-1 min-w-0 select-none"> {/* select-none prevents text selection while dragging */}
+                        <div className="flex-1 space-y-1.5 min-w-0 select-none"> {/* select-none prevents text selection while dragging */}
                             <div className="flex justify-between items-start gap-2">
-                                <h3 className={`font-medium text-sm truncate ${!isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                <h3 className={`font-semibold text-sm truncate ${!isRead ? 'text-stone-900' : 'text-stone-600'}`}>
                                     {notification.title}
                                 </h3>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                                    {new Date(notification.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                <span className="text-[10px] text-stone-400 whitespace-nowrap shrink-0 font-medium">
+                                    {new Date(notification.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {new Date(notification.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
 
-                            <p className="text-sm text-muted-foreground leading-snug break-words">
+                            <p className="text-sm text-stone-600 leading-relaxed break-words line-clamp-2">
                                 {notification.message}
                             </p>
 
@@ -128,14 +142,14 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
                                     <img
                                         src={notification.image_url}
                                         alt="Preview"
-                                        className="h-16 w-16 object-cover rounded-md border border-border pointer-events-none" // pointer-events-none prevents image drag
+                                        className="h-20 w-full object-cover rounded-lg border border-stone-100 pointer-events-none" // pointer-events-none prevents image drag
                                     />
                                 </div>
                             )}
 
                             {notification.link && (
-                                <div className="pt-2">
-                                    <Button variant="link" size="sm" className="h-auto p-0 text-primary text-xs" asChild>
+                                <div className="pt-2 flex justify-end">
+                                    <Button variant="ghost" size="sm" className="h-auto p-0 text-rose-500 hover:text-rose-700 text-xs font-medium hover:bg-transparent" asChild>
                                         <Link to={notification.link} className="flex items-center gap-1">
                                             Ver detalhes <ExternalLink className="h-3 w-3" />
                                         </Link>
