@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLoaderData, Form, useFetcher, useOutletContext } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
@@ -217,7 +217,7 @@ export default function Guests() {
         toast.success("Convidados excluídos!");
     };
 
-    const handleExportPdf = async () => {
+    const handleExportPdf = useCallback(async () => {
         setIsExporting(true);
         try {
             let logoBase64 = null;
@@ -365,7 +365,7 @@ export default function Guests() {
         } finally {
             setIsExporting(false);
         }
-    };
+    }, [config, guests]);
 
     const { setHeaderAction } = useOutletContext<{ setHeaderAction: (node: React.ReactNode) => void }>();
 
