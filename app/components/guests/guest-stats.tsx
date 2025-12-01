@@ -96,19 +96,17 @@ export function GuestStats({ guests }: GuestStatsProps) {
                 </Card>
 
                 <Card className="shadow-sm border-stone-200">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-stone-600">Adultos vs Crianças (Confirmados)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[200px] flex items-center justify-center">
-                        <div className="flex gap-8 items-center">
-                            <div className="text-center">
-                                <div className="text-3xl font-bold text-stone-800">{confirmedAdults}</div>
-                                <div className="text-xs text-stone-500 uppercase">Adultos</div>
+                    <CardContent className="p-4 h-[200px] flex flex-col justify-center">
+                        <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-4 text-center">Confirmados</h3>
+                        <div className="flex justify-center gap-8">
+                            <div className="flex flex-col items-center">
+                                <span className="text-4xl font-serif font-bold text-stone-800">{confirmedAdults}</span>
+                                <span className="text-[10px] text-stone-400 uppercase mt-1">Adultos</span>
                             </div>
-                            <div className="h-12 w-px bg-stone-200" />
-                            <div className="text-center">
-                                <div className="text-3xl font-bold text-stone-800">{confirmedChildren}</div>
-                                <div className="text-xs text-stone-500 uppercase">Crianças</div>
+                            <div className="w-px h-12 bg-stone-100" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-4xl font-serif font-bold text-stone-800">{confirmedChildren}</span>
+                                <span className="text-[10px] text-stone-400 uppercase mt-1">Crianças</span>
                             </div>
                         </div>
                     </CardContent>

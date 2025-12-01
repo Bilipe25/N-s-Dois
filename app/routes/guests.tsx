@@ -368,39 +368,28 @@ export default function Guests() {
     };
 
     return (
-        <div className="min-h-screen bg-stone-50 pb-20">
-            <div className="container mx-auto max-w-5xl p-4 space-y-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-serif font-bold text-stone-800">Lista de Convidados</h1>
-                        <p className="text-stone-500 text-sm">Gerencie quem vai celebrar com vocês.</p>
-                    </div>
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <Button
-                            variant="outline"
-                            onClick={handleExportPdf}
-                            disabled={isExporting}
-                            className="flex-1 md:flex-none gap-2"
-                        >
-                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                            Exportar PDF
-                        </Button>
-                        <Button
-                            onClick={() => setShowAddGuest(true)}
-                            className="flex-1 md:flex-none gap-2 bg-stone-900 hover:bg-stone-800"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Adicionar
-                        </Button>
-                    </div>
-                </div>
+        <div className="min-h-screen bg-stone-50 pb-24">
+            {/* Top Bar */}
+            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex justify-between items-center">
+                <h1 className="text-lg font-serif font-bold text-stone-800">Convidados</h1>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                    className="gap-2 text-rose-700 hover:bg-rose-50"
+                >
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                    <span className="hidden md:inline">Exportar PDF</span>
+                </Button>
+            </div>
 
+            <div className="container mx-auto max-w-5xl p-4 space-y-6">
                 {/* Stats */}
                 <GuestStats guests={guests} />
 
-                {/* Main Content */}
-                <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                {/* Main Content - Removed Card Wrapper */}
+                <div className="space-y-4">
                     <GuestFilters
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
@@ -415,14 +404,23 @@ export default function Guests() {
                         onClearSelection={() => setSelectedIds([])}
                     />
 
-                    <div className="p-2">
-                        <GuestList
-                            guests={filteredGuests}
-                            selectedIds={selectedIds}
-                            onToggleSelect={handleToggleSelect}
-                        />
-                    </div>
+                    <GuestList
+                        guests={filteredGuests}
+                        selectedIds={selectedIds}
+                        onToggleSelect={handleToggleSelect}
+                    />
                 </div>
+            </div>
+
+            {/* FAB para Adicionar Convidado */}
+            <div className="fixed bottom-6 right-6 z-50">
+                <Button
+                    onClick={() => setShowAddGuest(true)}
+                    size="icon"
+                    className="h-14 w-14 rounded-full shadow-xl bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
             </div>
 
             {/* Modal de Adicionar Convidado */}
