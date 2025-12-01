@@ -250,7 +250,6 @@ export default function PublicWedding() {
             {/* Hero Section with Video Background */}
             <VideoHero
                 videoUrl="https://hyvszjcasxorqedcffhb.supabase.co/storage/v1/object/public/videos/convite.mp4"
-                posterUrl={photos[0]}
             >
 
                 <div className="relative z-10 text-center text-white space-y-8 px-4 w-full max-w-4xl mx-auto">

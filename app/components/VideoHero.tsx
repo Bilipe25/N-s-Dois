@@ -26,6 +26,7 @@ export function VideoHero({ videoUrl, posterUrl, children }: VideoHeroProps) {
                     autoPlay
                     muted
                     playsInline
+                    preload="auto"
                     className={`w-full h-full object-cover transition-all duration-[2000ms] ease-out ${isEnded ? "blur-md scale-105 opacity-60" : "opacity-100 scale-100"}`}
                     poster={posterUrl}
                     onEnded={() => setIsEnded(true)}
