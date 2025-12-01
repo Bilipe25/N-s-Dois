@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLoaderData, Form, Link, useFetcher } from "react-router";
+import { useLoaderData, Form, Link, useFetcher, useOutletContext } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
@@ -168,7 +168,7 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
 };
 
 export default function Guests() {
-    const { guests, config } = useLoaderData<typeof loader>();
+    const { guests, config } = useLoaderData<typeof loader>() as { guests: Guest[], config: any };
     const fetcher = useFetcher();
 
     // State
@@ -180,9 +180,9 @@ export default function Guests() {
     const [isExporting, setIsExporting] = useState(false);
 
     // Derived Data
-    const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
+    const groups = Array.from(new Set(guests.map((g: Guest) => g.group_name))).filter(Boolean) as string[];
 
-    const filteredGuests = guests.filter((guest) => {
+    const filteredGuests = guests.filter((guest: Guest) => {
         const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
         const matchesGroup = groupFilter === "todos" ? true : guest.group_name === groupFilter;
         const matchesSearch = guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -240,11 +240,11 @@ export default function Guests() {
             const content: any[] = [];
 
             // Totais
-            const totalAdults = guests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
-            const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
+            const totalAdults = guests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0), 0);
+            const totalChildren = guests.reduce((acc: number, curr: Guest) => acc + (curr.children_count || 0), 0);
             const totalGuests = totalAdults + totalChildren;
-            const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
-            const confirmedTotal = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
+            const confirmedGuests = guests.filter((g: Guest) => g.rsvp_status === 'confirmado');
+            const confirmedTotal = confirmedGuests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
 
             // Cabeçalho
             const headerColumns: any[] = [];
@@ -290,8 +290,8 @@ export default function Guests() {
             // Listas por Grupo
             Object.keys(groupedGuests).sort().forEach(group => {
                 const groupGuests = groupedGuests[group];
-                const groupAdults = groupGuests.reduce((acc, g) => acc + (g.adults_count || 0), 0);
-                const groupChildren = groupGuests.reduce((acc, g) => acc + (g.children_count || 0), 0);
+                const groupAdults = groupGuests.reduce((acc: number, g: Guest) => acc + (g.adults_count || 0), 0);
+                const groupChildren = groupGuests.reduce((acc: number, g: Guest) => acc + (g.children_count || 0), 0);
 
                 content.push({
                     text: `${group} (${groupGuests.length} convites)`,
@@ -367,23 +367,26 @@ export default function Guests() {
         }
     };
 
+    const { setHeaderAction } = useOutletContext<{ setHeaderAction: (node: React.ReactNode) => void }>();
+
+    useEffect(() => {
+        setHeaderAction(
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="text-muted-foreground hover:text-primary"
+                title="Exportar PDF"
+            >
+                {isExporting ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileDown className="h-5 w-5" />}
+            </Button>
+        );
+        return () => setHeaderAction(null);
+    }, [isExporting, handleExportPdf, setHeaderAction]);
+
     return (
         <div className="min-h-screen bg-stone-50 pb-24">
-            {/* Top Bar */}
-            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex justify-between items-center">
-                <h1 className="text-lg font-serif font-bold text-stone-800">Convidados</h1>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleExportPdf}
-                    disabled={isExporting}
-                    className="gap-2 text-rose-700 hover:bg-rose-50"
-                >
-                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                    <span className="hidden md:inline">Exportar PDF</span>
-                </Button>
-            </div>
-
             <div className="container mx-auto max-w-5xl p-4 space-y-6">
                 {/* Stats */}
                 <GuestStats guests={guests} />
@@ -413,7 +416,7 @@ export default function Guests() {
             </div>
 
             {/* FAB para Adicionar Convidado */}
-            <div className="fixed bottom-6 right-6 z-50">
+            <div className="fixed bottom-24 right-6 z-50">
                 <Button
                     onClick={() => setShowAddGuest(true)}
                     size="icon"
