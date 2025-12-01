@@ -1,4 +1,5 @@
 import { Outlet, redirect, useLoaderData, useLocation, useNavigation } from "react-router";
+import { useState } from "react";
 import { getSession } from "@/sessions";
 import { BottomNav } from "@/components/bottom-nav";
 import { TopNav } from "@/components/top-nav";
@@ -50,10 +51,11 @@ export default function ProtectedLayout() {
     const location = useLocation();
     const navigation = useNavigation();
     const isLoading = navigation.state === "loading";
+    const [headerAction, setHeaderAction] = useState<React.ReactNode>(null);
 
     return (
         <div className="min-h-screen bg-background font-sans text-foreground">
-            <TopNav unreadCount={unreadNotificationsCount} />
+            <TopNav unreadCount={unreadNotificationsCount} action={headerAction} />
             <main className="pb-24 pt-16 px-4">
                 {isLoading ? (
                     <PageSkeleton />
@@ -62,7 +64,7 @@ export default function ProtectedLayout() {
                         key={location.pathname}
                         className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                     >
-                        <Outlet />
+                        <Outlet context={{ setHeaderAction }} />
                     </div>
                 )}
             </main>

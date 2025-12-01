@@ -8,13 +8,13 @@ interface GuestStatsProps {
 }
 
 export function GuestStats({ guests }: GuestStatsProps) {
-    const totalAdults = guests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
-    const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
+    const totalAdults = guests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0), 0);
+    const totalChildren = guests.reduce((acc: number, curr: Guest) => acc + (curr.children_count || 0), 0);
     const totalGuests = totalAdults + totalChildren;
 
-    const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
-    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
-    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
+    const confirmedGuests = guests.filter((g: Guest) => g.rsvp_status === 'confirmado');
+    const confirmedAdults = confirmedGuests.reduce((acc: number, curr: Guest) => acc + (curr.adults_count || 0), 0);
+    const confirmedChildren = confirmedGuests.reduce((acc: number, curr: Guest) => acc + (curr.children_count || 0), 0);
     const confirmedTotal = confirmedAdults + confirmedChildren;
 
     const pendingCount = guests.filter(g => g.rsvp_status === 'pendente').length;
@@ -96,17 +96,19 @@ export function GuestStats({ guests }: GuestStatsProps) {
                 </Card>
 
                 <Card className="shadow-sm border-stone-200">
-                    <CardContent className="p-4 h-[200px] flex flex-col justify-center">
-                        <h3 className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-4 text-center">Confirmados</h3>
-                        <div className="flex justify-center gap-8">
-                            <div className="flex flex-col items-center">
-                                <span className="text-4xl font-serif font-bold text-stone-800">{confirmedAdults}</span>
-                                <span className="text-[10px] text-stone-400 uppercase mt-1">Adultos</span>
+                    <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-stone-500 uppercase">Confirmados</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-bold text-stone-800">{confirmedAdults}</span>
+                                <span className="text-[10px] text-stone-400 uppercase">Adultos</span>
                             </div>
-                            <div className="w-px h-12 bg-stone-100" />
-                            <div className="flex flex-col items-center">
-                                <span className="text-4xl font-serif font-bold text-stone-800">{confirmedChildren}</span>
-                                <span className="text-[10px] text-stone-400 uppercase mt-1">Crianças</span>
+                            <div className="w-px h-4 bg-stone-200" />
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xl font-bold text-stone-800">{confirmedChildren}</span>
+                                <span className="text-[10px] text-stone-400 uppercase">Crianças</span>
                             </div>
                         </div>
                     </CardContent>

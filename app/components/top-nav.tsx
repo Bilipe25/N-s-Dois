@@ -2,7 +2,7 @@ import { useLocation, useNavigate, Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, Settings, Bell } from "lucide-react";
 
-export function TopNav({ unreadCount = 0 }: { unreadCount?: number }) {
+export function TopNav({ unreadCount = 0, action }: { unreadCount?: number; action?: React.ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -58,6 +58,7 @@ export function TopNav({ unreadCount = 0 }: { unreadCount?: number }) {
             </div>
 
             <div className="flex items-center gap-1">
+                {action}
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary relative" asChild>
                     <Link to="/notifications">
                         <Bell className="h-5 w-5" />
