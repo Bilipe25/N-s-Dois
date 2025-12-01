@@ -90,8 +90,7 @@ export default function Notifications() {
     return (
         <div className="min-h-screen bg-[#FDFCF8] pb-24">
             <div className="sticky top-0 z-20 bg-[#FDFCF8]/80 backdrop-blur-md border-b border-stone-100 px-4 py-4">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-serif text-stone-800">Notificações</h1>
+                <div className="flex items-center justify-end mb-4">
                     {unreadCount > 0 && (
                         <Form method="post">
                             <input type="hidden" name="intent" value="mark_all_read" />
