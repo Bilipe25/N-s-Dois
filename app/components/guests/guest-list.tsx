@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
-import { MoreHorizontal, Pencil, MessageCircle, Check, X, Trash2, Phone } from "lucide-react";
+import { MoreVertical, Pencil, MessageCircle, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -113,7 +113,7 @@ function GuestItem({ guest, isSelected, onToggleSelect }: { guest: Guest, isSele
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-stone-600">
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

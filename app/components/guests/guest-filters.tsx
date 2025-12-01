@@ -37,7 +37,7 @@ export function GuestFilters({
     onClearSelection
 }: GuestFiltersProps) {
     return (
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4 pt-2 space-y-3">
+        <div className="sticky top-14 z-30 bg-stone-50/95 backdrop-blur supports-[backdrop-filter]:bg-stone-50/60 pb-4 pt-2 space-y-3">
             {/* Search and Group Filter Row */}
             <div className="flex gap-2">
                 <div className="relative flex-1">
