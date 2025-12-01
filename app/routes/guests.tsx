@@ -1,30 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLoaderData, Form, Link, useFetcher } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
     Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Users, Check, X, MoreHorizontal, Trash2, Pencil, MessageCircle, FileDown, Loader2, Search } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { Plus, FileDown, Loader2 } from "lucide-react";
 import type { Route } from "./+types/guests";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
+
+// Components
+import { GuestStats } from "@/components/guests/guest-stats";
+import { GuestFilters } from "@/components/guests/guest-filters";
+import { GuestList } from "@/components/guests/guest-list";
+import type { Guest, GuestFilter } from "@/components/guests/types";
+import { toast } from "sonner";
 
 // Registrar fontes (necessário para pdfmake no client-side)
 // @ts-ignore
@@ -49,7 +47,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     }
 
     return {
-        guests: guestsResult.data || [],
+        guests: guestsResult.data as Guest[],
         config: configResult.data
     };
 };
@@ -68,30 +66,42 @@ export const action = async ({ request }: Route.ActionArgs) => {
 
         if (!name) return null;
 
-        await supabase.from("guests").insert({
-            name,
-            group_name,
-            adults_count,
-            children_count,
-            rsvp_status: "pendente"
-        });
+        // Support for multiple names (one per line)
+        const names = name.split('\n').filter(n => n.trim().length > 0);
 
-        // Notificar
+        for (const n of names) {
+            await supabase.from("guests").insert({
+                name: n.trim(),
+                group_name,
+                adults_count,
+                children_count,
+                rsvp_status: "pendente"
+            });
+        }
+
+        // Notificar (apenas se for 1, para não spammar)
         const session = await getSession(request.headers.get("Cookie"));
         const user = session.get("user");
 
-        if (user) {
+        if (user && names.length === 1) {
             await supabase.from("notifications").insert({
                 type: "rsvp",
                 title: "Novo Convidado ➕",
-                message: `${user} adicionou um novo convidado: ${name} (${group_name}).`,
+                message: `${user} adicionou um novo convidado: ${names[0]} (${group_name}).`,
                 link: "/guests"
             });
 
             // Enviar Push
-            const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-            await sendPushToUser(request, "all", "Novo Convidado ➕", `${user} adicionou um novo convidado: ${name} (${group_name}).`, "/guests");
+            await sendPushToUser(request, "all", "Novo Convidado ➕", `${user} adicionou um novo convidado: ${names[0]} (${group_name}).`, "/guests");
+        } else if (user && names.length > 1) {
+            await supabase.from("notifications").insert({
+                type: "rsvp",
+                title: "Novos Convidados ➕",
+                message: `${user} adicionou ${names.length} novos convidados em ${group_name}.`,
+                link: "/guests"
+            });
         }
+
     } else if (intent === "delete") {
         const id = formData.get("id") as string;
         await supabase.from("guests").delete().eq("id", id);
@@ -125,6 +135,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 await sendPushToUser(request, "all", "Atualização de RSVP 📩", `${guest.name} teve a presença marcada como "${status}".`, "/guests");
             }
         }
+    } else if (intent === "bulk_confirm") {
+        const ids = JSON.parse(formData.get("ids") as string);
+        await supabase.from("guests").update({ rsvp_status: "confirmado" }).in("id", ids);
+    } else if (intent === "bulk_delete") {
+        const ids = JSON.parse(formData.get("ids") as string);
+        await supabase.from("guests").delete().in("id", ids);
     }
 
     return null;
@@ -151,137 +167,55 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
     });
 };
 
-// Componente para renderizar um item de convidado
-const GuestItem = ({ guest }: { guest: any }) => {
-    const fetcher = useFetcher();
-
-    // Optimistic RSVP
-    let rsvpStatus = guest.rsvp_status;
-    if (fetcher.formData?.get("intent") === "rsvp_action" && fetcher.formData.get("id") === guest.id) {
-        rsvpStatus = fetcher.formData.get("status");
-    }
-
-    // Optimistic Delete
-    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === guest.id;
-
-    if (isDeleting) return null;
-
-    return (
-        <div className="flex items-center justify-between p-3 rounded-lg border bg-card border-border">
-            <div className="flex items-center gap-3">
-                <div className={`
-                  h-9 w-9 rounded-full flex flex-col items-center justify-center text-[10px] font-bold leading-tight
-                  ${rsvpStatus === 'confirmado' ? 'bg-green-100 text-green-700' :
-                        rsvpStatus === 'recusado' ? 'bg-red-100 text-red-700' :
-                            'bg-yellow-100 text-yellow-700'}
-                `}>
-                    <span>{guest.adults_count + (guest.children_count || 0)}</span>
-                    <span className="font-normal opacity-75 text-[8px]">Total</span>
-                </div>
-                <div>
-                    <p className="text-sm font-medium">{guest.name}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">{guest.group_name}</span>
-                        {(guest.children_count > 0) && (
-                            <span>({guest.adults_count} Ad. + {guest.children_count} Cr.)</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Abrir menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                        <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            <span>Editar</span>
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <a
-                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="cursor-pointer flex items-center text-green-600"
-                        >
-                            <MessageCircle className="mr-2 h-4 w-4" />
-                            <span>Enviar Convite</span>
-                        </a>
-                    </DropdownMenuItem>
-                    {rsvpStatus === 'pendente' && (
-                        <>
-                            <DropdownMenuItem asChild>
-                                <fetcher.Form method="post" className="w-full cursor-pointer">
-                                    <input type="hidden" name="id" value={guest.id} />
-                                    <input type="hidden" name="status" value="confirmado" />
-                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                        <Check className="mr-2 h-4 w-4 text-green-600" />
-                                        <span>Confirmar</span>
-                                    </button>
-                                </fetcher.Form>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <fetcher.Form method="post" className="w-full cursor-pointer">
-                                    <input type="hidden" name="id" value={guest.id} />
-                                    <input type="hidden" name="status" value="recusado" />
-                                    <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                        <X className="mr-2 h-4 w-4 text-red-600" />
-                                        <span>Recusar</span>
-                                    </button>
-                                </fetcher.Form>
-                            </DropdownMenuItem>
-                        </>
-                    )}
-                    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                        <fetcher.Form method="post" className="w-full cursor-pointer">
-                            <input type="hidden" name="id" value={guest.id} />
-                            <button type="submit" name="intent" value="delete" className="flex w-full items-center">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Excluir</span>
-                            </button>
-                        </fetcher.Form>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-    );
-};
-
 export default function Guests() {
     const { guests, config } = useLoaderData<typeof loader>();
-    const [filter, setFilter] = useState<"todos" | "confirmado" | "pendente" | "recusado">("todos");
+    const fetcher = useFetcher();
+
+    // State
+    const [filter, setFilter] = useState<GuestFilter>("todos");
     const [groupFilter, setGroupFilter] = useState<string>("todos");
-    const [showAddGuest, setShowAddGuest] = useState(false);
-    const [showSearch, setShowSearch] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [showAddGuest, setShowAddGuest] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
-    const filteredGuests = guests.filter((guest: any) => {
+    // Derived Data
+    const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
+
+    const filteredGuests = guests.filter((guest) => {
         const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
         const matchesGroup = groupFilter === "todos" ? true : guest.group_name === groupFilter;
-        return matchesStatus && matchesGroup;
+        const matchesSearch = guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            guest.group_name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesStatus && matchesGroup && matchesSearch;
     });
 
-    const searchResults = guests.filter((guest: any) =>
-        guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guest.group_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Handlers
+    const handleToggleSelect = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
 
-    const totalAdults = guests.reduce((acc: any, curr: any) => acc + (curr.adults_count || 0), 0);
-    const totalChildren = guests.reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
-    const totalGuests = totalAdults + totalChildren;
+    const handleBulkConfirm = () => {
+        if (!confirm(`Confirmar presença de ${selectedIds.length} convidados?`)) return;
+        fetcher.submit(
+            { intent: "bulk_confirm", ids: JSON.stringify(selectedIds) },
+            { method: "post" }
+        );
+        setSelectedIds([]);
+        toast.success("Presenças confirmadas!");
+    };
 
-    const confirmedAdults = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.adults_count || 0), 0);
-    const confirmedChildren = guests.filter((g: any) => g.rsvp_status === 'confirmado').reduce((acc: any, curr: any) => acc + (curr.children_count || 0), 0);
-    const confirmedTotal = confirmedAdults + confirmedChildren;
-
-    const groups = Array.from(new Set(guests.map((g: any) => g.group_name))).filter(Boolean) as string[];
+    const handleBulkDelete = () => {
+        if (!confirm(`Excluir ${selectedIds.length} convidados?`)) return;
+        fetcher.submit(
+            { intent: "bulk_delete", ids: JSON.stringify(selectedIds) },
+            { method: "post" }
+        );
+        setSelectedIds([]);
+        toast.success("Convidados excluídos!");
+    };
 
     const handleExportPdf = async () => {
         setIsExporting(true);
@@ -297,13 +231,20 @@ export default function Guests() {
 
             // Agrupar convidados
             const groupedGuests: Record<string, any[]> = {};
-            guests.forEach((guest: any) => {
+            guests.forEach((guest) => {
                 const group = guest.group_name || "Outros";
                 if (!groupedGuests[group]) groupedGuests[group] = [];
                 groupedGuests[group].push(guest);
             });
 
             const content: any[] = [];
+
+            // Totais
+            const totalAdults = guests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
+            const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
+            const totalGuests = totalAdults + totalChildren;
+            const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
+            const confirmedTotal = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
 
             // Cabeçalho
             const headerColumns: any[] = [];
@@ -403,8 +344,8 @@ export default function Guests() {
             const docDefinition = {
                 content: content,
                 styles: {
-                    header: { fontSize: 22, bold: true, color: '#be123c' }, // rose-700
-                    subheader: { fontSize: 14, color: '#881337' }, // rose-900
+                    header: { fontSize: 22, bold: true, color: '#be123c' },
+                    subheader: { fontSize: 14, color: '#881337' },
                     small: { fontSize: 10, color: '#6b7280' },
                     sectionHeader: { fontSize: 14, bold: true, margin: [0, 0, 0, 10] as [number, number, number, number], color: '#374151' },
                     groupHeader: { fontSize: 12, bold: true, color: '#be123c', decoration: 'underline' as const },
@@ -427,181 +368,62 @@ export default function Guests() {
     };
 
     return (
-        <div className="p-4 space-y-6 pb-20">
-            <header className="flex justify-between items-center">
-                <div>
-                    <div className="text-sm text-muted-foreground">
-                        <span className="font-medium text-primary">{confirmedTotal}</span> confirmados
-                        <span className="text-xs ml-1">({confirmedAdults} Ad. / {confirmedChildren} Cr.)</span>
+        <div className="min-h-screen bg-stone-50 pb-20">
+            <div className="container mx-auto max-w-5xl p-4 space-y-6">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-serif font-bold text-stone-800">Lista de Convidados</h1>
+                        <p className="text-stone-500 text-sm">Gerencie quem vai celebrar com vocês.</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">de {totalGuests} total</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleExportPdf}
-                        disabled={isExporting}
-                        className="gap-2 text-rose-700 border-rose-200 hover:bg-rose-50"
-                    >
-                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                        Exportar PDF
-                    </Button>
-                </div>
-            </header>
-
-            {/* Estatísticas Rápidas */}
-            <div className="grid grid-cols-3 gap-2">
-                <Card className="bg-green-50 border-green-100">
-                    <CardContent className="p-3 text-center">
-                        <div className="text-xl font-bold text-green-700">
-                            {guests.filter((g: any) => g.rsvp_status === 'confirmado').length}
-                        </div>
-                        <div className="text-[10px] text-green-600 uppercase font-medium">Sim</div>
-                    </CardContent>
-                </Card>
-                <Card className="bg-yellow-50 border-yellow-100">
-                    <CardContent className="p-3 text-center">
-                        <div className="text-xl font-bold text-yellow-700">
-                            {guests.filter((g: any) => g.rsvp_status === 'pendente').length}
-                        </div>
-                        <div className="text-[10px] text-yellow-600 uppercase font-medium">Talvez</div>
-                    </CardContent>
-                </Card>
-                <Card className="bg-red-50 border-red-100">
-                    <CardContent className="p-3 text-center">
-                        <div className="text-xl font-bold text-red-700">
-                            {guests.filter((g: any) => g.rsvp_status === 'recusado').length}
-                        </div>
-                        <div className="text-[10px] text-red-600 uppercase font-medium">Não</div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Gráficos Detalhados */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Por Grupo</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={groups.map(g => ({
-                                name: g,
-                                value: guests.filter((guest: any) => guest.group_name === g).length
-                            }))}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={60} />
-                                <Tooltip />
-                                <Bar dataKey="value" fill="#8884d8" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filtros */}
-            <div className="flex flex-col gap-2">
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                    {["todos", "confirmado", "pendente", "recusado"].map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f as any)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${filter === f
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                }`}
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <Button
+                            variant="outline"
+                            onClick={handleExportPdf}
+                            disabled={isExporting}
+                            className="flex-1 md:flex-none gap-2"
                         >
-                            {f}
-                        </button>
-                    ))}
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                            Exportar PDF
+                        </Button>
+                        <Button
+                            onClick={() => setShowAddGuest(true)}
+                            className="flex-1 md:flex-none gap-2 bg-stone-900 hover:bg-stone-800"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Adicionar
+                        </Button>
+                    </div>
                 </div>
-                <select
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}
-                >
-                    <option value="todos">Todos os Grupos</option>
-                    {groups.map((g: any) => (
-                        <option key={g} value={g}>{g}</option>
-                    ))}
-                </select>
-            </div>
 
-            {/* Lista de Convidados */}
-            <div className="space-y-2">
-                {filteredGuests.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                        Nenhum convidado encontrado.
+                {/* Stats */}
+                <GuestStats guests={guests} />
+
+                {/* Main Content */}
+                <div className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
+                    <GuestFilters
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        filter={filter}
+                        onFilterChange={setFilter}
+                        groupFilter={groupFilter}
+                        onGroupFilterChange={setGroupFilter}
+                        groups={groups}
+                        selectedCount={selectedIds.length}
+                        onBulkConfirm={handleBulkConfirm}
+                        onBulkDelete={handleBulkDelete}
+                        onClearSelection={() => setSelectedIds([])}
+                    />
+
+                    <div className="p-2">
+                        <GuestList
+                            guests={filteredGuests}
+                            selectedIds={selectedIds}
+                            onToggleSelect={handleToggleSelect}
+                        />
                     </div>
-                ) : (
-                    filteredGuests.map((guest: any) => (
-                        <GuestItem key={guest.id} guest={guest} />
-                    ))
-                )}
+                </div>
             </div>
-
-            {/* FAB para Buscar Convidado */}
-            <div className="fixed bottom-40 right-6 z-50">
-                <Button
-                    onClick={() => setShowSearch(true)}
-                    size="icon"
-                    className="h-12 w-12 rounded-full shadow-lg bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                >
-                    <Search className="h-5 w-5" />
-                </Button>
-            </div>
-
-            {/* FAB para Adicionar Convidado */}
-            <div className="fixed bottom-24 right-6 z-50">
-                <Button
-                    onClick={() => setShowAddGuest(true)}
-                    size="icon"
-                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
-
-            {/* Modal de Busca */}
-            <Dialog open={showSearch} onOpenChange={setShowSearch}>
-                <DialogContent className="max-h-[80vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Buscar Convidado</DialogTitle>
-                        <DialogDescription>
-                            Digite o nome ou grupo para filtrar.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar..."
-                                className="pl-8"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                autoFocus
-                            />
-                        </div>
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                            {searchTerm && searchResults.length === 0 ? (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
-                                    Nenhum resultado encontrado.
-                                </div>
-                            ) : (
-                                (searchTerm ? searchResults : []).map((guest: any) => (
-                                    <GuestItem key={guest.id} guest={guest} />
-                                ))
-                            )}
-                            {!searchTerm && (
-                                <div className="text-center py-4 text-muted-foreground text-xs">
-                                    Digite para buscar...
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             {/* Modal de Adicionar Convidado */}
             <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
@@ -609,44 +431,58 @@ export default function Guests() {
                     <DialogHeader>
                         <DialogTitle>Adicionar Convidado</DialogTitle>
                         <DialogDescription>
-                            Adicione um novo convidado à sua lista.
+                            Adicione um ou mais convidados. Para adicionar vários, cole uma lista de nomes (um por linha).
                         </DialogDescription>
                     </DialogHeader>
                     <Form method="post" className="space-y-3" onSubmit={() => setShowAddGuest(false)}>
-                        <Input name="name" placeholder="Nome completo" required />
-                        <select
-                            name="group_name"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            required
-                        >
-                            <option value="">Grupo...</option>
-                            <option value="Família Noivo">Família Noivo</option>
-                            <option value="Família Noiva">Família Noiva</option>
-                            <option value="Amigos Noivo">Amigos Noivo</option>
-                            <option value="Amigos Noiva">Amigos Noiva</option>
-                            <option value="Igreja">Igreja</option>
-                            <option value="Trabalho">Trabalho</option>
-                            <option value="Outros">Outros</option>
-                        </select>
+                        <div className="space-y-1">
+                            <label className="text-xs font-medium text-stone-500">Nome(s)</label>
+                            <textarea
+                                name="name"
+                                placeholder="Ex: Gabriel Silva&#10;Raabe Silva"
+                                required
+                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            />
+                            <p className="text-[10px] text-stone-400">Dica: Cole uma lista de nomes para adicionar vários de uma vez.</p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs font-medium text-stone-500">Grupo</label>
+                            <select
+                                name="group_name"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                required
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="Família Noivo">Família Noivo</option>
+                                <option value="Família Noiva">Família Noiva</option>
+                                <option value="Amigos Noivo">Amigos Noivo</option>
+                                <option value="Amigos Noiva">Amigos Noiva</option>
+                                <option value="Igreja">Igreja</option>
+                                <option value="Trabalho">Trabalho</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Adultos</label>
+                                <label className="text-xs font-medium text-stone-500">Adultos (por convite)</label>
                                 <Input name="adults_count" type="number" min="1" defaultValue="1" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs text-muted-foreground">Crianças</label>
+                                <label className="text-xs font-medium text-stone-500">Crianças (por convite)</label>
                                 <Input name="children_count" type="number" min="0" defaultValue="0" />
                             </div>
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="add">
+                            <Button type="submit" name="intent" value="add" className="bg-stone-900">
                                 Adicionar
                             </Button>
                         </DialogFooter>
                     </Form>
                 </DialogContent>
             </Dialog>
-        </div >
+        </div>
     );
 }
