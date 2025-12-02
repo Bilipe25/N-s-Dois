@@ -9,6 +9,10 @@ export interface BudgetItem {
     installments_current: number;
     installments_total: number;
     due_date?: string | null;
+    supplier_id?: string | null;
+    suppliers?: {
+        name: string;
+    } | null;
 }
 
 export const BUDGET_CATEGORIES = [

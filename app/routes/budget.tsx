@@ -21,15 +21,20 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     const supabase = createClient(request);
     const { data: items, error } = await supabase
         .from("budget_items")
-        .select("*")
+        .select("*, suppliers(name)")
         .order("created_at", { ascending: false });
+
+    const { data: suppliers } = await supabase
+        .from("suppliers")
+        .select("id, name")
+        .order("name");
 
     if (error) {
         console.error("Error fetching budget:", error);
-        return { items: [] };
+        return { items: [], suppliers: [] };
     }
 
-    return { items: items as BudgetItem[] };
+    return { items: items as BudgetItem[], suppliers: suppliers || [] };
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
@@ -45,6 +50,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const installments_current = parseInt(formData.get("installments_current") as string) || 1;
         const installments_total = parseInt(formData.get("installments_total") as string) || 1;
         const due_date = formData.get("due_date") as string || null;
+        let supplier_id = formData.get("supplier_id") as string | null;
+
+        if (supplier_id === "none") supplier_id = null;
 
         const status = paid_value >= estimated_value ? "pago" : paid_value > 0 ? "parcial" : "pendente";
         // Simple logic for 'atrasado': if due_date < today and status != pago
@@ -57,9 +65,9 @@ export const action = async ({ request }: Route.ActionArgs) => {
             estimated_value,
             paid_value,
             status: finalStatus,
-            installments_current,
             installments_total,
-            due_date
+            due_date,
+            supplier_id
         };
 
         if (intent === "add") {
@@ -77,7 +85,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
 };
 
 export default function Budget() {
-    const { items } = useLoaderData<typeof loader>();
+    const { items, suppliers } = useLoaderData<typeof loader>();
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
@@ -160,8 +168,8 @@ export default function Budget() {
                         <button
                             onClick={() => setCategoryFilter("all")}
                             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categoryFilter === "all"
-                                    ? "bg-stone-900 text-white"
-                                    : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
+                                ? "bg-stone-900 text-white"
+                                : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
                                 }`}
                         >
                             Todas
@@ -171,8 +179,8 @@ export default function Budget() {
                                 key={cat}
                                 onClick={() => setCategoryFilter(cat)}
                                 className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categoryFilter === cat
-                                        ? "bg-stone-900 text-white"
-                                        : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
+                                    ? "bg-stone-900 text-white"
+                                    : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
                                     }`}
                             >
                                 {cat}
@@ -212,7 +220,7 @@ export default function Budget() {
                     <DialogHeader>
                         <DialogTitle>{editingItem ? "Editar Gasto" : "Novo Gasto"}</DialogTitle>
                     </DialogHeader>
-                    <BudgetForm item={editingItem} onCancel={handleClose} />
+                    <BudgetForm item={editingItem} suppliers={suppliers} onCancel={handleClose} />
                 </DialogContent>
             </Dialog>
         </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFetcher, Link } from "react-router";
-import { MoreHorizontal, Pencil, Trash2, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Calendar, AlertCircle, CheckCircle2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,12 @@ export function BudgetCard({ item, onEdit }: BudgetCardProps) {
                             )}
                         </div>
                         <h3 className="font-semibold text-stone-900 leading-tight">{item.description}</h3>
+                        {item.suppliers && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-stone-500">
+                                <User className="w-3 h-3" />
+                                <span>{item.suppliers.name}</span>
+                            </div>
+                        )}
                     </div>
 
                     <DropdownMenu>
