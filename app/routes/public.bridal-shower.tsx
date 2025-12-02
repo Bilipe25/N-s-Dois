@@ -1,22 +1,22 @@
-import { useState, useEffect } from "react";
-import { useLoaderData, Form, useActionData, useNavigation } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { useState } from "react";
+import { useNavigation } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { MapPin, Calendar, Check, Heart, Loader2, PartyPopper, QrCode, Search, Share2 } from "lucide-react";
+import { MapPin, Calendar, PartyPopper, QrCode, Search, Share2, Loader2 } from "lucide-react";
 import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { PixModal } from "@/components/bridal-shower/pix-modal";
-import type { Gift as GiftType } from "@/components/bridal-shower/types";
+import { useGifts, useBridalConfig, useReserveGift } from "@/hooks/useBridalShower";
+import type { Gift } from "@/schemas/bridal-shower";
 
 export const meta: Route.MetaFunction = ({ data }) => {
     const title = "Chá de Casa Nova - Gabriel & Raabe";
     const description = "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️";
-
-    // Image for Link Preview (WhatsApp/Telegram) - Uses uploaded photo or default
-    const ogImage = data?.config?.bridal_shower_hero_url || "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
+    // Using a default image since we don't have direct access to config in meta without loader, 
+    // but we could pass it via hydration script if needed. For now, static default + dynamic if available.
+    const ogImage = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
 
     return [
         { title },
@@ -32,93 +32,20 @@ export const meta: Route.MetaFunction = ({ data }) => {
     ];
 };
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
-
-    const [giftsResult, configResult] = await Promise.all([
-        supabase.from("bridal_shower_gifts").select("*").order("item_name"),
-        supabase.from("app_config").select("*").single()
-    ]);
-
-    return {
-        gifts: (giftsResult.data || []) as GiftType[],
-        config: configResult.data
-    };
-};
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-    const { sendPushToUser } = await import("@/services/push.server");
-
-    if (intent === "reserve_gift") {
-        const id = formData.get("id") as string;
-        const name = formData.get("name") as string;
-
-        if (name) {
-            const { data: gift } = await supabase
-                .from("bridal_shower_gifts")
-                .select("item_name")
-                .eq("id", id)
-                .single();
-
-            await supabase.from("bridal_shower_gifts")
-                .update({
-                    status: "comprado",
-                    reserved_by: name,
-                    reserved_at: new Date().toISOString()
-                })
-                .eq("id", id);
-
-            if (gift) {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Novo Presente Reservado! 🎁",
-                    message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
-                    link: "/bridal-shower"
-                });
-
-                await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
-
-                const verses = [
-                    "Nós amamos porque ele nos amou primeiro. (1 João 4:19)",
-                    "O meu mandamento é este: amem-se uns aos outros como eu os amei. (João 15:12)",
-                    "Acima de tudo, porém, revistam-se do amor, que é o elo perfeito. (Colossenses 3:14)",
-                    "Quem não ama não conhece a Deus, porque Deus é amor. (1 João 4:8)",
-                    "Assim, permanecem agora estes três: a fé, a esperança e o amor. O maior deles, porém, é o amor. (1 Coríntios 13:13)",
-                    "Com amor eterno eu te amei. (Jeremias 31:3)",
-                    "O amor é paciente, o amor é bondoso. (1 Coríntios 13:4)",
-                    "Tudo o que fizerem, façam com amor. (1 Coríntios 16:14)"
-                ];
-                const randomVerse = verses[Math.floor(Math.random() * verses.length)];
-
-                return { success: true, giftName: gift.item_name, guestName: name, verse: randomVerse };
-            }
-        }
-    }
-
-    return null;
-};
-
 export default function PublicBridalShower() {
-    const { gifts, config } = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const { data: gifts = [], isLoading: isLoadingGifts } = useGifts();
+    const { data: config } = useBridalConfig();
+    const { mutate: reserveGift, isPending: isReserving } = useReserveGift();
 
-    const [selectedGift, setSelectedGift] = useState<GiftType | null>(null);
+    const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showPixModal, setShowPixModal] = useState(false);
 
-    useEffect(() => {
-        if (actionData?.success) {
-            setShowSuccessModal(true);
-            setSelectedGift(null);
-        }
-    }, [actionData]);
+    // State for success message content
+    const [successData, setSuccessData] = useState<{ giftName: string, guestName: string, verse: string } | null>(null);
+    const [guestName, setGuestName] = useState("");
 
     const availableGifts = gifts.filter((g) => g.status !== 'comprado');
     const reservedGifts = gifts.filter((g) => g.status === 'comprado');
@@ -129,12 +56,38 @@ export default function PublicBridalShower() {
         return matchesSearch && matchesCategory;
     });
 
+    const handleReserve = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedGift || !guestName.trim()) return;
+
+        reserveGift({ id: selectedGift.id, name: guestName }, {
+            onSuccess: (data) => {
+                setSuccessData({
+                    giftName: data.giftName,
+                    guestName: data.guestName,
+                    verse: data.verse
+                });
+                setShowSuccessModal(true);
+                setSelectedGift(null);
+                setGuestName("");
+            }
+        });
+    };
+
+    if (isLoadingGifts) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-stone-50">
+                <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-stone-50 font-sans pb-20">
             {/* Hero Section */}
             <header className="relative bg-stone-900 border-b border-stone-100 overflow-hidden min-h-[50vh] flex items-center justify-center">
                 <img
-                    src="https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop"
+                    src={config?.bridal_shower_hero_url || "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop"}
                     alt="Background"
                     className="absolute inset-0 w-full h-full object-cover opacity-40"
                 />
@@ -288,15 +241,21 @@ export default function PublicBridalShower() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <Form method="post">
-                        <input type="hidden" name="id" value={selectedGift?.id} />
+                    <form onSubmit={handleReserve}>
                         <div className="py-4">
-                            <Input name="name" placeholder="Seu Nome Completo" required autoFocus className="h-12 text-lg" />
+                            <Input
+                                value={guestName}
+                                onChange={(e) => setGuestName(e.target.value)}
+                                placeholder="Seu Nome Completo"
+                                required
+                                autoFocus
+                                className="h-12 text-lg"
+                            />
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setSelectedGift(null)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="reserve_gift" disabled={isSubmitting} className="bg-rose-500 hover:bg-rose-600">
-                                {isSubmitting ? (
+                            <Button type="submit" disabled={isReserving} className="bg-rose-500 hover:bg-rose-600">
+                                {isReserving ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...
                                     </>
@@ -305,7 +264,7 @@ export default function PublicBridalShower() {
                                 )}
                             </Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -317,12 +276,12 @@ export default function PublicBridalShower() {
                         </div>
                     </div>
                     <DialogHeader>
-                        <DialogTitle className="text-center text-2xl font-serif text-stone-800">Obrigado, {actionData?.guestName}! ❤️</DialogTitle>
+                        <DialogTitle className="text-center text-2xl font-serif text-stone-800">Obrigado, {successData?.guestName}! ❤️</DialogTitle>
                         <DialogDescription className="text-center text-base pt-2 text-stone-600">
-                            Sua reserva do presente <strong>{actionData?.giftName}</strong> foi confirmada com sucesso.
+                            Sua reserva do presente <strong>{successData?.giftName}</strong> foi confirmada com sucesso.
                             <br /><br />
                             <div className="bg-stone-50 p-4 rounded-xl border border-stone-100 italic text-stone-500 text-sm">
-                                "{actionData?.verse}"
+                                "{successData?.verse}"
                             </div>
                         </DialogDescription>
                     </DialogHeader>

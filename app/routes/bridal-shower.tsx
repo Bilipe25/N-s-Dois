@@ -1,204 +1,58 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
-import { useLoaderData, Form } from "react-router";
-import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check } from "lucide-react";
+import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Route } from "./+types/bridal-shower";
 import { StatsDashboard } from "@/components/bridal-shower/stats-dashboard";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
-import { GIFT_CATEGORIES, type Gift as GiftType, type Guest } from "@/components/bridal-shower/types";
+import { GIFT_CATEGORIES } from "@/components/bridal-shower/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    useGifts,
+    useGuests,
+    useBridalConfig,
+    useAddGift,
+    useUpdateGift,
+    useDeleteGift,
+    useToggleGiftStatus,
+    useBulkUpdateCategory,
+    useAddGuest,
+    useDeleteGuest,
+    useToggleGuestConfirm,
+    useUpdateConfig,
+    useImportGifts,
+    useImportGuests
+} from "@/hooks/useBridalShower";
+import type { Gift } from "@/schemas/bridal-shower";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Chá de Casa Nova - Admin" }];
 };
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
-
-    const [guestsResult, giftsResult, configResult] = await Promise.all([
-        supabase.from("bridal_shower_guests").select("*").order("name"),
-        supabase.from("bridal_shower_gifts").select("*").order("item_name"),
-        supabase.from("app_config").select("bridal_shower_date, bridal_shower_location").single()
-    ]);
-
-    return {
-        guests: (guestsResult.data || []) as Guest[],
-        gifts: (giftsResult.data || []) as GiftType[],
-        config: configResult.data
-    };
-};
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-
-    if (intent === "update_config") {
-        const date = formData.get("date") as string;
-        const location = formData.get("location") as string;
-
-        const { data: config } = await supabase.from("app_config").select("id").single();
-        if (config) {
-            await supabase.from("app_config").update({
-                bridal_shower_date: date || null,
-                bridal_shower_location: location
-            }).eq("id", config.id);
-        }
-    } else if (intent === "add_guest") {
-        const name = formData.get("name") as string;
-        const phone = formData.get("phone") as string;
-        if (name) {
-            await supabase.from("bridal_shower_guests").insert({ name, phone });
-        }
-    } else if (intent === "delete_guest") {
-        const id = formData.get("id") as string;
-        await supabase.from("bridal_shower_guests").delete().eq("id", id);
-    } else if (intent === "toggle_guest_confirm") {
-        const id = formData.get("id") as string;
-        const current = formData.get("current") === "true";
-        await supabase.from("bridal_shower_guests").update({ confirmed: !current }).eq("id", id);
-    } else if (intent === "add_gift") {
-        const item_name = formData.get("item_name") as string;
-        const suggested_store = formData.get("suggested_store") as string;
-        const link = formData.get("link") as string;
-        const price_range = formData.get("price_range") as string;
-        const category = formData.get("category") as string;
-        const image_url = formData.get("image_url") as string;
-
-        if (item_name) {
-            await supabase.from("bridal_shower_gifts").insert({
-                item_name,
-                suggested_store: suggested_store || null,
-                link: link || null,
-                price_range: price_range || null,
-                category: category || null,
-                image_url: image_url || null
-            });
-        }
-    } else if (intent === "update_gift") {
-        const id = formData.get("id") as string;
-        const item_name = formData.get("item_name") as string;
-        const suggested_store = formData.get("suggested_store") as string;
-        const link = formData.get("link") as string;
-        const price_range = formData.get("price_range") as string;
-        const category = formData.get("category") as string;
-        const image_url = formData.get("image_url") as string;
-
-        if (id && item_name) {
-            await supabase.from("bridal_shower_gifts").update({
-                item_name,
-                suggested_store: suggested_store || null,
-                link: link || null,
-                price_range: price_range || null,
-                category: category || null,
-                image_url: image_url || null
-            }).eq("id", id);
-        }
-    } else if (intent === "delete_gift") {
-        const id = formData.get("id") as string;
-        await supabase.from("bridal_shower_gifts").delete().eq("id", id);
-    } else if (intent === "toggle_gift_status") {
-        const id = formData.get("id") as string;
-        const currentStatus = formData.get("currentStatus") as string;
-        const newStatus = currentStatus === 'comprado' ? 'disponivel' : 'comprado';
-        await supabase.from("bridal_shower_gifts").update({ status: newStatus }).eq("id", id);
-    } else if (intent === "bulk_update_category") {
-        const ids = formData.get("ids")?.toString().split(",") || [];
-        const category = formData.get("category") as string;
-
-        if (ids.length > 0 && category) {
-            await supabase.from("bridal_shower_gifts")
-                .update({ category })
-                .in("id", ids);
-        }
-    } else if (intent === "import_gifts") {
-        const importText = formData.get("import_text") as string;
-        if (importText) {
-            const lines = importText.split('\n');
-            const giftsToInsert = [];
-
-            for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (!trimmedLine) continue;
-
-                let parts = [];
-                if (trimmedLine.includes('|')) {
-                    parts = trimmedLine.split('|');
-                } else if (trimmedLine.includes(';')) {
-                    parts = trimmedLine.split(';');
-                } else {
-                    parts = [trimmedLine];
-                }
-
-                const item_name = parts[0]?.trim();
-                const suggested_store = parts[1]?.trim() || null;
-                const price_range = parts[2]?.trim() || null;
-
-                if (item_name) {
-                    giftsToInsert.push({
-                        item_name,
-                        suggested_store,
-                        price_range,
-                        status: 'disponivel'
-                    });
-                }
-            }
-
-            if (giftsToInsert.length > 0) {
-                await supabase.from("bridal_shower_gifts").insert(giftsToInsert);
-            }
-        }
-    } else if (intent === "import_guests") {
-        const importText = formData.get("import_text") as string;
-        if (importText) {
-            const lines = importText.split('\n');
-            const guestsToInsert = [];
-
-            for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (!trimmedLine) continue;
-
-                let parts = [];
-                if (trimmedLine.includes('|')) {
-                    parts = trimmedLine.split('|');
-                } else if (trimmedLine.includes(';')) {
-                    parts = trimmedLine.split(';');
-                } else {
-                    parts = [trimmedLine];
-                }
-
-                const name = parts[0]?.trim();
-                const phone = parts[1]?.trim() || null;
-
-                if (name) {
-                    guestsToInsert.push({
-                        name,
-                        phone,
-                        confirmed: false
-                    });
-                }
-            }
-
-            if (guestsToInsert.length > 0) {
-                await supabase.from("bridal_shower_guests").insert(guestsToInsert);
-            }
-        }
-    }
-
-    return null;
-};
-
 export default function BridalShower() {
-    const { guests, gifts, config } = useLoaderData<typeof loader>();
+    const { data: gifts = [] } = useGifts();
+    const { data: guests = [] } = useGuests();
+    const { data: config } = useBridalConfig();
+
+    // Mutations
+    const { mutate: addGift } = useAddGift();
+    const { mutate: updateGift } = useUpdateGift();
+    const { mutate: deleteGift } = useDeleteGift();
+    const { mutate: toggleGiftStatus } = useToggleGiftStatus();
+    const { mutate: bulkUpdateCategory } = useBulkUpdateCategory();
+    const { mutate: addGuest } = useAddGuest();
+    const { mutate: deleteGuest } = useDeleteGuest();
+    const { mutate: toggleGuestConfirm } = useToggleGuestConfirm();
+    const { mutate: updateConfig, isPending: isUpdatingConfig } = useUpdateConfig();
+    const { mutate: importGifts, isPending: isImportingGifts } = useImportGifts();
+    const { mutate: importGuests, isPending: isImportingGuests } = useImportGuests();
 
     const defaultDate = config?.bridal_shower_date
         ? new Date(config.bridal_shower_date).toISOString().slice(0, 16)
@@ -208,7 +62,7 @@ export default function BridalShower() {
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
     const [showEditGift, setShowEditGift] = useState(false);
-    const [editingGift, setEditingGift] = useState<GiftType | null>(null);
+    const [editingGift, setEditingGift] = useState<Gift | null>(null);
     const [showAddGuest, setShowAddGuest] = useState(false);
     const [showImportGuests, setShowImportGuests] = useState(false);
 
@@ -220,6 +74,10 @@ export default function BridalShower() {
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<string>("");
     const [editCategory, setEditCategory] = useState<string>("");
+
+    // Import Text State
+    const [importGiftsText, setImportGiftsText] = useState("");
+    const [importGuestsText, setImportGuestsText] = useState("");
 
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
@@ -247,10 +105,100 @@ export default function BridalShower() {
         }
     };
 
-    const handleEditGift = (gift: GiftType) => {
+    const handleEditGift = (gift: Gift) => {
         setEditingGift(gift);
         setEditCategory(gift.category || "");
         setShowEditGift(true);
+    };
+
+    // Form Handlers
+    const handleConfigSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!config) return;
+        const formData = new FormData(e.currentTarget);
+        updateConfig({
+            id: config.id,
+            updates: {
+                date: formData.get("date") as string,
+                location: formData.get("location") as string
+            }
+        });
+    };
+
+    const handleAddGiftSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        addGift({
+            item_name: formData.get("item_name") as string,
+            category: formData.get("category") as string,
+            suggested_store: formData.get("suggested_store") as string,
+            price_range: formData.get("price_range") as string,
+            link: formData.get("link") as string,
+            image_url: formData.get("image_url") as string
+        }, {
+            onSuccess: () => setShowAddGift(false)
+        });
+    };
+
+    const handleUpdateGiftSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!editingGift) return;
+        const formData = new FormData(e.currentTarget);
+        updateGift({
+            id: editingGift.id,
+            item_name: formData.get("item_name") as string,
+            category: editCategory, // Use state for select
+            suggested_store: formData.get("suggested_store") as string,
+            price_range: formData.get("price_range") as string,
+            link: formData.get("link") as string,
+            image_url: formData.get("image_url") as string
+        }, {
+            onSuccess: () => setShowEditGift(false)
+        });
+    };
+
+    const handleBulkCategorySubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (selectedGifts.length === 0 || !bulkCategory) return;
+        bulkUpdateCategory({ ids: selectedGifts, category: bulkCategory }, {
+            onSuccess: () => {
+                setShowBulkCategory(false);
+                setSelectedGifts([]);
+            }
+        });
+    };
+
+    const handleAddGuestSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        addGuest({
+            name: formData.get("name") as string,
+            phone: formData.get("phone") as string
+        }, {
+            onSuccess: () => setShowAddGuest(false)
+        });
+    };
+
+    const handleImportGiftsSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importGiftsText) return;
+        importGifts(importGiftsText, {
+            onSuccess: () => {
+                setShowImport(false);
+                setImportGiftsText("");
+            }
+        });
+    };
+
+    const handleImportGuestsSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importGuestsText) return;
+        importGuests(importGuestsText, {
+            onSuccess: () => {
+                setShowImportGuests(false);
+                setImportGuestsText("");
+            }
+        });
     };
 
     return (
@@ -299,7 +247,7 @@ export default function BridalShower() {
             {/* Configuração Rápida */}
             <Card className="bg-stone-50 border-stone-200">
                 <CardContent className="p-4">
-                    <Form method="post" className="space-y-3">
+                    <form onSubmit={handleConfigSubmit} className="space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
@@ -324,10 +272,10 @@ export default function BridalShower() {
                                 />
                             </div>
                         </div>
-                        <Button type="submit" name="intent" value="update_config" size="sm" variant="outline" className="w-full mt-2">
-                            Salvar Detalhes
+                        <Button type="submit" size="sm" variant="outline" className="w-full mt-2" disabled={isUpdatingConfig}>
+                            {isUpdatingConfig ? "Salvando..." : "Salvar Detalhes"}
                         </Button>
-                    </Form>
+                    </form>
                 </CardContent>
             </Card>
 
@@ -405,23 +353,22 @@ export default function BridalShower() {
                                                         <Edit className="mr-2 h-4 w-4" /> Editar
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <Form method="post">
-                                                        <input type="hidden" name="id" value={gift.id} />
-                                                        <input type="hidden" name="currentStatus" value={gift.status} />
-                                                        <button type="submit" name="intent" value="toggle_gift_status" className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer">
-                                                            {gift.status === 'comprado' ? (
-                                                                <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
-                                                            ) : (
-                                                                <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
-                                                            )}
-                                                        </button>
-                                                    </Form>
-                                                    <Form method="post">
-                                                        <input type="hidden" name="id" value={gift.id} />
-                                                        <button type="submit" name="intent" value="delete_gift" className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer">
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                                                        </button>
-                                                    </Form>
+                                                    <button
+                                                        onClick={() => toggleGiftStatus({ id: gift.id, currentStatus: gift.status })}
+                                                        className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                                    >
+                                                        {gift.status === 'comprado' ? (
+                                                            <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
+                                                        ) : (
+                                                            <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteGift(gift.id)}
+                                                        className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer"
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                    </button>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -480,26 +427,22 @@ export default function BridalShower() {
                                         {guest.phone && <p className="text-xs text-muted-foreground">{guest.phone}</p>}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <Form method="post">
-                                            <input type="hidden" name="id" value={guest.id} />
-                                            <input type="hidden" name="current" value={String(guest.confirmed)} />
-                                            <Button
-                                                type="submit"
-                                                name="intent"
-                                                value="toggle_guest_confirm"
-                                                variant={guest.confirmed ? "default" : "outline"}
-                                                size="sm"
-                                                className={`h-8 px-2 text-xs ${guest.confirmed ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                                            >
-                                                {guest.confirmed ? "Confirmado" : "Confirmar"}
-                                            </Button>
-                                        </Form>
-                                        <Form method="post">
-                                            <input type="hidden" name="id" value={guest.id} />
-                                            <Button type="submit" name="intent" value="delete_guest" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </Form>
+                                        <Button
+                                            onClick={() => toggleGuestConfirm({ id: guest.id, current: guest.confirmed })}
+                                            variant={guest.confirmed ? "default" : "outline"}
+                                            size="sm"
+                                            className={`h-8 px-2 text-xs ${guest.confirmed ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                                        >
+                                            {guest.confirmed ? "Confirmado" : "Confirmar"}
+                                        </Button>
+                                        <Button
+                                            onClick={() => deleteGuest(guest.id)}
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
                             ))
@@ -536,7 +479,7 @@ export default function BridalShower() {
                             Adicione um novo item à sua lista de presentes.
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGift(false)}>
+                    <form onSubmit={handleAddGiftSubmit} className="space-y-3">
                         <Input name="item_name" placeholder="Nome do Item (ex: Liquidificador)" required />
 
                         <Select name="category">
@@ -559,11 +502,9 @@ export default function BridalShower() {
 
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddGift(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="add_gift">
-                                Adicionar
-                            </Button>
+                            <Button type="submit">Adicionar</Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -574,11 +515,9 @@ export default function BridalShower() {
                         <DialogTitle>Editar Presente</DialogTitle>
                     </DialogHeader>
                     {editingGift && (
-                        <Form method="post" className="space-y-3" onSubmit={() => setShowEditGift(false)}>
-                            <input type="hidden" name="id" value={editingGift.id} />
+                        <form onSubmit={handleUpdateGiftSubmit} className="space-y-3">
                             <Input name="item_name" defaultValue={editingGift.item_name} placeholder="Nome do Item" required />
 
-                            <input type="hidden" name="category" value={editCategory} />
                             <Select value={editCategory} onValueChange={setEditCategory}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Categoria" />
@@ -599,11 +538,9 @@ export default function BridalShower() {
 
                             <DialogFooter>
                                 <Button type="button" variant="ghost" onClick={() => setShowEditGift(false)}>Cancelar</Button>
-                                <Button type="submit" name="intent" value="update_gift">
-                                    Salvar Alterações
-                                </Button>
+                                <Button type="submit">Salvar Alterações</Button>
                             </DialogFooter>
-                        </Form>
+                        </form>
                     )}
                 </DialogContent>
             </Dialog>
@@ -617,10 +554,8 @@ export default function BridalShower() {
                             Selecione a nova categoria para os {selectedGifts.length} itens selecionados.
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" onSubmit={() => { setShowBulkCategory(false); setSelectedGifts([]); }}>
-                        <input type="hidden" name="ids" value={selectedGifts.join(",")} />
+                    <form onSubmit={handleBulkCategorySubmit}>
                         <div className="py-4">
-                            <input type="hidden" name="category" value={bulkCategory} />
                             <Select value={bulkCategory} onValueChange={setBulkCategory} required>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione a Categoria" />
@@ -634,11 +569,9 @@ export default function BridalShower() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowBulkCategory(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="bulk_update_category">
-                                Atualizar
-                            </Button>
+                            <Button type="submit">Atualizar</Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -651,16 +584,14 @@ export default function BridalShower() {
                             Adicione um novo convidado à sua lista.
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGuest(false)}>
+                    <form onSubmit={handleAddGuestSubmit} className="space-y-3">
                         <Input name="name" placeholder="Nome" required />
                         <Input name="phone" placeholder="Telefone (Opcional)" />
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="add_guest">
-                                Adicionar
-                            </Button>
+                            <Button type="submit">Adicionar</Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -674,10 +605,11 @@ export default function BridalShower() {
                             Formato: <code>Nome | Loja | Preço</code>
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" onSubmit={() => setShowImport(false)}>
+                    <form onSubmit={handleImportGiftsSubmit}>
                         <div className="py-4">
                             <textarea
-                                name="import_text"
+                                value={importGiftsText}
+                                onChange={(e) => setImportGiftsText(e.target.value)}
                                 className="w-full h-48 p-3 text-sm border rounded-md font-mono"
                                 placeholder="Exemplo:&#10;Liquidificador | Magalu | 150&#10;Jogo de Panelas | Tramontina&#10;Toalha de Banho"
                                 required
@@ -685,9 +617,11 @@ export default function BridalShower() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="import_gifts">Importar Lista</Button>
+                            <Button type="submit" disabled={isImportingGifts}>
+                                {isImportingGifts ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                            </Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -701,10 +635,11 @@ export default function BridalShower() {
                             Opcional: <code>Nome | Telefone</code>
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" onSubmit={() => setShowImportGuests(false)}>
+                    <form onSubmit={handleImportGuestsSubmit}>
                         <div className="py-4">
                             <textarea
-                                name="import_text"
+                                value={importGuestsText}
+                                onChange={(e) => setImportGuestsText(e.target.value)}
                                 className="w-full h-48 p-3 text-sm border rounded-md font-mono"
                                 placeholder="Exemplo:&#10;João Silva&#10;Maria Souza | 11999999999&#10;Pedro"
                                 required
@@ -712,9 +647,11 @@ export default function BridalShower() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="import_guests">Importar Lista</Button>
+                            <Button type="submit" disabled={isImportingGuests}>
+                                {isImportingGuests ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                            </Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>

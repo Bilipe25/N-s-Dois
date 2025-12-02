@@ -6,7 +6,7 @@ import { useState } from "react";
 interface PixModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    pixKey?: string;
+    pixKey?: string | null;
 }
 
 export function PixModal({ open, onOpenChange, pixKey }: PixModalProps) {
