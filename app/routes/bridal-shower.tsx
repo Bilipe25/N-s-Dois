@@ -218,6 +218,8 @@ export default function BridalShower() {
     const [guestSearch, setGuestSearch] = useState("");
     const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
     const [showBulkCategory, setShowBulkCategory] = useState(false);
+    const [bulkCategory, setBulkCategory] = useState<string>("");
+    const [editCategory, setEditCategory] = useState<string>("");
 
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
@@ -247,6 +249,7 @@ export default function BridalShower() {
 
     const handleEditGift = (gift: GiftType) => {
         setEditingGift(gift);
+        setEditCategory(gift.category || "");
         setShowEditGift(true);
     };
 
@@ -575,7 +578,8 @@ export default function BridalShower() {
                             <input type="hidden" name="id" value={editingGift.id} />
                             <Input name="item_name" defaultValue={editingGift.item_name} placeholder="Nome do Item" required />
 
-                            <Select name="category" defaultValue={editingGift.category || ""}>
+                            <input type="hidden" name="category" value={editCategory} />
+                            <Select value={editCategory} onValueChange={setEditCategory}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Categoria" />
                                 </SelectTrigger>
@@ -616,7 +620,8 @@ export default function BridalShower() {
                     <Form method="post" onSubmit={() => { setShowBulkCategory(false); setSelectedGifts([]); }}>
                         <input type="hidden" name="ids" value={selectedGifts.join(",")} />
                         <div className="py-4">
-                            <Select name="category" required>
+                            <input type="hidden" name="category" value={bulkCategory} />
+                            <Select value={bulkCategory} onValueChange={setBulkCategory} required>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione a Categoria" />
                                 </SelectTrigger>
