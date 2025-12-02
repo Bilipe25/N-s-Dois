@@ -1,19 +1,22 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
-import { useLoaderData, Form, useActionData } from "react-router";
+import { useLoaderData, Form } from "react-router";
 import { createClient } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X } from "lucide-react";
+import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Route } from "./+types/bridal-shower";
+import { StatsDashboard } from "@/components/bridal-shower/stats-dashboard";
+import { GiftFilter } from "@/components/bridal-shower/gift-filter";
+import { GIFT_CATEGORIES, type Gift as GiftType, type Guest } from "@/components/bridal-shower/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const meta: Route.MetaFunction = () => {
-    return [{ title: "Chá de Casa Nova - Nós Dois" }];
+    return [{ title: "Chá de Casa Nova - Admin" }];
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
@@ -26,8 +29,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     ]);
 
     return {
-        guests: guestsResult.data || [],
-        gifts: giftsResult.data || [],
+        guests: (guestsResult.data || []) as Guest[],
+        gifts: (giftsResult.data || []) as GiftType[],
         config: configResult.data
     };
 };
@@ -41,7 +44,6 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const date = formData.get("date") as string;
         const location = formData.get("location") as string;
 
-        // Precisamos garantir que existe um ID na app_config, pegamos o primeiro
         const { data: config } = await supabase.from("app_config").select("id").single();
         if (config) {
             await supabase.from("app_config").update({
@@ -67,13 +69,17 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const suggested_store = formData.get("suggested_store") as string;
         const link = formData.get("link") as string;
         const price_range = formData.get("price_range") as string;
+        const category = formData.get("category") as string;
+        const image_url = formData.get("image_url") as string;
 
         if (item_name) {
             await supabase.from("bridal_shower_gifts").insert({
                 item_name,
-                suggested_store,
-                link,
-                price_range
+                suggested_store: suggested_store || null,
+                link: link || null,
+                price_range: price_range || null,
+                category: category || null,
+                image_url: image_url || null
             });
         }
     } else if (intent === "delete_gift") {
@@ -94,15 +100,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 const trimmedLine = line.trim();
                 if (!trimmedLine) continue;
 
-                // Tenta dividir por | ou - ou ;
-                // Prioridade: | > ; > - (hífen é perigoso pois pode estar no nome)
                 let parts = [];
                 if (trimmedLine.includes('|')) {
                     parts = trimmedLine.split('|');
                 } else if (trimmedLine.includes(';')) {
                     parts = trimmedLine.split(';');
                 } else {
-                    // Se não tiver separador claro, assume que é tudo nome
                     parts = [trimmedLine];
                 }
 
@@ -134,14 +137,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 const trimmedLine = line.trim();
                 if (!trimmedLine) continue;
 
-                // Tenta dividir por | ou ;
                 let parts = [];
                 if (trimmedLine.includes('|')) {
                     parts = trimmedLine.split('|');
                 } else if (trimmedLine.includes(';')) {
                     parts = trimmedLine.split(';');
                 } else {
-                    // Se não tiver separador claro, assume que é tudo nome
                     parts = [trimmedLine];
                 }
 
@@ -152,7 +153,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
                     guestsToInsert.push({
                         name,
                         phone,
-                        confirmed: false // Default to not confirmed
+                        confirmed: false
                     });
                 }
             }
@@ -169,22 +170,19 @@ export const action = async ({ request }: Route.ActionArgs) => {
 export default function BridalShower() {
     const { guests, gifts, config } = useLoaderData<typeof loader>();
 
-    // Formatar data para input
     const defaultDate = config?.bridal_shower_date
         ? new Date(config.bridal_shower_date).toISOString().slice(0, 16)
         : "";
 
-    const confirmedCount = guests.filter((g: any) => g.confirmed).length;
-    const boughtGiftsCount = gifts.filter((g: any) => g.status === 'comprado').length;
-
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
-
-    // Novos estados para convidados e busca
     const [showAddGuest, setShowAddGuest] = useState(false);
     const [showImportGuests, setShowImportGuests] = useState(false);
+
+    // Filters
     const [giftSearch, setGiftSearch] = useState("");
+    const [giftCategory, setGiftCategory] = useState<string | null>(null);
     const [guestSearch, setGuestSearch] = useState("");
 
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
@@ -194,52 +192,49 @@ export default function BridalShower() {
         alert("Link copiado!");
     };
 
-    // Filtragem
-    const filteredGifts = gifts.filter((g: any) =>
-        g.item_name.toLowerCase().includes(giftSearch.toLowerCase()) ||
-        (g.suggested_store && g.suggested_store.toLowerCase().includes(giftSearch.toLowerCase()))
-    );
+    const filteredGifts = gifts.filter((g) => {
+        const matchesSearch = g.item_name.toLowerCase().includes(giftSearch.toLowerCase()) ||
+            (g.suggested_store && g.suggested_store.toLowerCase().includes(giftSearch.toLowerCase()));
+        const matchesCategory = giftCategory ? g.category === giftCategory : true;
+        return matchesSearch && matchesCategory;
+    });
 
-    const filteredGuests = guests.filter((g: any) =>
+    const filteredGuests = guests.filter((g) =>
         g.name.toLowerCase().includes(guestSearch.toLowerCase())
     );
 
     return (
-        <div className="space-y-6 relative min-h-screen pb-24"> {/* Aumentei o padding bottom */}
-
+        <div className="space-y-6 relative min-h-screen pb-24">
+            <StatsDashboard gifts={gifts} guests={guests} />
 
             {/* Compartilhamento */}
-            <Card className="bg-gradient-to-r from-rose-50 to-white border-rose-100">
+            <Card className="bg-white border-stone-200 shadow-sm">
                 <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="bg-white p-2 rounded-full shadow-sm text-rose-500">
-                            <Gift className="h-6 w-6" />
+                        <div className="bg-rose-50 p-2 rounded-full text-rose-500">
+                            <LinkIcon className="h-5 w-5" />
                         </div>
                         <div>
-                            <h3 className="font-medium text-rose-900">Lista de Presentes Pública</h3>
-                            <p className="text-sm text-rose-600">Compartilhe este link com seus convidados</p>
+                            <h3 className="font-medium text-stone-900">Link Público</h3>
+                            <p className="text-xs text-stone-500">Para enviar aos convidados</p>
                         </div>
                     </div>
                     <div className="flex gap-2 w-full sm:w-auto">
-                        <Button variant="outline" size="sm" onClick={copyToClipboard} className="flex-1 sm:flex-none bg-white hover:bg-rose-50 border-rose-200 text-rose-700">
-                            <LinkIcon className="h-4 w-4 mr-2" /> Copiar Link
+                        <Button variant="outline" size="sm" onClick={copyToClipboard} className="flex-1 sm:flex-none">
+                            Copiar
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 sm:flex-none bg-white hover:bg-rose-50 border-rose-200 text-rose-700">
-                            <ExternalLink className="h-4 w-4 mr-2" /> QR Code
+                        <Button variant="outline" size="sm" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 sm:flex-none">
+                            QR Code
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
             {showQrCode && (
-                <Card className="bg-white p-6 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300 border-2 border-rose-100 shadow-lg max-w-sm mx-auto relative">
+                <Card className="bg-white p-6 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300 border-2 border-rose-100 shadow-lg max-w-sm mx-auto relative z-50">
                     <Button variant="ghost" size="icon" className="absolute right-2 top-2" onClick={() => setShowQrCode(false)}>
                         <X className="h-4 w-4" />
                     </Button>
-                    <div className="text-center space-y-1">
-                        <h3 className="font-serif text-xl text-primary">Escaneie para acessar</h3>
-                        <p className="text-sm text-muted-foreground">Aponte a câmera do celular</p>
-                    </div>
                     <div className="bg-white p-2 rounded-xl border shadow-sm">
                         <QRCode
                             value={publicUrl}
@@ -248,40 +243,39 @@ export default function BridalShower() {
                             style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                         />
                     </div>
-                    <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-                        Este QR Code leva diretamente para a sua lista de presentes pública.
-                    </p>
                 </Card>
             )}
 
-            {/* Resumo / Configuração Rápida */}
-            <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="p-4 space-y-4">
+            {/* Configuração Rápida */}
+            <Card className="bg-stone-50 border-stone-200">
+                <CardContent className="p-4">
                     <Form method="post" className="space-y-3">
-                        <div className="flex items-center gap-2 text-primary font-medium">
-                            <Calendar className="h-4 w-4" />
-                            <span className="text-sm">Data e Hora</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
+                                    <Calendar className="h-3 w-3" /> Data e Hora
+                                </div>
+                                <Input
+                                    type="datetime-local"
+                                    name="date"
+                                    defaultValue={defaultDate}
+                                    className="bg-white h-9 text-sm"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
+                                    <MapPin className="h-3 w-3" /> Local
+                                </div>
+                                <Input
+                                    name="location"
+                                    defaultValue={config?.bridal_shower_location || ""}
+                                    placeholder="Ex: Salão de Festas..."
+                                    className="bg-white h-9 text-sm"
+                                />
+                            </div>
                         </div>
-                        <Input
-                            type="datetime-local"
-                            name="date"
-                            defaultValue={defaultDate}
-                            className="bg-background h-9 text-sm"
-                        />
-
-                        <div className="flex items-center gap-2 text-primary font-medium mt-2">
-                            <MapPin className="h-4 w-4" />
-                            <span className="text-sm">Local</span>
-                        </div>
-                        <Input
-                            name="location"
-                            defaultValue={config?.bridal_shower_location || ""}
-                            placeholder="Ex: Salão de Festas..."
-                            className="bg-background h-9 text-sm"
-                        />
-
-                        <Button type="submit" name="intent" value="update_config" size="sm" variant="outline" className="w-full">
-                            Salvar Detalhes do Evento
+                        <Button type="submit" name="intent" value="update_config" size="sm" variant="outline" className="w-full mt-2">
+                            Salvar Detalhes
                         </Button>
                     </Form>
                 </CardContent>
@@ -289,12 +283,8 @@ export default function BridalShower() {
 
             <Tabs defaultValue="guests" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="guests" className="flex gap-2">
-                        <Users className="h-4 w-4" /> Convidados ({confirmedCount}/{guests.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="gifts" className="flex gap-2">
-                        <Gift className="h-4 w-4" /> Presentes ({boughtGiftsCount}/{gifts.length})
-                    </TabsTrigger>
+                    <TabsTrigger value="guests">Convidados</TabsTrigger>
+                    <TabsTrigger value="gifts">Presentes</TabsTrigger>
                 </TabsList>
 
                 {/* Aba de Convidados */}
@@ -314,8 +304,8 @@ export default function BridalShower() {
                                 {guests.length === 0 ? "Nenhum convidado ainda." : "Nenhum convidado encontrado."}
                             </p>
                         ) : (
-                            filteredGuests.map((guest: any) => (
-                                <div key={guest.id} className="flex justify-between items-center p-3 bg-card border rounded-lg shadow-sm">
+                            filteredGuests.map((guest) => (
+                                <div key={guest.id} className="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm">
                                     <div>
                                         <p className="font-medium text-sm">{guest.name}</p>
                                         {guest.phone && <p className="text-xs text-muted-foreground">{guest.phone}</p>}
@@ -347,7 +337,6 @@ export default function BridalShower() {
                         )}
                     </div>
 
-                    {/* FABs para Convidados */}
                     <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
                         <Button
                             onClick={() => setShowImportGuests(true)}
@@ -356,12 +345,12 @@ export default function BridalShower() {
                             className="h-10 w-10 rounded-full shadow-md"
                             title="Importar Convidados"
                         >
-                            <LinkIcon className="h-5 w-5" /> {/* Reusing LinkIcon as generic import/list icon since Lucide might not have 'Import' loaded */}
+                            <Upload className="h-5 w-5" />
                         </Button>
                         <Button
                             onClick={() => setShowAddGuest(true)}
                             size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
                         >
                             <Plus className="h-6 w-6" />
                         </Button>
@@ -370,14 +359,12 @@ export default function BridalShower() {
 
                 {/* Aba de Presentes */}
                 <TabsContent value="gifts" className="space-y-4 mt-4">
-                    <div className="flex gap-2 mb-4">
-                        <Input
-                            placeholder="Buscar presente..."
-                            value={giftSearch}
-                            onChange={(e) => setGiftSearch(e.target.value)}
-                            className="bg-white"
-                        />
-                    </div>
+                    <GiftFilter
+                        searchTerm={giftSearch}
+                        onSearchChange={setGiftSearch}
+                        selectedCategory={giftCategory}
+                        onCategorySelect={setGiftCategory}
+                    />
 
                     <div className="space-y-3">
                         {filteredGifts.length === 0 ? (
@@ -385,15 +372,16 @@ export default function BridalShower() {
                                 {gifts.length === 0 ? "Lista vazia." : "Nenhum presente encontrado."}
                             </p>
                         ) : (
-                            filteredGifts.map((gift: any) => (
-                                <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-card shadow-sm'}`}>
+                            filteredGifts.map((gift) => (
+                                <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm'}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className={`font-medium ${gift.status === 'comprado' ? 'text-green-800' : ''}`}>
                                                 {gift.item_name}
                                             </p>
                                             <div className="flex flex-wrap gap-2 mt-1">
-                                                {gift.suggested_store && <Badge variant="secondary" className="text-[10px]">{gift.suggested_store}</Badge>}
+                                                {gift.category && <Badge variant="secondary" className="text-[10px]">{gift.category}</Badge>}
+                                                {gift.suggested_store && <Badge variant="outline" className="text-[10px]">{gift.suggested_store}</Badge>}
                                                 {gift.price_range && <Badge variant="outline" className="text-[10px]">{gift.price_range}</Badge>}
                                             </div>
                                             {gift.reserved_by && (
@@ -418,15 +406,9 @@ export default function BridalShower() {
                                             </Form>
                                         </div>
                                     </div>
-
                                     {gift.link && (
-                                        <a
-                                            href={gift.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
-                                        >
-                                            <LinkIcon className="h-3 w-3" /> Ver na loja <ExternalLink className="h-3 w-3" />
+                                        <a href={gift.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
+                                            <ExternalLink className="h-3 w-3" /> Link
                                         </a>
                                     )}
                                 </div>
@@ -434,7 +416,6 @@ export default function BridalShower() {
                         )}
                     </div>
 
-                    {/* FABs para Presentes */}
                     <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
                         <Button
                             onClick={() => setShowImport(true)}
@@ -443,12 +424,12 @@ export default function BridalShower() {
                             className="h-10 w-10 rounded-full shadow-md"
                             title="Importar Presentes"
                         >
-                            <LinkIcon className="h-5 w-5" />
+                            <Upload className="h-5 w-5" />
                         </Button>
                         <Button
                             onClick={() => setShowAddGift(true)}
                             size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
                         >
                             <Plus className="h-6 w-6" />
                         </Button>
@@ -467,11 +448,25 @@ export default function BridalShower() {
                     </DialogHeader>
                     <Form method="post" className="space-y-3" onSubmit={() => setShowAddGift(false)}>
                         <Input name="item_name" placeholder="Nome do Item (ex: Liquidificador)" required />
+
+                        <Select name="category">
+                            <SelectTrigger>
+                                <SelectValue placeholder="Categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {GIFT_CATEGORIES.map(cat => (
+                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
                         <div className="grid grid-cols-2 gap-2">
                             <Input name="suggested_store" placeholder="Loja (Opcional)" />
                             <Input name="price_range" placeholder="Preço (ex: R$ 100)" />
                         </div>
                         <Input name="link" placeholder="Link do Produto (http://...)" />
+                        <Input name="image_url" placeholder="URL da Imagem (Opcional)" />
+
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddGift(false)}>Cancelar</Button>
                             <Button type="submit" name="intent" value="add_gift">
