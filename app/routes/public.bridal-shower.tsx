@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { MapPin, Calendar, Check, Heart, Loader2, PartyPopper, QrCode, Search } from "lucide-react";
+import { MapPin, Calendar, Check, Heart, Loader2, PartyPopper, QrCode, Search, Share2 } from "lucide-react";
 import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
@@ -12,7 +12,22 @@ import { PixModal } from "@/components/bridal-shower/pix-modal";
 import type { Gift as GiftType } from "@/components/bridal-shower/types";
 
 export const meta: Route.MetaFunction = () => {
-    return [{ title: "Chá de Casa Nova - Gabriel & Raabe" }];
+    const title = "Chá de Casa Nova - Gabriel & Raabe";
+    const description = "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️";
+    const image = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop";
+
+    return [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: image },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: image },
+    ];
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
@@ -115,16 +130,18 @@ export default function PublicBridalShower() {
     return (
         <div className="min-h-screen bg-stone-50 font-sans pb-20">
             {/* Hero Section */}
-            <header className="relative bg-white border-b border-stone-100 overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-5" />
-                <div className="relative max-w-3xl mx-auto px-6 py-12 text-center space-y-4">
-                    <div className="inline-block px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-bold tracking-widest uppercase mb-2">
+            <header className="relative bg-stone-900 border-b border-stone-100 overflow-hidden min-h-[50vh] flex items-center justify-center">
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40" />
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/60 to-transparent" />
+
+                <div className="relative max-w-3xl mx-auto px-6 py-12 text-center space-y-6 z-10">
+                    <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold tracking-[0.2em] uppercase mb-2 shadow-sm">
                         Chá de Casa Nova
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-serif text-stone-900 tracking-tight">
-                        Gabriel <span className="text-rose-400">&</span> Raabe
+                    <h1 className="text-5xl md:text-7xl font-serif text-white tracking-tight drop-shadow-lg">
+                        Gabriel <span className="text-rose-300 font-light">&</span> Raabe
                     </h1>
-                    <p className="text-stone-500 max-w-md mx-auto leading-relaxed">
+                    <p className="text-stone-200 max-w-lg mx-auto leading-relaxed text-lg font-light">
                         Estamos montando nosso lar com muito amor e carinho. Fique à vontade para escolher um presente ou contribuir como preferir! ❤️
                     </p>
 
@@ -145,12 +162,30 @@ export default function PublicBridalShower() {
                         </div>
                     )}
 
-                    <div className="pt-4">
+                    <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Button
                             onClick={() => setShowPixModal(true)}
-                            className="bg-stone-900 hover:bg-stone-800 text-white rounded-full px-8 h-12 shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+                            className="bg-rose-500 hover:bg-rose-600 text-white rounded-full px-8 h-12 shadow-lg hover:shadow-rose-500/25 transition-all hover:-translate-y-0.5 w-full sm:w-auto font-medium"
                         >
                             <QrCode className="mr-2 h-4 w-4" /> Presentear com Pix
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                if (navigator.share) {
+                                    navigator.share({
+                                        title: "Chá de Casa Nova - Gabriel & Raabe",
+                                        text: "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️",
+                                        url: window.location.href,
+                                    });
+                                } else {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    alert("Link copiado!");
+                                }
+                            }}
+                            className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full px-6 h-12 w-full sm:w-auto"
+                        >
+                            <Share2 className="mr-2 h-4 w-4" /> Compartilhar
                         </Button>
                     </div>
                 </div>
