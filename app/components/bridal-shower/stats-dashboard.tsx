@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Progress } from "../ui/progress";
 import { Gift, Users, CheckCircle2, ShoppingBag } from "lucide-react";
 import type { Gift as GiftType, Guest } from "./types";
 
