@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Supplier, SUPPLIER_STATUSES, SUPPLIER_CATEGORIES } from "./types";
+import { type Supplier, SUPPLIER_STATUSES, SUPPLIER_CATEGORIES } from "./types";
 
 interface SupplierCardProps {
     supplier: Supplier;
+    onClick?: (supplier: Supplier) => void;
 }
 
-export function SupplierCard({ supplier }: SupplierCardProps) {
+export function SupplierCard({ supplier, onClick }: SupplierCardProps) {
     const fetcher = useFetcher();
     const statusConfig = SUPPLIER_STATUSES[supplier.status] || SUPPLIER_STATUSES.pesquisando;
     const categoryIcon = SUPPLIER_CATEGORIES.find(c => c.name === supplier.category)?.icon || "✨";
@@ -26,7 +27,10 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
     const whatsappLink = getWhatsAppLink(supplier.contact_info);
 
     return (
-        <Card className="overflow-hidden border-l-4 border-l-transparent hover:border-l-stone-900 transition-all hover:scale-[1.01] duration-300 hover:shadow-md group">
+        <Card
+            className="overflow-hidden border-l-4 border-l-transparent hover:border-l-stone-900 transition-all hover:scale-[1.01] duration-300 hover:shadow-md group cursor-pointer"
+            onClick={() => onClick?.(supplier)}
+        >
             {supplier.photo_url && (
                 <div className="h-32 w-full overflow-hidden relative">
                     <img src={supplier.photo_url} alt={supplier.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -52,7 +56,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
                         <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">{supplier.category}</span>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Badge variant="outline" className={`capitalize font-normal ${statusConfig.color}`}>
                             {statusConfig.label}
                         </Badge>
@@ -108,7 +112,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
 
                 {/* Contact & WhatsApp */}
                 {supplier.contact_info && (
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center text-stone-600 truncate max-w-[70%]">
                             <Phone className="h-3.5 w-3.5 mr-2 text-stone-400" />
                             <span className="truncate">{supplier.contact_info}</span>
@@ -146,7 +150,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
 
                 {/* Contract Button */}
                 {supplier.contract_url && (
-                    <div className="pt-1">
+                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                         <Button variant="outline" size="sm" className="w-full h-8 text-xs border-stone-200 text-stone-600" asChild>
                             <a href={supplier.contract_url} target="_blank" rel="noopener noreferrer">
                                 <FileText className="h-3 w-3 mr-2" /> Ver Contrato
