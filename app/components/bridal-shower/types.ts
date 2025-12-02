@@ -1,15 +1,15 @@
 export interface Gift {
     id: string;
-    created_at?: string;
+    created_at: string;
     item_name: string;
-    suggested_store?: string | null;
-    price_range?: string | null;
-    link?: string | null;
+    suggested_store: string | null;
+    price_range: string | null;
+    link: string | null;
     status: 'disponivel' | 'comprado';
-    reserved_by?: string | null;
-    reserved_at?: string | null;
-    category?: string | null;
-    image_url?: string | null;
+    reserved_by: string | null;
+    reserved_at: string | null;
+    category: string | null;
+    image_url: string | null;
 }
 
 export interface Guest {
