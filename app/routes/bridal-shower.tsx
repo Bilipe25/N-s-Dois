@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Gift, Users, Check, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload } from "lucide-react";
+import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Route } from "./+types/bridal-shower";
 import { StatsDashboard } from "@/components/bridal-shower/stats-dashboard";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
@@ -82,6 +84,25 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 image_url: image_url || null
             });
         }
+    } else if (intent === "update_gift") {
+        const id = formData.get("id") as string;
+        const item_name = formData.get("item_name") as string;
+        const suggested_store = formData.get("suggested_store") as string;
+        const link = formData.get("link") as string;
+        const price_range = formData.get("price_range") as string;
+        const category = formData.get("category") as string;
+        const image_url = formData.get("image_url") as string;
+
+        if (id && item_name) {
+            await supabase.from("bridal_shower_gifts").update({
+                item_name,
+                suggested_store: suggested_store || null,
+                link: link || null,
+                price_range: price_range || null,
+                category: category || null,
+                image_url: image_url || null
+            }).eq("id", id);
+        }
     } else if (intent === "delete_gift") {
         const id = formData.get("id") as string;
         await supabase.from("bridal_shower_gifts").delete().eq("id", id);
@@ -90,6 +111,15 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const currentStatus = formData.get("currentStatus") as string;
         const newStatus = currentStatus === 'comprado' ? 'disponivel' : 'comprado';
         await supabase.from("bridal_shower_gifts").update({ status: newStatus }).eq("id", id);
+    } else if (intent === "bulk_update_category") {
+        const ids = formData.get("ids")?.toString().split(",") || [];
+        const category = formData.get("category") as string;
+
+        if (ids.length > 0 && category) {
+            await supabase.from("bridal_shower_gifts")
+                .update({ category })
+                .in("id", ids);
+        }
     } else if (intent === "import_gifts") {
         const importText = formData.get("import_text") as string;
         if (importText) {
@@ -177,13 +207,17 @@ export default function BridalShower() {
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
+    const [showEditGift, setShowEditGift] = useState(false);
+    const [editingGift, setEditingGift] = useState<GiftType | null>(null);
     const [showAddGuest, setShowAddGuest] = useState(false);
     const [showImportGuests, setShowImportGuests] = useState(false);
 
-    // Filters
+    // Filters & Selection
     const [giftSearch, setGiftSearch] = useState("");
     const [giftCategory, setGiftCategory] = useState<string | null>(null);
     const [guestSearch, setGuestSearch] = useState("");
+    const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
+    const [showBulkCategory, setShowBulkCategory] = useState(false);
 
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
 
@@ -202,6 +236,19 @@ export default function BridalShower() {
     const filteredGuests = guests.filter((g) =>
         g.name.toLowerCase().includes(guestSearch.toLowerCase())
     );
+
+    const handleSelectGift = (id: string, checked: boolean) => {
+        if (checked) {
+            setSelectedGifts(prev => [...prev, id]);
+        } else {
+            setSelectedGifts(prev => prev.filter(gId => gId !== id));
+        }
+    };
+
+    const handleEditGift = (gift: GiftType) => {
+        setEditingGift(gift);
+        setShowEditGift(true);
+    };
 
     return (
         <div className="space-y-6 relative min-h-screen pb-24">
@@ -281,11 +328,130 @@ export default function BridalShower() {
                 </CardContent>
             </Card>
 
-            <Tabs defaultValue="guests" className="w-full">
+            <Tabs defaultValue="gifts" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="guests">Convidados</TabsTrigger>
                     <TabsTrigger value="gifts">Presentes</TabsTrigger>
+                    <TabsTrigger value="guests">Convidados</TabsTrigger>
                 </TabsList>
+
+                {/* Aba de Presentes */}
+                <TabsContent value="gifts" className="space-y-4 mt-4">
+                    <GiftFilter
+                        searchTerm={giftSearch}
+                        onSearchChange={setGiftSearch}
+                        selectedCategory={giftCategory}
+                        onCategorySelect={setGiftCategory}
+                    />
+
+                    {/* Bulk Actions Bar */}
+                    {selectedGifts.length > 0 && (
+                        <div className="sticky top-14 z-30 bg-stone-900 text-white p-3 rounded-lg shadow-lg flex items-center justify-between animate-in slide-in-from-bottom-2">
+                            <span className="text-sm font-medium pl-2">{selectedGifts.length} selecionados</span>
+                            <div className="flex gap-2">
+                                <Button size="sm" variant="secondary" onClick={() => setShowBulkCategory(true)}>
+                                    Editar Categoria
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-stone-300 hover:text-white" onClick={() => setSelectedGifts([])}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-3">
+                        {filteredGifts.length === 0 ? (
+                            <p className="text-center text-sm text-muted-foreground py-8">
+                                {gifts.length === 0 ? "Lista vazia." : "Nenhum presente encontrado."}
+                            </p>
+                        ) : (
+                            filteredGifts.map((gift) => (
+                                <div key={gift.id} className={`p-3 border rounded-lg flex gap-3 items-start ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm'}`}>
+                                    <div className="pt-1">
+                                        <Checkbox
+                                            checked={selectedGifts.includes(gift.id)}
+                                            onCheckedChange={(checked) => handleSelectGift(gift.id, checked as boolean)}
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className={`font-medium ${gift.status === 'comprado' ? 'text-green-800' : ''}`}>
+                                                    {gift.item_name}
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {gift.category && <Badge variant="secondary" className="text-[10px]">{gift.category}</Badge>}
+                                                    {gift.suggested_store && <Badge variant="outline" className="text-[10px]">{gift.suggested_store}</Badge>}
+                                                    {gift.price_range && <Badge variant="outline" className="text-[10px]">{gift.price_range}</Badge>}
+                                                </div>
+                                                {gift.reserved_by && (
+                                                    <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
+                                                        <Check className="h-3 w-3" /> Reservado por {gift.reserved_by}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={() => handleEditGift(gift)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Editar
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <Form method="post">
+                                                        <input type="hidden" name="id" value={gift.id} />
+                                                        <input type="hidden" name="currentStatus" value={gift.status} />
+                                                        <button type="submit" name="intent" value="toggle_gift_status" className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer">
+                                                            {gift.status === 'comprado' ? (
+                                                                <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
+                                                            ) : (
+                                                                <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
+                                                            )}
+                                                        </button>
+                                                    </Form>
+                                                    <Form method="post">
+                                                        <input type="hidden" name="id" value={gift.id} />
+                                                        <button type="submit" name="intent" value="delete_gift" className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                        </button>
+                                                    </Form>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                        {gift.link && (
+                                            <a href={gift.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
+                                                <ExternalLink className="h-3 w-3" /> Link
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
+                        <Button
+                            onClick={() => setShowImport(true)}
+                            size="icon"
+                            variant="secondary"
+                            className="h-10 w-10 rounded-full shadow-md"
+                            title="Importar Presentes"
+                        >
+                            <Upload className="h-5 w-5" />
+                        </Button>
+                        <Button
+                            onClick={() => setShowAddGift(true)}
+                            size="icon"
+                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
+                        >
+                            <Plus className="h-6 w-6" />
+                        </Button>
+                    </div>
+                </TabsContent>
 
                 {/* Aba de Convidados */}
                 <TabsContent value="guests" className="space-y-4 mt-4">
@@ -356,85 +522,6 @@ export default function BridalShower() {
                         </Button>
                     </div>
                 </TabsContent>
-
-                {/* Aba de Presentes */}
-                <TabsContent value="gifts" className="space-y-4 mt-4">
-                    <GiftFilter
-                        searchTerm={giftSearch}
-                        onSearchChange={setGiftSearch}
-                        selectedCategory={giftCategory}
-                        onCategorySelect={setGiftCategory}
-                    />
-
-                    <div className="space-y-3">
-                        {filteredGifts.length === 0 ? (
-                            <p className="text-center text-sm text-muted-foreground py-8">
-                                {gifts.length === 0 ? "Lista vazia." : "Nenhum presente encontrado."}
-                            </p>
-                        ) : (
-                            filteredGifts.map((gift) => (
-                                <div key={gift.id} className={`p-3 border rounded-lg flex flex-col gap-2 ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm'}`}>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className={`font-medium ${gift.status === 'comprado' ? 'text-green-800' : ''}`}>
-                                                {gift.item_name}
-                                            </p>
-                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                {gift.category && <Badge variant="secondary" className="text-[10px]">{gift.category}</Badge>}
-                                                {gift.suggested_store && <Badge variant="outline" className="text-[10px]">{gift.suggested_store}</Badge>}
-                                                {gift.price_range && <Badge variant="outline" className="text-[10px]">{gift.price_range}</Badge>}
-                                            </div>
-                                            {gift.reserved_by && (
-                                                <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
-                                                    <Check className="h-3 w-3" /> Reservado por {gift.reserved_by}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Form method="post">
-                                                <input type="hidden" name="id" value={gift.id} />
-                                                <input type="hidden" name="currentStatus" value={gift.status} />
-                                                <Button type="submit" name="intent" value="toggle_gift_status" variant="ghost" size="icon" className={`h-8 w-8 ${gift.status === 'comprado' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                                                    <Check className="h-4 w-4" />
-                                                </Button>
-                                            </Form>
-                                            <Form method="post">
-                                                <input type="hidden" name="id" value={gift.id} />
-                                                <Button type="submit" name="intent" value="delete_gift" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </Form>
-                                        </div>
-                                    </div>
-                                    {gift.link && (
-                                        <a href={gift.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
-                                            <ExternalLink className="h-3 w-3" /> Link
-                                        </a>
-                                    )}
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
-                        <Button
-                            onClick={() => setShowImport(true)}
-                            size="icon"
-                            variant="secondary"
-                            className="h-10 w-10 rounded-full shadow-md"
-                            title="Importar Presentes"
-                        >
-                            <Upload className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            onClick={() => setShowAddGift(true)}
-                            size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
-                        >
-                            <Plus className="h-6 w-6" />
-                        </Button>
-                    </div>
-                </TabsContent>
             </Tabs>
 
             {/* Modal de Adicionar Presente */}
@@ -471,6 +558,79 @@ export default function BridalShower() {
                             <Button type="button" variant="ghost" onClick={() => setShowAddGift(false)}>Cancelar</Button>
                             <Button type="submit" name="intent" value="add_gift">
                                 Adicionar
+                            </Button>
+                        </DialogFooter>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Editar Presente */}
+            <Dialog open={showEditGift} onOpenChange={setShowEditGift}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Presente</DialogTitle>
+                    </DialogHeader>
+                    {editingGift && (
+                        <Form method="post" className="space-y-3" onSubmit={() => setShowEditGift(false)}>
+                            <input type="hidden" name="id" value={editingGift.id} />
+                            <Input name="item_name" defaultValue={editingGift.item_name} placeholder="Nome do Item" required />
+
+                            <Select name="category" defaultValue={editingGift.category || ""}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {GIFT_CATEGORIES.map(cat => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input name="suggested_store" defaultValue={editingGift.suggested_store || ""} placeholder="Loja (Opcional)" />
+                                <Input name="price_range" defaultValue={editingGift.price_range || ""} placeholder="Preço (ex: R$ 100)" />
+                            </div>
+                            <Input name="link" defaultValue={editingGift.link || ""} placeholder="Link do Produto" />
+                            <Input name="image_url" defaultValue={editingGift.image_url || ""} placeholder="URL da Imagem" />
+
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setShowEditGift(false)}>Cancelar</Button>
+                                <Button type="submit" name="intent" value="update_gift">
+                                    Salvar Alterações
+                                </Button>
+                            </DialogFooter>
+                        </Form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Edição em Lote de Categoria */}
+            <Dialog open={showBulkCategory} onOpenChange={setShowBulkCategory}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Editar Categoria em Lote</DialogTitle>
+                        <DialogDescription>
+                            Selecione a nova categoria para os {selectedGifts.length} itens selecionados.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Form method="post" onSubmit={() => { setShowBulkCategory(false); setSelectedGifts([]); }}>
+                        <input type="hidden" name="ids" value={selectedGifts.join(",")} />
+                        <div className="py-4">
+                            <Select name="category" required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione a Categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {GIFT_CATEGORIES.map(cat => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowBulkCategory(false)}>Cancelar</Button>
+                            <Button type="submit" name="intent" value="bulk_update_category">
+                                Atualizar
                             </Button>
                         </DialogFooter>
                     </Form>
