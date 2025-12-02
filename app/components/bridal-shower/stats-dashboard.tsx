@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "../ui/progress";
-import { Gift, Users, CheckCircle2, ShoppingBag } from "lucide-react";
+import { Gift, Users } from "lucide-react";
 import type { Gift as GiftType, Guest } from "./types";
 
 interface StatsDashboardProps {
@@ -18,34 +18,40 @@ export function StatsDashboard({ gifts, guests }: StatsDashboardProps) {
     const progressGuests = totalGuests > 0 ? (confirmedGuests / totalGuests) * 100 : 0;
 
     return (
-        <div className="grid grid-cols-2 gap-4">
-            <Card className="col-span-2 sm:col-span-1 border-rose-100 bg-gradient-to-br from-white to-rose-50/50">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-rose-500" /> Presentes
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-bold text-rose-950">{boughtGifts}/{totalGifts}</div>
-                        <span className="text-xs text-rose-600 font-medium">{Math.round(progressGifts)}%</span>
+        <div className="grid grid-cols-2 gap-3">
+            <Card className="shadow-sm border-stone-200">
+                <CardContent className="p-3 flex flex-col justify-center h-full gap-2">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Gift className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium uppercase tracking-wider">Presentes</span>
+                        </div>
+                        <span className="text-xs font-bold text-stone-700">{Math.round(progressGifts)}%</span>
                     </div>
-                    <Progress value={progressGifts} className="h-2 bg-rose-100" indicatorClassName="bg-rose-500" />
+                    <div className="space-y-1">
+                        <div className="text-lg font-bold text-stone-900 leading-none">
+                            {boughtGifts}<span className="text-stone-400 text-sm font-normal">/{totalGifts}</span>
+                        </div>
+                        <Progress value={progressGifts} className="h-1" indicatorClassName="bg-rose-500" />
+                    </div>
                 </CardContent>
             </Card>
 
-            <Card className="col-span-2 sm:col-span-1 border-blue-100 bg-gradient-to-br from-white to-blue-50/50">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <Users className="h-4 w-4 text-blue-500" /> Convidados
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-bold text-blue-950">{confirmedGuests}/{totalGuests}</div>
-                        <span className="text-xs text-blue-600 font-medium">{Math.round(progressGuests)}%</span>
+            <Card className="shadow-sm border-stone-200">
+                <CardContent className="p-3 flex flex-col justify-center h-full gap-2">
+                    <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Users className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium uppercase tracking-wider">Convidados</span>
+                        </div>
+                        <span className="text-xs font-bold text-stone-700">{Math.round(progressGuests)}%</span>
                     </div>
-                    <Progress value={progressGuests} className="h-2 bg-blue-100" indicatorClassName="bg-blue-500" />
+                    <div className="space-y-1">
+                        <div className="text-lg font-bold text-stone-900 leading-none">
+                            {confirmedGuests}<span className="text-stone-400 text-sm font-normal">/{totalGuests}</span>
+                        </div>
+                        <Progress value={progressGuests} className="h-1" indicatorClassName="bg-blue-500" />
+                    </div>
                 </CardContent>
             </Card>
         </div>
