@@ -14,7 +14,7 @@ import type { Gift as GiftType } from "@/components/bridal-shower/types";
 export const meta: Route.MetaFunction = () => {
     const title = "Chá de Casa Nova - Gabriel & Raabe";
     const description = "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️";
-    const image = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop";
+    const image = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
 
     return [
         { title },
@@ -131,9 +131,10 @@ export default function PublicBridalShower() {
         <div className="min-h-screen bg-stone-50 font-sans pb-20">
             {/* Hero Section */}
             <header className="relative bg-stone-900 border-b border-stone-100 overflow-hidden min-h-[50vh] flex items-center justify-center">
-                <div
-                    className="absolute inset-0 bg-cover bg-center opacity-40"
-                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop')" }}
+                <img
+                    src="https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop"
+                    alt="Background"
+                    className="absolute inset-0 w-full h-full object-cover opacity-40"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/60 to-transparent" />
 
