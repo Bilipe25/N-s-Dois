@@ -75,6 +75,7 @@ export const action = async ({ request }: Route.ActionArgs) => {
         const address = formData.get("wedding_address") as string;
         const loginPhoto = formData.get("login_photo") as File;
         const homePhoto = formData.get("home_photo") as File;
+        const bridalHeroPhoto = formData.get("bridal_hero_photo") as File;
 
         const updates: any = { wedding_date: date, wedding_address: address };
         let successMessage = "Configurações salvas com sucesso!";
@@ -129,6 +130,32 @@ export const action = async ({ request }: Route.ActionArgs) => {
                 .getPublicUrl(fileName);
 
             updates.home_photo_url = publicUrl;
+        }
+
+        // Upload Bridal Hero Photo
+        if (bridalHeroPhoto && bridalHeroPhoto.size > 0) {
+            const fileExt = bridalHeroPhoto.name.split('.').pop();
+            const fileName = `bridal_hero_${Date.now()}.${fileExt}`;
+
+            const arrayBuffer = await bridalHeroPhoto.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+
+            const { error: uploadError } = await supabaseAdmin.storage
+                .from("images")
+                .upload(fileName, fileBuffer, {
+                    contentType: bridalHeroPhoto.type,
+                    upsert: true
+                });
+
+            if (uploadError) {
+                return { error: `Erro ao salvar foto do Chá: ${uploadError.message}` };
+            }
+
+            const { data: { publicUrl } } = supabaseAdmin.storage
+                .from("images")
+                .getPublicUrl(fileName);
+
+            updates.bridal_shower_hero_url = publicUrl;
         }
 
         // Upload Logo
@@ -283,6 +310,24 @@ export default function Settings() {
                             )}
                             <Input id="home_photo" name="home_photo" type="file" accept="image/*" />
                             <p className="text-[10px] text-muted-foreground">Recomendado: Foto mais clara ou com bom contraste.</p>
+                            <p className="text-[10px] text-muted-foreground">Recomendado: Foto mais clara ou com bom contraste.</p>
+                        </div>
+
+                        <div className="h-px bg-border" />
+
+                        {/* Foto Chá de Casa Nova */}
+                        <div className="space-y-3">
+                            <Label htmlFor="bridal_hero_photo">Foto do Chá de Casa Nova (Capa)</Label>
+                            {config?.bridal_shower_hero_url && (
+                                <div className="aspect-video w-full rounded-md overflow-hidden bg-muted border relative group">
+                                    <img src={config.bridal_shower_hero_url} alt="Bridal Hero" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs">
+                                        Atual
+                                    </div>
+                                </div>
+                            )}
+                            <Input id="bridal_hero_photo" name="bridal_hero_photo" type="file" accept="image/*" />
+                            <p className="text-[10px] text-muted-foreground">Recomendado: Foto horizontal de alta qualidade para o topo da página do Chá.</p>
                         </div>
 
                         <div className="h-px bg-border" />

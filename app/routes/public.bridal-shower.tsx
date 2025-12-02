@@ -11,22 +11,24 @@ import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { PixModal } from "@/components/bridal-shower/pix-modal";
 import type { Gift as GiftType } from "@/components/bridal-shower/types";
 
-export const meta: Route.MetaFunction = () => {
+export const meta: Route.MetaFunction = ({ data }) => {
     const title = "Chá de Casa Nova - Gabriel & Raabe";
     const description = "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️";
-    const image = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
+
+    // Image for Link Preview (WhatsApp/Telegram) - Uses uploaded photo or default
+    const ogImage = data?.config?.bridal_shower_hero_url || "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
 
     return [
         { title },
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
-        { property: "og:image", content: image },
+        { property: "og:image", content: ogImage },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
-        { name: "twitter:image", content: image },
+        { name: "twitter:image", content: ogImage },
     ];
 };
 
