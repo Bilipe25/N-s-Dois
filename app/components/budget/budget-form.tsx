@@ -9,10 +9,11 @@ import { BUDGET_CATEGORIES, type BudgetItem } from "./types";
 
 interface BudgetFormProps {
     item?: BudgetItem | null;
+    suppliers: { id: string; name: string }[];
     onCancel: () => void;
 }
 
-export function BudgetForm({ item, onCancel }: BudgetFormProps) {
+export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
     const isEditing = !!item;
     const [isInstallment, setIsInstallment] = useState(false);
 
@@ -46,6 +47,21 @@ export function BudgetForm({ item, onCancel }: BudgetFormProps) {
                     <SelectContent>
                         {BUDGET_CATEGORIES.map(cat => (
                             <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="supplier">Fornecedor (Opcional)</Label>
+                <Select name="supplier_id" defaultValue={item?.supplier_id || "none"}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione um fornecedor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {suppliers.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
