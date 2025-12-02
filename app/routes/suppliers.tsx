@@ -1,61 +1,54 @@
 import { useState } from "react";
-import { useLoaderData, Link } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, LayoutGrid, List as ListIcon, Phone, MessageCircle, FileText, Pencil, X } from "lucide-react";
+import { Plus, LayoutGrid, List as ListIcon, Phone, MessageCircle, FileText, Pencil, X, Loader2 } from "lucide-react";
 import type { Route } from "./+types/suppliers";
 import { SupplierCard } from "@/components/suppliers/supplier-card";
 import { SupplierKanban } from "@/components/suppliers/supplier-kanban";
 import type { Supplier } from "@/components/suppliers/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useSuppliers } from "@/hooks/useSuppliers";
+import { createClient } from "@/lib/supabase";
+import { useQuery } from "@tanstack/react-query";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Fornecedores - Nós Dois" }];
 };
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+// Helper hook for budget items (temporary until full migration)
+const useBudgetItems = () => {
+    return useQuery({
+        queryKey: ["budget_items_simple"],
+        queryFn: async () => {
+            const supabase = createClient(null as any);
+            const { data, error } = await supabase
+                .from("budget_items")
+                .select("supplier_id, paid_value")
+                .not("supplier_id", "is", null);
+            if (error) throw error;
+            return data;
+        }
+    });
+};
 
-    // Fetch Suppliers
-    const { data: suppliersData, error: suppliersError } = await supabase
-        .from("suppliers")
-        .select("*")
-        .order("created_at", { ascending: false });
+export default function Suppliers() {
+    const { data: suppliersData, isLoading: isLoadingSuppliers } = useSuppliers();
+    const { data: budgetItems } = useBudgetItems();
 
-    if (suppliersError) {
-        console.error("Error fetching suppliers:", suppliersError);
-        return { suppliers: [] };
-    }
-
-    // Fetch Budget Items for calculation
-    const { data: budgetItems, error: budgetError } = await supabase
-        .from("budget_items")
-        .select("supplier_id, paid_value")
-        .not("supplier_id", "is", null);
-
-    if (budgetError) {
-        console.error("Error fetching budget for suppliers:", budgetError);
-    }
+    const [view, setView] = useState<"list" | "kanban">("list");
+    const [filter, setFilter] = useState<"todos" | "contratado" | "pendente">("todos");
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
     // Calculate total paid per supplier
-    const suppliers = (suppliersData as Supplier[]).map(supplier => {
+    const suppliers = (suppliersData as Supplier[] || []).map(supplier => {
         const totalPaid = budgetItems
             ?.filter(item => item.supplier_id === supplier.id)
             .reduce((sum, item) => sum + (item.paid_value || 0), 0) || 0;
 
         return { ...supplier, total_paid: totalPaid };
     });
-
-    return { suppliers };
-};
-
-export default function Suppliers() {
-    const { suppliers } = useLoaderData<typeof loader>();
-    const [view, setView] = useState<"list" | "kanban">("list");
-    const [filter, setFilter] = useState<"todos" | "contratado" | "pendente">("todos");
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
     const filteredSuppliers = suppliers.filter((s) => {
         if (filter === "todos") return true;
@@ -69,6 +62,14 @@ export default function Suppliers() {
         if (nums.length >= 10) return `https://wa.me/55${nums}`;
         return null;
     };
+
+    if (isLoadingSuppliers) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-stone-50">
+                <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-stone-50 pb-24">

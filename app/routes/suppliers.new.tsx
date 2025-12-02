@@ -1,112 +1,120 @@
-import { Form, useNavigation, useActionData, redirect, Link } from "react-router";
+import { useNavigate } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, UploadCloud, Image as ImageIcon, Star } from "lucide-react";
+import { UploadCloud, Image as ImageIcon, Star } from "lucide-react";
 import { useState } from "react";
 import type { Route } from "./+types/suppliers.new";
+import { useCreateSupplier } from "@/hooks/useSuppliers";
+import { toast } from "sonner";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Novo Fornecedor - Nós Dois" }];
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const supabase = createClient(request);
-
-    const name = formData.get("name") as string;
-    const category = formData.get("category") as string;
-    const status = formData.get("status") as string;
-    const price = parseFloat(formData.get("price") as string) || 0;
-    const contact = formData.get("contact") as string;
-    const rating = parseInt(formData.get("rating") as string) || 0;
-    const notes = formData.get("notes") as string;
-
-    const photo = formData.get("photo") as File;
-    const contract = formData.get("contract") as File;
-
-    if (!name) {
-        return { error: "Nome é obrigatório" };
-    }
-
-    const newSupplier: any = {
-        name,
-        category,
-        status,
-        price,
-        contact_info: contact,
-        rating,
-        notes
-    };
-
-    // Handle Photo Upload
-    if (photo && photo.size > 0 && photo.name !== "undefined") {
-        const fileExt = photo.name.split('.').pop();
-        const fileName = `supplier_${Date.now()}.${fileExt}`;
-        const arrayBuffer = await photo.arrayBuffer();
-
-        const { error: uploadError } = await supabase.storage
-            .from("images")
-            .upload(fileName, Buffer.from(arrayBuffer), { contentType: photo.type, upsert: true });
-
-        if (uploadError) return { error: `Erro na imagem: ${uploadError.message}` };
-
-        const { data } = supabase.storage.from("images").getPublicUrl(fileName);
-        newSupplier.photo_url = data.publicUrl;
-    }
-
-    // Handle Contract Upload
-    if (contract && contract.size > 0 && contract.name !== "undefined") {
-        const fileExt = contract.name.split('.').pop();
-        const fileName = `contract_${Date.now()}.${fileExt}`;
-        const arrayBuffer = await contract.arrayBuffer();
-
-        const { error: uploadError } = await supabase.storage
-            .from("documents")
-            .upload(fileName, Buffer.from(arrayBuffer), { contentType: contract.type, upsert: true });
-
-        if (uploadError) {
-            const { error: fallbackError } = await supabase.storage
-                .from("images")
-                .upload(fileName, Buffer.from(arrayBuffer), { contentType: contract.type, upsert: true });
-
-            if (fallbackError) return { error: `Erro no contrato: ${uploadError.message}` };
-
-            const { data } = supabase.storage.from("images").getPublicUrl(fileName);
-            newSupplier.contract_url = data.publicUrl;
-        } else {
-            const { data } = supabase.storage.from("documents").getPublicUrl(fileName);
-            newSupplier.contract_url = data.publicUrl;
-        }
-    }
-
-    const { error } = await supabase
-        .from("suppliers")
-        .insert(newSupplier);
-
-    if (error) {
-        return { error: error.message };
-    }
-
-    return redirect("/suppliers");
-};
-
 export default function NewSupplier() {
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const navigate = useNavigate();
+    const { mutate: createSupplier, isPending } = useCreateSupplier();
 
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [rating, setRating] = useState(0);
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [contractFile, setContractFile] = useState<File | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setPhotoFile(file);
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
+        }
+    };
+
+    const handleContractChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setContractFile(file);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+
+        const name = formData.get("name") as string;
+        const category = formData.get("category") as string;
+        const status = formData.get("status") as any; // Zod will validate
+        const price = parseFloat(formData.get("price") as string) || 0;
+        const contact = formData.get("contact") as string;
+        const notes = formData.get("notes") as string;
+
+        let photo_url = null;
+        let contract_url = null;
+
+        const supabase = createClient(null as any);
+
+        try {
+            // Upload Photo
+            if (photoFile) {
+                const fileExt = photoFile.name.split('.').pop();
+                const fileName = `supplier_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from("images")
+                    .upload(fileName, photoFile);
+
+                if (uploadError) throw new Error(`Erro na imagem: ${uploadError.message}`);
+
+                const { data } = supabase.storage.from("images").getPublicUrl(fileName);
+                photo_url = data.publicUrl;
+            }
+
+            // Upload Contract
+            if (contractFile) {
+                const fileExt = contractFile.name.split('.').pop();
+                const fileName = `contract_${Date.now()}.${fileExt}`;
+
+                // Try documents bucket first
+                let { error: uploadError } = await supabase.storage
+                    .from("documents")
+                    .upload(fileName, contractFile);
+
+                let bucket = "documents";
+
+                if (uploadError) {
+                    // Fallback to images
+                    const { error: fallbackError } = await supabase.storage
+                        .from("images")
+                        .upload(fileName, contractFile);
+
+                    if (fallbackError) throw new Error(`Erro no contrato: ${uploadError.message}`);
+                    bucket = "images";
+                }
+
+                const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+                contract_url = data.publicUrl;
+            }
+
+            createSupplier({
+                name,
+                category,
+                status,
+                price,
+                contact_info: contact,
+                rating,
+                notes,
+                photo_url,
+                contract_url
+            }, {
+                onSuccess: () => {
+                    navigate("/suppliers");
+                }
+            });
+
+        } catch (error: any) {
+            toast.error(error.message);
         }
     };
 
@@ -120,7 +128,7 @@ export default function NewSupplier() {
                         <CardTitle className="text-base">Dados do Fornecedor</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Form method="post" encType="multipart/form-data" className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
 
                             {/* Photo Upload */}
                             <div className="flex flex-col items-center gap-4">
@@ -213,7 +221,6 @@ export default function NewSupplier() {
                                             </button>
                                         ))}
                                     </div>
-                                    <input type="hidden" name="rating" value={rating} />
                                 </div>
 
                                 {/* Notes */}
@@ -231,20 +238,21 @@ export default function NewSupplier() {
                                 {/* Contract Upload */}
                                 <div className="space-y-2">
                                     <Label htmlFor="contract">Contrato (PDF/Imagem)</Label>
-                                    <Input id="contract" name="contract" type="file" accept=".pdf,image/*" className="cursor-pointer" />
+                                    <Input
+                                        id="contract"
+                                        name="contract"
+                                        type="file"
+                                        accept=".pdf,image/*"
+                                        className="cursor-pointer"
+                                        onChange={handleContractChange}
+                                    />
                                 </div>
                             </div>
 
-                            {actionData?.error && (
-                                <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                                    {actionData.error}
-                                </div>
-                            )}
-
-                            <Button type="submit" className="w-full bg-stone-900 hover:bg-stone-800" disabled={isSubmitting}>
-                                {isSubmitting ? "Criar Fornecedor" : "Criar Fornecedor"}
+                            <Button type="submit" className="w-full bg-stone-900 hover:bg-stone-800" disabled={isPending}>
+                                {isPending ? "Criando..." : "Criar Fornecedor"}
                             </Button>
-                        </Form>
+                        </form>
                     </CardContent>
                 </Card>
             </div>
