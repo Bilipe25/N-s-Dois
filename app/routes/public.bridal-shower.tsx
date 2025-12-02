@@ -131,7 +131,10 @@ export default function PublicBridalShower() {
         <div className="min-h-screen bg-stone-50 font-sans pb-20">
             {/* Hero Section */}
             <header className="relative bg-stone-900 border-b border-stone-100 overflow-hidden min-h-[50vh] flex items-center justify-center">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40" />
+                <div
+                    className="absolute inset-0 bg-cover bg-center opacity-40"
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop')" }}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/60 to-transparent" />
 
                 <div className="relative max-w-3xl mx-auto px-6 py-12 text-center space-y-6 z-10">
