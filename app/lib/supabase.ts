@@ -25,8 +25,11 @@ export const createClient = (request?: Request, responseHeaders?: Headers) => {
         );
     }
 
+    const supabaseUrl = typeof window !== "undefined" ? (window as any).ENV.SUPABASE_URL : process.env.SUPABASE_URL;
+    const supabaseKey = typeof window !== "undefined" ? (window as any).ENV.SUPABASE_ANON_KEY : process.env.SUPABASE_ANON_KEY;
+
     return createBrowserClient(
-        (window as any).ENV.SUPABASE_URL,
-        (window as any).ENV.SUPABASE_ANON_KEY
+        supabaseUrl!,
+        supabaseKey!
     );
 };
