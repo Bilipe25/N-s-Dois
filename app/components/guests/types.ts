@@ -5,7 +5,8 @@ export interface Guest {
     adults_count: number;
     children_count: number;
     rsvp_status: "pendente" | "confirmado" | "recusado";
-    created_at?: string;
+    created_at: string;
+    phone?: string | null;
 }
 
 export type GuestFilter = "todos" | "confirmado" | "pendente" | "recusado";
