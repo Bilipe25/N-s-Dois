@@ -89,7 +89,8 @@ export const useAddInspiration = (user: string) => {
                         user,
                         inspirationId: newInspiration.id,
                         photoUrl: photo_url
-                    })
+                    }),
+                    credentials: "include"
                 });
             }
 
@@ -149,7 +150,8 @@ export const useToggleLike = (user: string) => {
                     inspirationId,
                     hasLiked,
                     user
-                })
+                }),
+                credentials: "include"
             });
 
             if (!response.ok) {
@@ -179,7 +181,8 @@ export const useAddComment = (user: string) => {
                     inspirationId,
                     content,
                     user
-                })
+                }),
+                credentials: "include"
             });
 
             if (!response.ok) {
@@ -189,36 +192,11 @@ export const useAddComment = (user: string) => {
 
             return await response.json();
         },
-        onMutate: async ({ inspirationId, content }) => {
-            await queryClient.cancelQueries({ queryKey: ["inspirations"] });
-            const previousInspirations = queryClient.getQueryData<Inspiration[]>(["inspirations"]);
-
-            if (previousInspirations) {
-                queryClient.setQueryData<Inspiration[]>(["inspirations"], (old) =>
-                    old?.map(insp => {
-                        if (insp.id === inspirationId) {
-                            const newComment = {
-                                id: "temp-" + Date.now(),
-                                user_name: user,
-                                content,
-                                created_at: new Date().toISOString()
-                            };
-                            return { ...insp, inspiration_comments: [newComment, ...insp.inspiration_comments] };
-                        }
-                        return insp;
-                    })
-                );
-            }
-            return { previousInspirations };
-        },
-        onError: (err, newTodo, context) => {
-            if (context?.previousInspirations) {
-                queryClient.setQueryData(["inspirations"], context.previousInspirations);
-            }
-            toast.error("Erro ao comentar.");
-        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["inspirations"] });
+        },
+        onError: (error: any) => {
+            toast.error("Erro ao comentar.");
         }
     });
 };

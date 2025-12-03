@@ -131,6 +131,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     } catch (error: any) {
         console.error("Error in api.inspirations:", error);
+
+        if (error instanceof z.ZodError) {
+            return Response.json({ error: "Dados inválidos", details: error.issues }, { status: 400 });
+        }
+
         return Response.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 };
