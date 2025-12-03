@@ -73,22 +73,17 @@ export const useAddGuest = (user: string) => {
             const { data, error } = await supabase.from("guests").insert(guestsToAdd).select();
             if (error) throw error;
 
-            // Notifications
-            if (names.length === 1) {
-                await supabase.from("notifications").insert({
-                    type: "rsvp",
-                    title: "Novo Convidado ➕",
-                    message: `${user} adicionou um novo convidado: ${names[0]} (${input.group_name}).`,
-                    link: "/guests"
-                });
-            } else if (names.length > 1) {
-                await supabase.from("notifications").insert({
-                    type: "rsvp",
-                    title: "Novos Convidados ➕",
-                    message: `${user} adicionou ${names.length} novos convidados em ${input.group_name}.`,
-                    link: "/guests"
-                });
-            }
+            // Call API for Notification
+            await fetch("/api/guests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    intent: "add_guest",
+                    names,
+                    group_name: input.group_name,
+                    user
+                })
+            });
 
             return data;
         },
@@ -128,24 +123,19 @@ export const useUpdateRSVP = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, status }: UpdateRSVPInput) => {
-            // Fetch guest name for notification
-            const { data: guest } = await supabase
-                .from("guests")
-                .select("name")
-                .eq("id", id)
-                .single();
-
             const { error } = await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
             if (error) throw error;
 
-            if (guest) {
-                await supabase.from("notifications").insert({
-                    type: "rsvp",
-                    title: "Atualização de RSVP 📩",
-                    message: `${guest.name} teve a presença marcada como "${status}".`,
-                    link: "/guests"
-                });
-            }
+            // Call API for Notification
+            await fetch("/api/guests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    intent: "update_rsvp",
+                    id,
+                    status
+                })
+            });
         },
         onMutate: async ({ id, status }) => {
             await queryClient.cancelQueries({ queryKey: ["guests"] });
