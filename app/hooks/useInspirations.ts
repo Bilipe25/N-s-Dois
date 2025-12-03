@@ -50,7 +50,7 @@ export const useAddInspiration = (user: string) => {
             const fileExt = input.photo.name.split('.').pop();
             const fileName = `inspiration_${Date.now()}.${fileExt}`;
             const arrayBuffer = await input.photo.arrayBuffer();
-            const fileBuffer = new Uint8Array(arrayBuffer); // Supabase client expects ArrayBuffer or Blob or File
+            const fileBuffer = new Uint8Array(arrayBuffer);
 
             const { error: uploadError } = await supabase.storage
                 .from("images")
@@ -77,21 +77,20 @@ export const useAddInspiration = (user: string) => {
 
             if (dbError) throw dbError;
 
-            // 3. Send Notifications (Client-side trigger or via Edge Function would be better, but doing here for now to match existing logic)
-            // Note: Ideally this should be a server-side action or trigger.
-            // Since we are moving to client-side mutations, we lose the server-side push notification capability unless we call an API.
-            // For now, we will just insert the notification into the DB.
+            // 3. Call API for Notification
             if (newInspiration) {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Nova Inspiração ✨",
-                    message: `${user} adicionou uma nova inspiração em ${input.category}: "${input.title}".`,
-                    link: `/inspirations?id=${newInspiration.id}`,
-                    image_url: photo_url
+                await fetch("/api/inspirations", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        intent: "add_inspiration",
+                        title: input.title,
+                        category: input.category,
+                        user,
+                        inspirationId: newInspiration.id,
+                        photoUrl: photo_url
+                    })
                 });
-                // Note: Push notifications won't be sent from here. 
-                // To fix this properly, we should use the same API pattern as Bridal Shower (api.reserve-gift).
-                // But for now, I'll stick to DB notifications as requested by the "migrate to hooks" task.
             }
 
             return newInspiration;
@@ -141,29 +140,21 @@ export const useToggleLike = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ inspirationId, hasLiked }: ToggleLikeInput) => {
-            if (hasLiked) {
-                const { error } = await supabase.from("inspiration_likes")
-                    .delete()
-                    .match({ inspiration_id: inspirationId, user_name: user });
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from("inspiration_likes").insert({
-                    inspiration_id: inspirationId,
-                    user_name: user
-                });
-                if (error) throw error;
+            // Call API to handle DB + Notification
+            const response = await fetch("/api/inspirations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    intent: "toggle_like",
+                    inspirationId,
+                    hasLiked,
+                    user
+                })
+            });
 
-                // Notification logic (simplified for client-side)
-                const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-                if (insp) {
-                    await supabase.from("notifications").insert({
-                        type: "gift",
-                        title: "Nova Curtida ❤️",
-                        message: `${user} curtiu sua inspiração "${insp.title}".`,
-                        link: `/inspirations?id=${inspirationId}`,
-                        image_url: insp.photo_url
-                    });
-                }
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Erro ao curtir");
             }
         },
         onMutate: async ({ inspirationId, hasLiked }) => {
@@ -192,6 +183,9 @@ export const useToggleLike = (user: string) => {
             toast.error("Erro ao curtir.");
         },
         onSuccess: () => {
+            // No need to invalidate immediately if optimistic update was correct, 
+            // but good for consistency. We can debounce this or remove if it causes flicker.
+            // Keeping it for now to ensure eventual consistency.
             queryClient.invalidateQueries({ queryKey: ["inspirations"] });
         }
     });
@@ -201,27 +195,24 @@ export const useAddComment = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ inspirationId, content }: AddCommentInput) => {
-            const { data, error } = await supabase.from("inspiration_comments").insert({
-                inspiration_id: inspirationId,
-                user_name: user,
-                content
-            }).select().single();
+            // Call API to handle DB + Notification
+            const response = await fetch("/api/inspirations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    intent: "add_comment",
+                    inspirationId,
+                    content,
+                    user
+                })
+            });
 
-            if (error) throw error;
-
-            // Notification
-            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-            if (insp) {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Novo Comentário 💬",
-                    message: `${user} comentou em "${insp.title}": "${content}"`,
-                    link: `/inspirations?id=${inspirationId}`,
-                    image_url: insp.photo_url
-                });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Erro ao comentar");
             }
 
-            return data;
+            return await response.json();
         },
         onMutate: async ({ inspirationId, content }) => {
             await queryClient.cancelQueries({ queryKey: ["inspirations"] });
