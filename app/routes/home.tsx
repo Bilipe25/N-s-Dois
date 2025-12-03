@@ -1,77 +1,38 @@
-import { Link, useLoaderData } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { Link, useLoaderData, redirect } from "react-router";
 import { getSession } from "@/sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, CheckSquare, Users, DollarSign, Store, Gift, User, Settings, Package, Calendar } from "lucide-react";
+import { Heart, CheckSquare, Users, DollarSign, Store, Gift, User, Package, Calendar, Loader2 } from "lucide-react";
 import type { Route } from "./+types/home";
+import { useDashboard } from "@/hooks/useDashboard";
 
 export const meta: Route.MetaFunction = () => {
   return [{ title: "Dashboard - Nós Dois" }];
 };
 
-export const headers: Route.HeadersFunction = () => ({
-  "Cache-Control": "public, max-age=300, s-maxage=3600", // Cache de 5 min no browser
-});
-
 export const loader = async ({ request }: Route.LoaderArgs) => {
   const session = await getSession(request.headers.get("Cookie"));
-  const user = session.get("user") || "Amor";
-  const supabase = createClient(request);
+  const user = session.get("user");
 
-  // Fetch config
-  const { data: config } = await supabase.from("app_config").select("*").single();
+  if (!user) {
+    return redirect("/login");
+  }
 
-  // Fetch checklist counts
-  const { count: pendingTasksCount } = await supabase
-    .from("checklist_items")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "pendente");
-
-  const { count: totalTasksCount } = await supabase
-    .from("checklist_items")
-    .select("*", { count: "exact", head: true });
-
-  // Fetch guests counts
-  const { data: allGuests } = await supabase
-    .from("guests")
-    .select("adults_count, children_count, rsvp_status");
-
-  const confirmedGuestsCount = allGuests
-    ?.filter(g => g.rsvp_status === "confirmado")
-    .reduce((acc, guest) => acc + (guest.adults_count || 0) + (guest.children_count || 0), 0) || 0;
-
-  const totalGuestsCount = allGuests
-    ?.reduce((acc, guest) => acc + (guest.adults_count || 0) + (guest.children_count || 0), 0) || 0;
-
-  // Fetch budget
-  const { data: budgetItems } = await supabase
-    .from("budget_items")
-    .select("paid_value, estimated_value");
-
-  const totalPaid = budgetItems?.reduce((acc, item) => acc + (Number(item.paid_value) || 0), 0) || 0;
-  const totalEstimated = budgetItems?.reduce((acc, item) => acc + (Number(item.estimated_value) || 0), 0) || 0;
-
-  // Fetch next task
-  const { data: nextTask } = await supabase
-    .from("checklist_items")
-    .select("title")
-    .eq("status", "pendente")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
-
-  return {
-    user,
-    config,
-    tasks: { pending: pendingTasksCount || 0, total: totalTasksCount || 0 },
-    guests: { confirmed: confirmedGuestsCount, total: totalGuestsCount },
-    budget: { paid: totalPaid, estimated: totalEstimated },
-    nextTask
-  };
+  return { user };
 };
 
 export default function Home() {
-  const { user, config, tasks, guests, budget, nextTask } = useLoaderData<typeof loader>();
+  const { user } = useLoaderData<typeof loader>();
+  const { data: dashboard, isLoading } = useDashboard();
+
+  if (isLoading || !dashboard) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const { config, tasks, guests, budget, nextTask } = dashboard;
 
   // Data do casamento da configuração ou fallback
   const weddingDate = config?.wedding_date ? new Date(config.wedding_date) : new Date("2025-09-20T16:00:00");
