@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useLoaderData, useNavigation, useSearchParams, redirect, useFetcher, Form } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { useLoaderData, useSearchParams, redirect } from "react-router";
 import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,13 @@ import type { Route } from "./+types/inspirations";
 import { FilterBar } from "@/components/inspirations/filter-bar";
 import { InspirationCard } from "@/components/inspirations/inspiration-card";
 import { InspirationDetails } from "@/components/inspirations/inspiration-details";
-import type { Inspiration, SortOption } from "@/components/inspirations/types";
+import type { SortOption } from "@/components/inspirations/types";
+import {
+    useInspirations,
+    useAddInspiration,
+    useToggleLike,
+} from "@/hooks/useInspirations";
+import type { Inspiration } from "@/schemas/inspiration";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Inspirações - Nós Dois" }];
@@ -27,212 +32,17 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         return redirect("/login");
     }
 
-    const supabase = createClient(request);
-
-    // Buscar inspirações
-    const { data: inspirations, error } = await supabase
-        .from("inspirations")
-        .select(`
-            *,
-            inspiration_likes (user_name),
-            inspiration_comments (
-                id,
-                user_name,
-                content,
-                created_at
-            )
-        `)
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        console.error("Error fetching inspirations:", error);
-        return { inspirations: [], user };
-    }
-
-    // Ordenar comentários por data (mais recentes primeiro)
-    const processedInspirations = inspirations.map((insp: any) => ({
-        ...insp,
-        inspiration_comments: insp.inspiration_comments.sort((a: any, b: any) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-    }));
-
-    return { inspirations: processedInspirations as Inspiration[], user };
-};
-
-export const clientLoader = async ({ request, serverLoader }: Route.ClientLoaderArgs) => {
-    const cacheKey = "inspirations-data";
-
-    // Tenta pegar do cache primeiro (se não for uma navegação forçada)
-    if (!new URL(request.url).searchParams.get("_data")) {
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            // Cache válido por 5 minutos
-            if (Date.now() - timestamp < 5 * 60 * 1000) {
-                return data;
-            }
-        }
-    }
-
-    // Se não tiver cache ou expirou, chama o loader do servidor
-    const data = await serverLoader();
-
-    // Salva no cache
-    sessionStorage.setItem(cacheKey, JSON.stringify({
-        data,
-        timestamp: Date.now()
-    }));
-
-    return data;
-};
-
-clientLoader.hydrate = true;
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const session = await getSession(request.headers.get("Cookie"));
-    const user = session.get("user");
-
-    if (!user) return redirect("/login");
-
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-    const { sendPushToUser } = await import("@/services/push.server");
-
-    if (intent === "add") {
-        const title = formData.get("title") as string;
-        const category = formData.get("category") as string;
-        const notes = formData.get("notes") as string;
-        const photo = formData.get("photo") as File;
-
-        if (!title || !photo || photo.size === 0) return null;
-
-        // Upload da foto
-        const fileExt = photo.name.split('.').pop();
-        const fileName = `inspiration_${Date.now()}.${fileExt}`;
-
-        const arrayBuffer = await photo.arrayBuffer();
-        const fileBuffer = Buffer.from(arrayBuffer);
-
-        const { error: uploadError } = await supabase.storage
-            .from("images")
-            .upload(fileName, fileBuffer, {
-                contentType: photo.type,
-                upsert: true
-            });
-
-        if (uploadError) {
-            console.error("Upload error:", uploadError);
-            return null;
-        }
-
-        const { data: publicUrlData } = supabase.storage
-            .from("images")
-            .getPublicUrl(fileName);
-
-        const photo_url = publicUrlData.publicUrl;
-
-        const { data: newInspiration, error: dbError } = await supabase.from("inspirations").insert({
-            title,
-            category,
-            notes,
-            photo_url
-        }).select().single();
-
-        if (dbError) console.error("DB Error:", dbError);
-
-        if (newInspiration) {
-            // Notificar o outro usuário
-            await supabase.from("notifications").insert({
-                type: "gift",
-                title: "Nova Inspiração ✨",
-                message: `${user} adicionou uma nova inspiração em ${category}: "${title}".`,
-                link: `/inspirations?id=${newInspiration.id}`,
-                image_url: photo_url
-            });
-
-            await sendPushToUser(request, "all", "Nova Inspiração ✨", `${user} adicionou uma nova inspiração em ${category}: "${title}".`, `/inspirations?id=${newInspiration.id}`, photo_url);
-        }
-
-    } else if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase.from("inspirations").delete().eq("id", id);
-    } else if (intent === "edit") {
-        const id = formData.get("id") as string;
-        const title = formData.get("title") as string;
-        const notes = formData.get("notes") as string;
-        const category = formData.get("category") as string;
-
-        await supabase
-            .from("inspirations")
-            .update({ title, notes, category })
-            .eq("id", id);
-
-    } else if (intent === "toggle_like") {
-        const inspirationId = formData.get("inspirationId") as string;
-        const hasLiked = formData.get("hasLiked") === "true";
-
-        if (hasLiked) {
-            await supabase.from("inspiration_likes")
-                .delete()
-                .match({ inspiration_id: inspirationId, user_name: user });
-        } else {
-            await supabase.from("inspiration_likes").insert({
-                inspiration_id: inspirationId,
-                user_name: user
-            });
-
-            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-
-            if (insp) {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Nova Curtida ❤️",
-                    message: `${user} curtiu sua inspiração "${insp.title}".`,
-                    link: `/inspirations?id=${inspirationId}`,
-                    image_url: insp.photo_url
-                });
-
-                await sendPushToUser(request, "all", "Nova Curtida ❤️", `${user} curtiu sua inspiração "${insp.title}".`, `/inspirations?id=${inspirationId}`, insp.photo_url);
-            }
-        }
-    } else if (intent === "add_comment") {
-        const inspirationId = formData.get("inspirationId") as string;
-        const content = formData.get("content") as string;
-
-        if (content.trim()) {
-            await supabase.from("inspiration_comments").insert({
-                inspiration_id: inspirationId,
-                user_name: user,
-                content
-            });
-
-            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-
-            if (insp) {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Novo Comentário 💬",
-                    message: `${user} comentou em "${insp.title}": "${content}"`,
-                    link: `/inspirations?id=${inspirationId}`,
-                    image_url: insp.photo_url
-                });
-
-                await sendPushToUser(request, "all", "Novo Comentário 💬", `${user} comentou em "${insp.title}": "${content}"`, `/inspirations?id=${inspirationId}`, insp.photo_url);
-            }
-        }
-    }
-
-    return null;
+    return { user };
 };
 
 export default function Inspirations() {
-    const { inspirations, user } = useLoaderData<typeof loader>();
-    const navigation = useNavigation();
+    const { user } = useLoaderData<typeof loader>();
     const [searchParams, setSearchParams] = useSearchParams();
-    const fetcher = useFetcher();
-    const isSubmitting = navigation.state === "submitting";
+
+    // React Query Hooks
+    const { data: inspirations = [], isLoading } = useInspirations();
+    const { mutate: addInspiration, isPending: isAdding } = useAddInspiration(user);
+    const { mutate: toggleLike } = useToggleLike(user);
 
     // State
     const [filter, setFilter] = useState<string>("todos");
@@ -265,7 +75,7 @@ export default function Inspirations() {
         if (sortBy === "likes") {
             result.sort((a, b) => (b.inspiration_likes?.length || 0) - (a.inspiration_likes?.length || 0));
         } else {
-            // Default is recent (already sorted by DB, but good to ensure)
+            // Default is recent
             result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         }
 
@@ -275,7 +85,7 @@ export default function Inspirations() {
     // Handle URL opening
     useEffect(() => {
         const idFromUrl = searchParams.get("id");
-        if (idFromUrl) {
+        if (idFromUrl && inspirations.length > 0) {
             const inspiration = inspirations.find((i) => i.id === idFromUrl);
             if (inspiration) {
                 setSelectedImage(inspiration);
@@ -319,6 +129,27 @@ export default function Inspirations() {
         }
     };
 
+    const handleAddSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        const title = formData.get("title") as string;
+        const category = formData.get("category") as string;
+        const notes = formData.get("notes") as string;
+        const photo = formData.get("photo") as File;
+
+        if (!photo || photo.size === 0) {
+            toast.error("Selecione uma foto.");
+            return;
+        }
+
+        addInspiration({ title, category, notes, photo }, {
+            onSuccess: () => {
+                setShowAddInspiration(false);
+                setPreviewUrl(null);
+            }
+        });
+    };
+
     const handleDownload = async () => {
         if (selectedImage) {
             try {
@@ -360,11 +191,16 @@ export default function Inspirations() {
     const handleToggleLike = (e: React.MouseEvent, inspiration: Inspiration) => {
         e.stopPropagation();
         const isLiked = inspiration.inspiration_likes.some(l => l.user_name === user);
-        fetcher.submit(
-            { intent: "toggle_like", inspirationId: inspiration.id, hasLiked: isLiked.toString() },
-            { method: "post" }
-        );
+        toggleLike({ inspirationId: inspiration.id, hasLiked: isLiked });
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#FDFCF8]">
+                <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#FDFCF8] pb-32">
@@ -394,7 +230,7 @@ export default function Inspirations() {
                         {filteredInspirations.map((item) => (
                             <InspirationCard
                                 key={item.id}
-                                inspiration={item}
+                                inspiration={item as any} // Cast to any to avoid strict type mismatch with component props if they differ slightly
                                 onClick={() => setSelectedImage(item)}
                                 isLiked={item.inspiration_likes.some(l => l.user_name === user)}
                                 onToggleLike={(e) => handleToggleLike(e, item)}
@@ -410,7 +246,7 @@ export default function Inspirations() {
                 <DialogContent className="max-w-4xl w-full p-0 overflow-hidden bg-background/95 backdrop-blur-sm border-none h-[90dvh] md:h-[80vh] flex flex-col md:flex-row z-[150]">
                     {selectedImage && (
                         <InspirationDetails
-                            inspiration={selectedImage}
+                            inspiration={selectedImage as any}
                             user={user}
                             onClose={handleCloseDialog}
                             onDownload={handleDownload}
@@ -465,7 +301,7 @@ export default function Inspirations() {
                             Adicione uma foto e detalhes da sua inspiração.
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" encType="multipart/form-data" className="space-y-4" onSubmit={() => { setPreviewUrl(null); setShowAddInspiration(false); }}>
+                    <form onSubmit={handleAddSubmit} className="space-y-4">
                         <div className="flex gap-4 items-start">
                             <div className="relative h-24 w-24 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-dashed border-muted-foreground/50 group hover:border-primary transition-colors">
                                 {previewUrl ? (
@@ -502,12 +338,12 @@ export default function Inspirations() {
                         <Input name="notes" placeholder="Notas (opcional)" />
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddInspiration(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="add" disabled={isSubmitting} className="bg-stone-900 text-white hover:bg-stone-800">
-                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            <Button type="submit" disabled={isAdding} className="bg-stone-900 text-white hover:bg-stone-800">
+                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                 Adicionar
                             </Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>
