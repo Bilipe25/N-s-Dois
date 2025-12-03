@@ -44,21 +44,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
 
             if (title && message) {
-                // Notification (Fire and forget)
-                (async () => {
-                    try {
-                        await supabase.from("notifications").insert({
-                            type: "rsvp",
-                            title,
-                            message,
-                            link
-                        });
+                try {
+                    await supabase.from("notifications").insert({
+                        type: "rsvp",
+                        title,
+                        message,
+                        link
+                    });
 
-                        await sendPushToUser(request, "all", title, message, link);
-                    } catch (notifError) {
-                        console.error("Error sending notification for guest:", notifError);
-                    }
-                })();
+                    await sendPushToUser(request, "all", title, message, link);
+                } catch (notifError) {
+                    console.error("Error sending notification for guest (non-fatal):", notifError);
+                }
             }
 
             return Response.json({ success: true });
@@ -79,21 +76,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 const message = `${guest.name} teve a presença marcada como "${status}".`;
                 const link = "/guests";
 
-                // Notification (Fire and forget)
-                (async () => {
-                    try {
-                        await supabase.from("notifications").insert({
-                            type: "rsvp",
-                            title,
-                            message,
-                            link
-                        });
+                try {
+                    await supabase.from("notifications").insert({
+                        type: "rsvp",
+                        title,
+                        message,
+                        link
+                    });
 
-                        await sendPushToUser(request, "all", title, message, link);
-                    } catch (notifError) {
-                        console.error("Error sending notification for RSVP:", notifError);
-                    }
-                })();
+                    await sendPushToUser(request, "all", title, message, link);
+                } catch (notifError) {
+                    console.error("Error sending notification for RSVP (non-fatal):", notifError);
+                }
             }
 
             return Response.json({ success: true });
@@ -103,6 +97,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     } catch (error: any) {
         console.error("Error in api.guests:", error);
+
+        if (error instanceof z.ZodError) {
+            return Response.json({ error: "Dados inválidos", details: error.issues }, { status: 400 });
+        }
+
         return Response.json({ error: error.message || "Internal Server Error" }, { status: 500 });
     }
 };
