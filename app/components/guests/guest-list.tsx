@@ -16,9 +16,11 @@ interface GuestListProps {
     guests: Guest[];
     selectedIds: string[];
     onToggleSelect: (id: string) => void;
+    onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void;
+    onDelete: (id: string) => void;
 }
 
-export function GuestList({ guests, selectedIds, onToggleSelect }: GuestListProps) {
+export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, onDelete }: GuestListProps) {
     return (
         <div className="space-y-2 pb-24">
             <AnimatePresence mode="popLayout">
@@ -41,6 +43,8 @@ export function GuestList({ guests, selectedIds, onToggleSelect }: GuestListProp
                             guest={guest}
                             isSelected={selectedIds.includes(guest.id)}
                             onToggleSelect={() => onToggleSelect(guest.id)}
+                            onUpdateRSVP={onUpdateRSVP}
+                            onDelete={onDelete}
                         />
                     ))
                 )}
@@ -49,18 +53,21 @@ export function GuestList({ guests, selectedIds, onToggleSelect }: GuestListProp
     );
 }
 
-function GuestItem({ guest, isSelected, onToggleSelect }: { guest: Guest, isSelected: boolean, onToggleSelect: () => void }) {
-    const fetcher = useFetcher();
-
-    // Optimistic RSVP
-    let rsvpStatus = guest.rsvp_status;
-    if (fetcher.formData?.get("intent") === "rsvp_action" && fetcher.formData.get("id") === guest.id) {
-        rsvpStatus = fetcher.formData.get("status") as any;
-    }
-
-    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === guest.id;
-
-    if (isDeleting) return null;
+function GuestItem({
+    guest,
+    isSelected,
+    onToggleSelect,
+    onUpdateRSVP,
+    onDelete
+}: {
+    guest: Guest,
+    isSelected: boolean,
+    onToggleSelect: () => void,
+    onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void,
+    onDelete: (id: string) => void
+}) {
+    // Optimistic RSVP is handled by React Query now, so we just use the prop
+    const rsvpStatus = guest.rsvp_status;
 
     const initials = guest.name
         .split(" ")
@@ -95,7 +102,7 @@ function GuestItem({ guest, isSelected, onToggleSelect }: { guest: Guest, isSele
 
                 <div className={`
                     h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-xs font-bold border
-                    ${statusColors[rsvpStatus]}
+                    ${statusColors[rsvpStatus as keyof typeof statusColors] || statusColors.pendente}
                 `}>
                     {initials}
                 </div>
@@ -136,39 +143,25 @@ function GuestItem({ guest, isSelected, onToggleSelect }: { guest: Guest, isSele
                     </DropdownMenuItem>
 
                     {rsvpStatus !== 'confirmado' && (
-                        <DropdownMenuItem asChild>
-                            <fetcher.Form method="post" className="w-full cursor-pointer">
-                                <input type="hidden" name="id" value={guest.id} />
-                                <input type="hidden" name="status" value="confirmado" />
-                                <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                    <Check className="mr-2 h-4 w-4 text-green-600" />
-                                    <span>Confirmar Presença</span>
-                                </button>
-                            </fetcher.Form>
+                        <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "confirmado")} className="cursor-pointer">
+                            <Check className="mr-2 h-4 w-4 text-green-600" />
+                            <span>Confirmar Presença</span>
                         </DropdownMenuItem>
                     )}
 
                     {rsvpStatus !== 'recusado' && (
-                        <DropdownMenuItem asChild>
-                            <fetcher.Form method="post" className="w-full cursor-pointer">
-                                <input type="hidden" name="id" value={guest.id} />
-                                <input type="hidden" name="status" value="recusado" />
-                                <button type="submit" name="intent" value="rsvp_action" className="flex w-full items-center">
-                                    <X className="mr-2 h-4 w-4 text-red-600" />
-                                    <span>Recusar Presença</span>
-                                </button>
-                            </fetcher.Form>
+                        <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "recusado")} className="cursor-pointer">
+                            <X className="mr-2 h-4 w-4 text-red-600" />
+                            <span>Recusar Presença</span>
                         </DropdownMenuItem>
                     )}
 
-                    <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                        <fetcher.Form method="post" className="w-full cursor-pointer">
-                            <input type="hidden" name="id" value={guest.id} />
-                            <button type="submit" name="intent" value="delete" className="flex w-full items-center">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span onClick={(e) => { if (!confirm("Tem certeza?")) e.preventDefault() }}>Excluir</span>
-                            </button>
-                        </fetcher.Form>
+                    <DropdownMenuItem
+                        onClick={() => { if (confirm("Tem certeza?")) onDelete(guest.id) }}
+                        className="text-destructive focus:text-destructive cursor-pointer"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Excluir</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLoaderData, Form, useFetcher, useOutletContext } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { useLoaderData, useOutletContext, redirect } from "react-router";
 import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,13 +15,25 @@ import { Plus, FileDown, Loader2 } from "lucide-react";
 import type { Route } from "./+types/guests";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
+import { toast } from "sonner";
 
 // Components
 import { GuestStats } from "@/components/guests/guest-stats";
 import { GuestFilters } from "@/components/guests/guest-filters";
 import { GuestList } from "@/components/guests/guest-list";
-import type { Guest, GuestFilter } from "@/components/guests/types";
-import { toast } from "sonner";
+import type { GuestFilter } from "@/components/guests/types";
+
+// Hooks & Schemas
+import {
+    useGuests,
+    useAddGuest,
+    useUpdateRSVP,
+    useDeleteGuest,
+    useBulkConfirm,
+    useBulkDelete,
+    useAppConfig
+} from "@/hooks/useGuests";
+import type { Guest } from "@/schemas/guest";
 
 // Registrar fontes (necessário para pdfmake no client-side)
 // @ts-ignore
@@ -33,117 +44,14 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const session = await getSession(request.headers.get("Cookie"));
+    const user = session.get("user");
 
-    // Buscar convidados e configurações em paralelo
-    const [guestsResult, configResult] = await Promise.all([
-        supabase.from("guests").select("*").order("name", { ascending: true }),
-        supabase.from("app_config").select("*").single()
-    ]);
-
-    if (guestsResult.error) {
-        console.error("Error fetching guests:", guestsResult.error);
-        return { guests: [], config: null };
+    if (!user) {
+        return redirect("/login");
     }
 
-    return {
-        guests: guestsResult.data as Guest[],
-        config: configResult.data
-    };
-};
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-    const { sendPushToUser } = await import("@/services/push.server");
-
-    if (intent === "add") {
-        const name = formData.get("name") as string;
-        const group_name = formData.get("group_name") as string;
-        const adults_count = parseInt(formData.get("adults_count") as string) || 1;
-        const children_count = parseInt(formData.get("children_count") as string) || 0;
-
-        if (!name) return null;
-
-        // Support for multiple names (one per line)
-        const names = name.split('\n').filter(n => n.trim().length > 0);
-
-        for (const n of names) {
-            await supabase.from("guests").insert({
-                name: n.trim(),
-                group_name,
-                adults_count,
-                children_count,
-                rsvp_status: "pendente"
-            });
-        }
-
-        // Notificar (apenas se for 1, para não spammar)
-        const session = await getSession(request.headers.get("Cookie"));
-        const user = session.get("user");
-
-        if (user && names.length === 1) {
-            await supabase.from("notifications").insert({
-                type: "rsvp",
-                title: "Novo Convidado ➕",
-                message: `${user} adicionou um novo convidado: ${names[0]} (${group_name}).`,
-                link: "/guests"
-            });
-
-            // Enviar Push
-            await sendPushToUser(request, "all", "Novo Convidado ➕", `${user} adicionou um novo convidado: ${names[0]} (${group_name}).`, "/guests");
-        } else if (user && names.length > 1) {
-            await supabase.from("notifications").insert({
-                type: "rsvp",
-                title: "Novos Convidados ➕",
-                message: `${user} adicionou ${names.length} novos convidados em ${group_name}.`,
-                link: "/guests"
-            });
-        }
-
-    } else if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase.from("guests").delete().eq("id", id);
-    } else if (intent === "rsvp_action") {
-        const id = formData.get("id") as string;
-        const status = formData.get("status") as string;
-
-        // Fetch guest name for notification
-        const { data: guest } = await supabase
-            .from("guests")
-            .select("name")
-            .eq("id", id)
-            .single();
-
-        await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
-
-        // Create notification
-        if (guest) {
-            await supabase.from("notifications").insert({
-                type: "rsvp",
-                title: "Atualização de RSVP 📩",
-                message: `${guest.name} teve a presença marcada como "${status}".`,
-                link: "/guests"
-            });
-
-            // Enviar Push
-            const session = await getSession(request.headers.get("Cookie"));
-            const user = session.get("user");
-            if (user) {
-                const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-                await sendPushToUser(request, "all", "Atualização de RSVP 📩", `${guest.name} teve a presença marcada como "${status}".`, "/guests");
-            }
-        }
-    } else if (intent === "bulk_confirm") {
-        const ids = JSON.parse(formData.get("ids") as string);
-        await supabase.from("guests").update({ rsvp_status: "confirmado" }).in("id", ids);
-    } else if (intent === "bulk_delete") {
-        const ids = JSON.parse(formData.get("ids") as string);
-        await supabase.from("guests").delete().in("id", ids);
-    }
-
-    return null;
+    return { user };
 };
 
 // Função auxiliar para converter imagem URL para Base64
@@ -168,8 +76,17 @@ const getBase64ImageFromURL = (url: string): Promise<string> => {
 };
 
 export default function Guests() {
-    const { guests, config } = useLoaderData<typeof loader>();
-    const fetcher = useFetcher();
+    const { user } = useLoaderData<typeof loader>();
+
+    // React Query Hooks
+    const { data: guests = [], isLoading } = useGuests();
+    const { data: config } = useAppConfig();
+
+    const { mutate: addGuest, isPending: isAdding } = useAddGuest(user);
+    const { mutate: updateRSVP } = useUpdateRSVP(user);
+    const { mutate: deleteGuest } = useDeleteGuest();
+    const { mutate: bulkConfirm } = useBulkConfirm();
+    const { mutate: bulkDelete } = useBulkDelete();
 
     // State
     const [filter, setFilter] = useState<GuestFilter>("todos");
@@ -199,22 +116,29 @@ export default function Guests() {
 
     const handleBulkConfirm = () => {
         if (!confirm(`Confirmar presença de ${selectedIds.length} convidados?`)) return;
-        fetcher.submit(
-            { intent: "bulk_confirm", ids: JSON.stringify(selectedIds) },
-            { method: "post" }
-        );
-        setSelectedIds([]);
-        toast.success("Presenças confirmadas!");
+        bulkConfirm({ ids: selectedIds }, {
+            onSuccess: () => setSelectedIds([])
+        });
     };
 
     const handleBulkDelete = () => {
         if (!confirm(`Excluir ${selectedIds.length} convidados?`)) return;
-        fetcher.submit(
-            { intent: "bulk_delete", ids: JSON.stringify(selectedIds) },
-            { method: "post" }
-        );
-        setSelectedIds([]);
-        toast.success("Convidados excluídos!");
+        bulkDelete({ ids: selectedIds }, {
+            onSuccess: () => setSelectedIds([])
+        });
+    };
+
+    const handleAddSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        const name = formData.get("name") as string;
+        const group_name = formData.get("group_name") as string;
+        const adults_count = parseInt(formData.get("adults_count") as string) || 1;
+        const children_count = parseInt(formData.get("children_count") as string) || 0;
+
+        addGuest({ name, group_name, adults_count, children_count }, {
+            onSuccess: () => setShowAddGuest(false)
+        });
     };
 
     const handleExportPdf = useCallback(async () => {
@@ -385,13 +309,21 @@ export default function Guests() {
         return () => setHeaderAction(null);
     }, [isExporting, handleExportPdf, setHeaderAction]);
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-stone-50">
+                <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-stone-50 pb-24">
             <div className="container mx-auto max-w-5xl p-4 space-y-6">
                 {/* Stats */}
-                <GuestStats guests={guests} />
+                <GuestStats guests={guests as any} />
 
-                {/* Main Content - Removed Card Wrapper */}
+                {/* Main Content */}
                 <div className="space-y-4">
                     <GuestFilters
                         searchTerm={searchTerm}
@@ -408,9 +340,11 @@ export default function Guests() {
                     />
 
                     <GuestList
-                        guests={filteredGuests}
+                        guests={filteredGuests as any}
                         selectedIds={selectedIds}
                         onToggleSelect={handleToggleSelect}
+                        onUpdateRSVP={(id, status) => updateRSVP({ id, status })}
+                        onDelete={(id) => deleteGuest(id)}
                     />
                 </div>
             </div>
@@ -435,7 +369,7 @@ export default function Guests() {
                             Adicione um ou mais convidados. Para adicionar vários, cole uma lista de nomes (um por linha).
                         </DialogDescription>
                     </DialogHeader>
-                    <Form method="post" className="space-y-3" onSubmit={() => setShowAddGuest(false)}>
+                    <form onSubmit={handleAddSubmit} className="space-y-3">
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-stone-500">Nome(s)</label>
                             <textarea
@@ -477,11 +411,12 @@ export default function Guests() {
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
-                            <Button type="submit" name="intent" value="add" className="bg-stone-900">
+                            <Button type="submit" disabled={isAdding} className="bg-stone-900">
+                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                 Adicionar
                             </Button>
                         </DialogFooter>
-                    </Form>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>
