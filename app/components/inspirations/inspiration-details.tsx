@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { useFetcher, Form } from "react-router";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Heart, Trash2, ZoomIn, Download, Share2, X, Send, ChevronLeft, ChevronRight, Edit2, Save, MessageCircle } from "lucide-react";
-import type { Inspiration } from "./types";
+import type { Inspiration } from "@/schemas/inspiration";
 import { toast } from "sonner";
 
 interface InspirationDetailsProps {
@@ -18,6 +17,10 @@ interface InspirationDetailsProps {
     onPrev?: () => void;
     hasNext: boolean;
     hasPrev: boolean;
+    onToggleLike: (inspiration: Inspiration) => void;
+    onAddComment: (inspirationId: string, content: string) => void;
+    onDelete: (inspirationId: string) => void;
+    onEdit: (inspirationId: string, data: { title: string; category: string; notes: string }) => void;
 }
 
 export function InspirationDetails({
@@ -30,9 +33,12 @@ export function InspirationDetails({
     onNext,
     onPrev,
     hasNext,
-    hasPrev
+    hasPrev,
+    onToggleLike,
+    onAddComment,
+    onDelete,
+    onEdit
 }: InspirationDetailsProps) {
-    const fetcher = useFetcher();
     const [commentText, setCommentText] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState(inspiration.title);
@@ -47,35 +53,13 @@ export function InspirationDetails({
         setIsEditing(false);
     }, [inspiration]);
 
-    // Optimistic Likes
-    const isLikedOriginal = inspiration.inspiration_likes?.some((l) => l.user_name === user);
-    let isLiked = isLikedOriginal;
-    let likesCount = inspiration.inspiration_likes?.length || 0;
-    let likedBy = inspiration.inspiration_likes?.map((l) => l.user_name) || [];
+    // Likes
+    const isLiked = inspiration.inspiration_likes?.some((l) => l.user_name === user);
+    const likesCount = inspiration.inspiration_likes?.length || 0;
+    const likedBy = inspiration.inspiration_likes?.map((l) => l.user_name) || [];
 
-    if (fetcher.formData?.get("intent") === "toggle_like" && fetcher.formData.get("inspirationId") === inspiration.id) {
-        if (isLiked) {
-            isLiked = false;
-            likesCount--;
-            likedBy = likedBy.filter((name) => name !== user);
-        } else {
-            isLiked = true;
-            likesCount++;
-            likedBy = [...likedBy, user];
-        }
-    }
-
-    // Optimistic Comments
-    let comments = [...(inspiration.inspiration_comments || [])];
-    if (fetcher.formData?.get("intent") === "add_comment" && fetcher.formData.get("inspirationId") === inspiration.id) {
-        const newComment = {
-            id: "temp-" + Date.now(),
-            user_name: user,
-            content: fetcher.formData.get("content") as string,
-            created_at: new Date().toISOString()
-        };
-        comments = [newComment, ...comments];
-    }
+    // Comments
+    const comments = inspiration.inspiration_comments || [];
 
     // Handle key press for navigation
     useEffect(() => {
@@ -89,12 +73,15 @@ export function InspirationDetails({
     }, [hasNext, hasPrev, onNext, onPrev, onClose]);
 
     const handleSaveEdit = () => {
-        fetcher.submit(
-            { intent: "edit", id: inspiration.id, title: editTitle, notes: editNotes, category: editCategory },
-            { method: "post" }
-        );
+        onEdit(inspiration.id, { title: editTitle, notes: editNotes, category: editCategory });
         setIsEditing(false);
-        toast.success("Alterações salvas!");
+    };
+
+    const handleCommentSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!commentText.trim()) return;
+        onAddComment(inspiration.id, commentText);
+        setCommentText("");
     };
 
     return (
@@ -191,22 +178,23 @@ export function InspirationDetails({
                                 </Button>
                             )}
 
-                            <fetcher.Form method="post" className="flex items-center">
-                                <input type="hidden" name="intent" value="toggle_like" />
-                                <input type="hidden" name="inspirationId" value={inspiration.id} />
-                                <input type="hidden" name="hasLiked" value={isLikedOriginal.toString()} />
-                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-rose-50">
-                                    <Heart className={`h-5 w-5 transition-colors ${isLiked ? "fill-rose-500 text-rose-500" : "text-stone-400"}`} />
-                                </Button>
-                            </fetcher.Form>
+                            <Button
+                                onClick={() => onToggleLike(inspiration)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full hover:bg-rose-50"
+                            >
+                                <Heart className={`h-5 w-5 transition-colors ${isLiked ? "fill-rose-500 text-rose-500" : "text-stone-400"}`} />
+                            </Button>
 
-                            <Form method="post" onSubmit={(e) => { if (!confirm("Tem certeza que deseja excluir?")) e.preventDefault(); }}>
-                                <input type="hidden" name="intent" value="delete" />
-                                <input type="hidden" name="id" value={inspiration.id} />
-                                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500 text-stone-400">
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </Form>
+                            <Button
+                                onClick={() => { if (confirm("Tem certeza que deseja excluir?")) onDelete(inspiration.id); }}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500 text-stone-400"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
 
@@ -261,13 +249,10 @@ export function InspirationDetails({
 
                 {/* Comment Input */}
                 <div className="p-3 border-t bg-white flex-shrink-0 pb-safe">
-                    <fetcher.Form
-                        method="post"
+                    <form
                         className="flex gap-2 items-center"
-                        onSubmit={() => setCommentText("")}
+                        onSubmit={handleCommentSubmit}
                     >
-                        <input type="hidden" name="intent" value="add_comment" />
-                        <input type="hidden" name="inspirationId" value={inspiration.id} />
                         <Input
                             name="content"
                             placeholder="Escreva um comentário..."
@@ -279,7 +264,7 @@ export function InspirationDetails({
                         <Button type="submit" size="icon" className="h-10 w-10 rounded-full bg-stone-900 hover:bg-stone-800 shrink-0" disabled={!commentText.trim()}>
                             <Send className="h-4 w-4" />
                         </Button>
-                    </fetcher.Form>
+                    </form>
                 </div>
             </div>
         </>

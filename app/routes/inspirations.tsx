@@ -17,6 +17,9 @@ import {
     useInspirations,
     useAddInspiration,
     useToggleLike,
+    useAddComment,
+    useDeleteInspiration,
+    useEditInspiration,
 } from "@/hooks/useInspirations";
 import type { Inspiration } from "@/schemas/inspiration";
 
@@ -43,6 +46,9 @@ export default function Inspirations() {
     const { data: inspirations = [], isLoading } = useInspirations();
     const { mutate: addInspiration, isPending: isAdding } = useAddInspiration(user);
     const { mutate: toggleLike } = useToggleLike(user);
+    const { mutate: addComment } = useAddComment(user);
+    const { mutate: deleteInspiration } = useDeleteInspiration();
+    const { mutate: editInspiration } = useEditInspiration();
 
     // State
     const [filter, setFilter] = useState<string>("todos");
@@ -256,6 +262,10 @@ export default function Inspirations() {
                             onPrev={handlePrev}
                             hasNext={hasNext}
                             hasPrev={hasPrev}
+                            onToggleLike={(inspiration) => handleToggleLike({ stopPropagation: () => { } } as any, inspiration)}
+                            onAddComment={(inspirationId, content) => addComment({ inspirationId, content })}
+                            onDelete={(id) => deleteInspiration(id, { onSuccess: () => setSelectedImage(null) })}
+                            onEdit={(id, data) => editInspiration({ id, ...data })}
                         />
                     )}
                 </DialogContent>
