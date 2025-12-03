@@ -157,36 +157,11 @@ export const useToggleLike = (user: string) => {
                 throw new Error(error.error || "Erro ao curtir");
             }
         },
-        onMutate: async ({ inspirationId, hasLiked }) => {
-            await queryClient.cancelQueries({ queryKey: ["inspirations"] });
-            const previousInspirations = queryClient.getQueryData<Inspiration[]>(["inspirations"]);
-
-            if (previousInspirations) {
-                queryClient.setQueryData<Inspiration[]>(["inspirations"], (old) =>
-                    old?.map(insp => {
-                        if (insp.id === inspirationId) {
-                            const newLikes = hasLiked
-                                ? insp.inspiration_likes.filter(l => l.user_name !== user)
-                                : [...insp.inspiration_likes, { user_name: user }];
-                            return { ...insp, inspiration_likes: newLikes };
-                        }
-                        return insp;
-                    })
-                );
-            }
-            return { previousInspirations };
-        },
-        onError: (err, newTodo, context) => {
-            if (context?.previousInspirations) {
-                queryClient.setQueryData(["inspirations"], context.previousInspirations);
-            }
-            toast.error("Erro ao curtir.");
-        },
         onSuccess: () => {
-            // No need to invalidate immediately if optimistic update was correct, 
-            // but good for consistency. We can debounce this or remove if it causes flicker.
-            // Keeping it for now to ensure eventual consistency.
             queryClient.invalidateQueries({ queryKey: ["inspirations"] });
+        },
+        onError: (error: any) => {
+            toast.error("Erro ao curtir.");
         }
     });
 };
