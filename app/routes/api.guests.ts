@@ -44,14 +44,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
 
             if (title && message) {
-                await supabase.from("notifications").insert({
-                    type: "rsvp",
-                    title,
-                    message,
-                    link
-                });
+                // Notification (Fire and forget)
+                (async () => {
+                    try {
+                        await supabase.from("notifications").insert({
+                            type: "rsvp",
+                            title,
+                            message,
+                            link
+                        });
 
-                await sendPushToUser(request, "all", title, message, link);
+                        await sendPushToUser(request, "all", title, message, link);
+                    } catch (notifError) {
+                        console.error("Error sending notification for guest:", notifError);
+                    }
+                })();
             }
 
             return Response.json({ success: true });
@@ -72,14 +79,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 const message = `${guest.name} teve a presença marcada como "${status}".`;
                 const link = "/guests";
 
-                await supabase.from("notifications").insert({
-                    type: "rsvp",
-                    title,
-                    message,
-                    link
-                });
+                // Notification (Fire and forget)
+                (async () => {
+                    try {
+                        await supabase.from("notifications").insert({
+                            type: "rsvp",
+                            title,
+                            message,
+                            link
+                        });
 
-                await sendPushToUser(request, "all", title, message, link);
+                        await sendPushToUser(request, "all", title, message, link);
+                    } catch (notifError) {
+                        console.error("Error sending notification for RSVP:", notifError);
+                    }
+                })();
             }
 
             return Response.json({ success: true });

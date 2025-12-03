@@ -40,34 +40,55 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             const { inspirationId, hasLiked, user } = payload;
 
             if (hasLiked) {
+                // User wants to UNLIKE
                 const { error } = await supabase.from("inspiration_likes")
                     .delete()
                     .match({ inspiration_id: inspirationId, user_name: user });
-                if (error) throw error;
+
+                if (error) {
+                    console.error("Error unliking:", error);
+                    throw error;
+                }
             } else {
+                // User wants to LIKE
                 const { error } = await supabase.from("inspiration_likes").insert({
                     inspiration_id: inspirationId,
                     user_name: user
                 });
-                if (error) throw error;
 
-                // Notification
-                const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-                if (insp) {
-                    const title = "Nova Curtida ❤️";
-                    const message = `${user} curtiu sua inspiração "${insp.title}".`;
-                    const link = `/inspirations?id=${inspirationId}`;
-
-                    await supabase.from("notifications").insert({
-                        type: "gift",
-                        title,
-                        message,
-                        link,
-                        image_url: insp.photo_url
-                    });
-
-                    await sendPushToUser(request, "all", title, message, link);
+                if (error) {
+                    // Ignore duplicate key error (already liked)
+                    if (error.code === '23505') {
+                        console.warn("User already liked this inspiration, ignoring insert error.");
+                        return Response.json({ success: true });
+                    }
+                    throw error;
                 }
+
+                // Notification (Fire and forget)
+                (async () => {
+                    try {
+                        const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
+                        if (insp) {
+                            const title = "Nova Curtida ❤️";
+                            const message = `${user} curtiu sua inspiração "${insp.title}".`;
+                            const link = `/inspirations?id=${inspirationId}`;
+
+                            await supabase.from("notifications").insert({
+                                type: "gift",
+                                title,
+                                message,
+                                link,
+                                image_url: insp.photo_url
+                            });
+
+                            // Pass image url if available
+                            await sendPushToUser(request, "all", title, message, link, insp.photo_url);
+                        }
+                    } catch (notifError) {
+                        console.error("Error sending notification for like:", notifError);
+                    }
+                })();
             }
             return Response.json({ success: true });
         }
@@ -84,45 +105,55 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             if (error) throw error;
 
             // Notification
-            const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
-            if (insp) {
-                const title = "Novo Comentário 💬";
-                const message = `${user} comentou em "${insp.title}": "${content}"`;
-                const link = `/inspirations?id=${inspirationId}`;
+            (async () => {
+                try {
+                    const { data: insp } = await supabase.from("inspirations").select("title, photo_url").eq("id", inspirationId).single();
+                    if (insp) {
+                        const title = "Novo Comentário 💬";
+                        const message = `${user} comentou em "${insp.title}": "${content}"`;
+                        const link = `/inspirations?id=${inspirationId}`;
 
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title,
-                    message,
-                    link,
-                    image_url: insp.photo_url
-                });
+                        await supabase.from("notifications").insert({
+                            type: "gift",
+                            title,
+                            message,
+                            link,
+                            image_url: insp.photo_url
+                        });
 
-                await sendPushToUser(request, "all", title, message, link);
-            }
+                        await sendPushToUser(request, "all", title, message, link, insp.photo_url);
+                    }
+                } catch (notifError) {
+                    console.error("Error sending notification for comment:", notifError);
+                }
+            })();
+
             return Response.json({ success: true, data });
         }
 
         if (payload.intent === "add_inspiration") {
             const { title, category, user, inspirationId, photoUrl } = payload;
 
-            // Notification only (DB insertion happens on client for file upload simplicity, or we could move it here but file upload is complex)
-            // Ideally we should move the DB insertion here too, but the hook handles file upload + DB insert. 
-            // Let's just handle the notification here for now to avoid refactoring the whole upload flow.
+            // Notification
+            (async () => {
+                try {
+                    const notifTitle = "Nova Inspiração ✨";
+                    const message = `${user} adicionou uma nova inspiração em ${category}: "${title}".`;
+                    const link = `/inspirations?id=${inspirationId}`;
 
-            const notifTitle = "Nova Inspiração ✨";
-            const message = `${user} adicionou uma nova inspiração em ${category}: "${title}".`;
-            const link = `/inspirations?id=${inspirationId}`;
+                    await supabase.from("notifications").insert({
+                        type: "gift",
+                        title: notifTitle,
+                        message,
+                        link,
+                        image_url: photoUrl
+                    });
 
-            await supabase.from("notifications").insert({
-                type: "gift",
-                title: notifTitle,
-                message,
-                link,
-                image_url: photoUrl
-            });
-
-            await sendPushToUser(request, "all", notifTitle, message, link);
+                    await sendPushToUser(request, "all", notifTitle, message, link, photoUrl);
+                } catch (notifError) {
+                    console.error("Error sending notification for new inspiration:", notifError);
+                }
+            })();
 
             return Response.json({ success: true });
         }

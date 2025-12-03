@@ -44,14 +44,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
 
         // Send Notifications
-        await supabase.from("notifications").insert({
-            type: "gift",
-            title: "Novo Presente Reservado! 🎁",
-            message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
-            link: "/bridal-shower"
-        });
+        // Send Notifications (Fire and forget)
+        (async () => {
+            try {
+                await supabase.from("notifications").insert({
+                    type: "gift",
+                    title: "Novo Presente Reservado! 🎁",
+                    message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
+                    link: "/bridal-shower"
+                });
 
-        await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
+                await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
+            } catch (notifError) {
+                console.error("Error sending notification for gift reservation:", notifError);
+            }
+        })();
 
         // Return success with a random verse
         const verses = [
