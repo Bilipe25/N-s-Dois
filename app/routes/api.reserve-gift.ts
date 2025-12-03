@@ -43,22 +43,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             throw updateError;
         }
 
-        // Send Notifications
-        // Send Notifications (Fire and forget)
-        (async () => {
-            try {
-                await supabase.from("notifications").insert({
-                    type: "gift",
-                    title: "Novo Presente Reservado! 🎁",
-                    message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
-                    link: "/bridal-shower"
-                });
+        // Send Notifications - don't throw if this fails
+        try {
+            await supabase.from("notifications").insert({
+                type: "gift",
+                title: "Novo Presente Reservado! 🎁",
+                message: `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`,
+                link: "/bridal-shower"
+            });
 
-                await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
-            } catch (notifError) {
-                console.error("Error sending notification for gift reservation:", notifError);
-            }
-        })();
+            await sendPushToUser(request, "all", "Novo Presente Reservado! 🎁", `${name} reservou o presente "${gift.item_name}" no Chá de Casa Nova.`, "/bridal-shower");
+        } catch (notifError) {
+            console.error("Error sending notification for gift reservation (non-fatal):", notifError);
+        }
 
         // Return success with a random verse
         const verses = [
