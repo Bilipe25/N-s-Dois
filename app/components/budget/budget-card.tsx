@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { BudgetItem } from "./types";
+import type { BudgetItem } from "@/schemas/budget";
 
 interface BudgetCardProps {
     item: BudgetItem;

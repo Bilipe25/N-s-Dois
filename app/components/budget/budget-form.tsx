@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BUDGET_CATEGORIES, type BudgetItem } from "./types";
-import { CreateBudgetItemSchema, type CreateBudgetItemInput } from "@/schemas/budget";
+import { BUDGET_CATEGORIES, type BudgetItem, CreateBudgetItemSchema, type CreateBudgetItemInput, type CreateBudgetItemOutput, type BudgetCategory } from "@/schemas/budget";
 import { useCreateBudgetItem, useUpdateBudgetItem } from "@/hooks/useBudget";
 
 interface BudgetFormProps {

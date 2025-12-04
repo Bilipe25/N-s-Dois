@@ -10,7 +10,7 @@ import { BudgetSummary } from "@/components/budget/budget-summary";
 import { BudgetCharts } from "@/components/budget/budget-charts";
 import { BudgetCard } from "@/components/budget/budget-card";
 import { BudgetForm } from "@/components/budget/budget-form";
-import { BUDGET_CATEGORIES, type BudgetItem } from "@/components/budget/types";
+import { BUDGET_CATEGORIES, type BudgetItem } from "@/schemas/budget";
 import { useBudget } from "@/hooks/useBudget";
 
 export const meta: Route.MetaFunction = () => {
