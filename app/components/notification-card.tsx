@@ -12,7 +12,7 @@ export interface Notification {
     message: string;
     created_at: string;
     read: boolean;
-    link?: string;
+    link?: string | null;
     image_url?: string;
 }
 
