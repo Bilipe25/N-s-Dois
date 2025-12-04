@@ -365,7 +365,7 @@ export default function PublicBridalShower() {
                                     >
                                         <GiftCard
                                             gift={gift}
-                                            onSelect={setSelectedGift as any}
+                                            onSelect={setSelectedGift}
                                         />
                                     </motion.div>
                                 ))}
