@@ -9,7 +9,7 @@ import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { PixModal } from "@/components/bridal-shower/pix-modal";
-import { useGifts, useBridalConfig, useReserveGift, useConfirmPresence } from "@/hooks/useBridalShower";
+import { useBridalData, useReserveGift, useConfirmPresence } from "@/hooks/useBridalShower";
 import type { Gift } from "@/schemas/bridal-shower";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -34,8 +34,11 @@ export const meta: Route.MetaFunction = ({ data }) => {
 };
 
 export default function PublicBridalShower() {
-    const { data: gifts = [], isLoading: isLoadingGifts } = useGifts();
-    const { data: config } = useBridalConfig();
+    const { data: bridalData, isLoading } = useBridalData();
+    const gifts = bridalData?.gifts || [];
+    const guests = bridalData?.guests || [];
+    const config = bridalData?.config;
+
     const { mutate: reserveGift, isPending: isReserving } = useReserveGift();
     const { mutate: confirmPresence, isPending: isConfirming } = useConfirmPresence();
 
@@ -52,6 +55,7 @@ export default function PublicBridalShower() {
     const [confirmSuccessData, setConfirmSuccessData] = useState<{ guestName: string, locationName: string } | null>(null);
     const [guestName, setGuestName] = useState("");
     const [selectedLocation, setSelectedLocation] = useState<"local1" | "local2" | null>(null);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Pix State
     const [showPixModal, setShowPixModal] = useState(false);
@@ -133,7 +137,7 @@ export default function PublicBridalShower() {
         }
     };
 
-    if (isLoadingGifts) {
+    if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-stone-50">
                 <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
@@ -481,16 +485,55 @@ export default function PublicBridalShower() {
 
                     <form onSubmit={handleConfirmPresence}>
                         <div className="py-4 space-y-6">
-                            <div className="space-y-2">
+                            <div className="space-y-2 relative">
                                 <Label htmlFor="guest-name">Seu Nome Completo</Label>
                                 <Input
                                     id="guest-name"
                                     value={guestName}
-                                    onChange={(e) => setGuestName(e.target.value)}
+                                    onChange={(e) => {
+                                        setGuestName(e.target.value);
+                                        setShowSuggestions(e.target.value.length >= 2);
+                                    }}
+                                    onFocus={() => setShowSuggestions(guestName.length >= 2)}
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                     placeholder="Digite seu nome..."
+                                    autoComplete="off"
                                     required
                                     className="h-11"
                                 />
+                                {/* Autocomplete Suggestions */}
+                                {showSuggestions && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                        {guests
+                                            .filter(g => g.name.toLowerCase().includes(guestName.toLowerCase()))
+                                            .slice(0, 5)
+                                            .map(guest => (
+                                                <button
+                                                    key={guest.id}
+                                                    type="button"
+                                                    className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center justify-between text-sm"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setGuestName(guest.name);
+                                                        setShowSuggestions(false);
+                                                    }}
+                                                >
+                                                    <span>{guest.name}</span>
+                                                    {guest.confirmed && (
+                                                        <span className="text-xs text-green-600 flex items-center gap-1">
+                                                            <Heart className="h-3 w-3 fill-green-600" /> Confirmado
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))
+                                        }
+                                        {guests.filter(g => g.name.toLowerCase().includes(guestName.toLowerCase())).length === 0 && (
+                                            <div className="px-3 py-2 text-sm text-stone-500">
+                                                Nenhum convidado encontrado. Você será adicionado à lista.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {hasTwoLocations ? (
