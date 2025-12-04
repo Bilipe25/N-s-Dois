@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { Form } from "react-router";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BUDGET_CATEGORIES, type BudgetItem } from "./types";
+import { CreateBudgetItemSchema, type CreateBudgetItemInput } from "@/schemas/budget";
+import { useCreateBudgetItem, useUpdateBudgetItem } from "@/hooks/useBudget";
 
 interface BudgetFormProps {
     item?: BudgetItem | null;
@@ -17,30 +20,63 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
     const isEditing = !!item;
     const [isInstallment, setIsInstallment] = useState(false);
 
+    const createItem = useCreateBudgetItem();
+    const updateItem = useUpdateBudgetItem();
+
+    const form = useForm<CreateBudgetItemInput>({
+        resolver: zodResolver(CreateBudgetItemSchema),
+        defaultValues: {
+            description: item?.description || "",
+            category: item?.category || "Outros",
+            estimated_value: item?.estimated_value || 0,
+            paid_value: item?.paid_value || 0,
+            installments_current: item?.installments_current || 1,
+            installments_total: item?.installments_total || 1,
+            due_date: item?.due_date || "",
+            supplier_id: item?.supplier_id || null,
+        }
+    });
+
     useEffect(() => {
         if (item && item.installments_total > 1) {
             setIsInstallment(true);
         }
     }, [item]);
 
-    return (
-        <Form method="post" className="space-y-4" onSubmit={onCancel}>
-            {isEditing && <input type="hidden" name="id" value={item.id} />}
+    const onSubmit = (data: CreateBudgetItemInput) => {
+        if (isEditing && item) {
+            updateItem.mutate({ id: item.id, ...data }, {
+                onSuccess: onCancel
+            });
+        } else {
+            createItem.mutate(data, {
+                onSuccess: onCancel
+            });
+        }
+    };
 
+    const isPending = createItem.isPending || updateItem.isPending;
+
+    return (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
                 <Input
                     id="description"
-                    name="description"
+                    {...form.register("description")}
                     placeholder="Ex: Buffet, Fotógrafo..."
-                    defaultValue={item?.description}
-                    required
                 />
+                {form.formState.errors.description && (
+                    <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>
+                )}
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
-                <Select name="category" defaultValue={item?.category} required>
+                <Select
+                    onValueChange={(value) => form.setValue("category", value as any)}
+                    defaultValue={form.getValues("category")}
+                >
                     <SelectTrigger>
                         <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
@@ -50,11 +86,17 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                         ))}
                     </SelectContent>
                 </Select>
+                {form.formState.errors.category && (
+                    <p className="text-xs text-destructive">{form.formState.errors.category.message}</p>
+                )}
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="supplier">Fornecedor (Opcional)</Label>
-                <Select name="supplier_id" defaultValue={item?.supplier_id || "none"}>
+                <Select
+                    onValueChange={(value) => form.setValue("supplier_id", value === "none" ? null : value)}
+                    defaultValue={form.getValues("supplier_id") || "none"}
+                >
                     <SelectTrigger>
                         <SelectValue placeholder="Selecione um fornecedor..." />
                     </SelectTrigger>
@@ -74,14 +116,16 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                         <span className="absolute left-3 top-2.5 text-stone-500 text-sm">R$</span>
                         <Input
                             id="estimated_value"
-                            name="estimated_value"
                             type="number"
                             step="0.01"
                             className="pl-9"
                             placeholder="0,00"
-                            defaultValue={item?.estimated_value}
+                            {...form.register("estimated_value", { valueAsNumber: true })}
                         />
                     </div>
+                    {form.formState.errors.estimated_value && (
+                        <p className="text-xs text-destructive">{form.formState.errors.estimated_value.message}</p>
+                    )}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="paid_value">Valor Pago</Label>
@@ -89,14 +133,16 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                         <span className="absolute left-3 top-2.5 text-stone-500 text-sm">R$</span>
                         <Input
                             id="paid_value"
-                            name="paid_value"
                             type="number"
                             step="0.01"
                             className="pl-9"
                             placeholder="0,00"
-                            defaultValue={item?.paid_value}
+                            {...form.register("paid_value", { valueAsNumber: true })}
                         />
                     </div>
+                    {form.formState.errors.paid_value && (
+                        <p className="text-xs text-destructive">{form.formState.errors.paid_value.message}</p>
+                    )}
                 </div>
             </div>
 
@@ -117,20 +163,18 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                         <Label htmlFor="installments_current">Parcela Atual</Label>
                         <Input
                             id="installments_current"
-                            name="installments_current"
                             type="number"
                             min="1"
-                            defaultValue={item?.installments_current || 1}
+                            {...form.register("installments_current", { valueAsNumber: true })}
                         />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="installments_total">Total de Parcelas</Label>
                         <Input
                             id="installments_total"
-                            name="installments_total"
                             type="number"
                             min="1"
-                            defaultValue={item?.installments_total || 1}
+                            {...form.register("installments_total", { valueAsNumber: true })}
                         />
                     </div>
                 </div>
@@ -140,9 +184,8 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                 <Label htmlFor="due_date">Data de Vencimento</Label>
                 <Input
                     id="due_date"
-                    name="due_date"
                     type="date"
-                    defaultValue={item?.due_date ? new Date(item.due_date).toISOString().split('T')[0] : ''}
+                    {...form.register("due_date")}
                 />
             </div>
 
@@ -150,10 +193,10 @@ export function BudgetForm({ item, suppliers, onCancel }: BudgetFormProps) {
                 <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
                     Cancelar
                 </Button>
-                <Button type="submit" name="intent" value={isEditing ? "update" : "add"} className="flex-1 bg-stone-900 text-white hover:bg-stone-800">
-                    {isEditing ? "Salvar Alterações" : "Adicionar Gasto"}
+                <Button type="submit" className="flex-1 bg-stone-900 text-white hover:bg-stone-800" disabled={isPending}>
+                    {isPending ? "Salvando..." : (isEditing ? "Salvar Alterações" : "Adicionar Gasto")}
                 </Button>
             </div>
-        </Form>
+        </form>
     );
 }

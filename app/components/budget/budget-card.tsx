@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useFetcher, Link } from "react-router";
+import { Link } from "react-router";
 import { MoreHorizontal, Pencil, Trash2, Calendar, AlertCircle, CheckCircle2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,9 +12,11 @@ interface BudgetCardProps {
     onEdit: (item: BudgetItem) => void;
 }
 
+import { useDeleteBudgetItem } from "@/hooks/useBudget";
+
 export function BudgetCard({ item, onEdit }: BudgetCardProps) {
-    const fetcher = useFetcher();
-    const isDeleting = fetcher.formData?.get("intent") === "delete" && fetcher.formData.get("id") === item.id;
+    const deleteItem = useDeleteBudgetItem();
+    const isDeleting = deleteItem.isPending && deleteItem.variables === item.id;
 
     if (isDeleting) return null;
 
@@ -74,13 +76,12 @@ export function BudgetCard({ item, onEdit }: BudgetCardProps) {
                             <DropdownMenuItem onClick={() => onEdit(item)}>
                                 <Pencil className="h-4 w-4 mr-2" /> Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild className="text-red-600 focus:text-red-600">
-                                <fetcher.Form method="post">
-                                    <input type="hidden" name="id" value={item.id} />
-                                    <button type="submit" name="intent" value="delete" className="flex w-full items-center">
-                                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                                    </button>
-                                </fetcher.Form>
+                            <DropdownMenuItem
+                                onClick={() => deleteItem.mutate(item.id)}
+                                className="text-red-600 focus:text-red-600"
+                                disabled={deleteItem.isPending}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
