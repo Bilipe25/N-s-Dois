@@ -1,241 +1,272 @@
 import { useState } from "react";
-import { useLoaderData, Form, useNavigation } from "react-router";
-import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Trash2, Image as ImageIcon, X, Loader2, DollarSign, Package } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Trash2, Image as ImageIcon, X, Loader2, DollarSign, Package, Search, Gift, ArrowRight } from "lucide-react";
 import type { Route } from "./+types/assets";
+import { useAssets, useDeleteAsset, useAddGiftAsAsset } from "@/hooks/useAssets";
+import { ASSET_CATEGORIES, type Asset } from "@/schemas/assets";
+import { AddAssetDialog } from "@/components/assets/add-asset-dialog";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Nossos Bens - Nós Dois" }];
 };
 
-export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
-    const { data: assets, error } = await supabase
-        .from("assets")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        console.error("Error fetching assets:", error);
-        return { assets: [] };
-    }
-
-    return { assets };
-};
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-
-    if (intent === "add") {
-        const name = formData.get("name") as string;
-        const category = formData.get("category") as string;
-        const value = parseFloat(formData.get("value") as string) || 0;
-        const notes = formData.get("notes") as string;
-        const photo = formData.get("photo") as File;
-
-        let photo_url = null;
-
-        if (photo && photo.size > 0 && photo.name !== "undefined") {
-            const fileExt = photo.name.split('.').pop();
-            const fileName = `asset_${Date.now()}.${fileExt}`;
-
-            const arrayBuffer = await photo.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-
-            const { error: uploadError } = await supabase.storage
-                .from("images")
-                .upload(fileName, fileBuffer, {
-                    contentType: photo.type,
-                    upsert: true
-                });
-
-            if (!uploadError) {
-                const { data } = supabase.storage
-                    .from("images")
-                    .getPublicUrl(fileName);
-                photo_url = data.publicUrl;
-            }
-        }
-
-        if (name) {
-            await supabase.from("assets").insert({
-                name,
-                category,
-                value,
-                notes,
-                photo_url
-            });
-        }
-    } else if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase.from("assets").delete().eq("id", id);
-    }
-
-    return null;
-};
-
 export default function Assets() {
-    const { assets } = useLoaderData<typeof loader>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const { data, isLoading } = useAssets();
+    const { mutate: deleteAsset, isPending: isDeleting } = useDeleteAsset();
+    const { mutate: addGiftAsAsset, isPending: isAddingGift } = useAddGiftAsAsset();
+
+    const assets = data?.assets || [];
+    const reservedGifts = data?.reservedGifts || [];
 
     const [filter, setFilter] = useState<string>("todos");
-    const [selectedAsset, setSelectedAsset] = useState<any>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+    const [showAddDialog, setShowAddDialog] = useState(false);
 
-    const categories = ["todos", "Cozinha", "Sala", "Quarto", "Banheiro", "Lavanderia", "Escritório", "Outros"];
+    const categories = ["todos", ...ASSET_CATEGORIES];
 
-    const filteredAssets = assets.filter((item: any) => {
-        if (filter === "todos") return true;
-        return item.category === filter;
+    // Filtrar assets
+    const filteredAssets = assets.filter((item) => {
+        const matchesFilter = filter === "todos" || item.category === filter;
+        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesFilter && matchesSearch;
     });
 
-    const totalValue = assets.reduce((acc: number, item: any) => acc + (item.value || 0), 0);
+    // Cálculos
+    const totalValue = assets.reduce((acc, item) => acc + (item.value || 0), 0);
     const totalItems = assets.length;
+    const fromBridalShower = assets.filter(a => a.source === "bridal_shower").length;
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const url = URL.createObjectURL(file);
-            setPreviewUrl(url);
-        } else {
-            setPreviewUrl(null);
+    // IDs de presentes já adicionados como bens
+    const addedGiftIds = new Set(assets.filter(a => a.bridal_gift_id).map(a => a.bridal_gift_id));
+    const pendingGifts = reservedGifts.filter(g => !addedGiftIds.has(g.id));
+
+    const handleDelete = () => {
+        if (selectedAsset) {
+            deleteAsset(selectedAsset.id, {
+                onSuccess: () => setSelectedAsset(null)
+            });
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[50vh]">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
     return (
-        <div className="p-4 space-y-6 pb-20">
+        <div className="p-4 space-y-6 pb-24">
             <header>
                 <p className="text-sm text-muted-foreground">Inventário da nossa casa</p>
             </header>
 
-            {/* Resumo */}
-            <div className="grid grid-cols-2 gap-4">
-                <Card>
-                    <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                        <DollarSign className="h-5 w-5 text-primary mb-1" />
-                        <span className="text-xs text-muted-foreground">Valor Total</span>
-                        <span className="text-lg font-bold text-primary">
+            {/* Resumo Aprimorado */}
+            <div className="grid grid-cols-3 gap-3">
+                <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                        <DollarSign className="h-4 w-4 text-primary mb-1" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor Total</span>
+                        <span className="text-sm font-bold text-primary">
                             {totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                        <Package className="h-5 w-5 text-primary mb-1" />
-                        <span className="text-xs text-muted-foreground">Total de Itens</span>
-                        <span className="text-lg font-bold text-primary">{totalItems}</span>
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                        <Package className="h-4 w-4 text-primary mb-1" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</span>
+                        <span className="text-sm font-bold text-primary">{totalItems}</span>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
+                        <Gift className="h-4 w-4 text-rose-500 mb-1" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Do Chá</span>
+                        <span className="text-sm font-bold text-rose-500">{fromBridalShower}</span>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Filtros */}
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {categories.map((cat) => (
-                    <button
-                        key={cat}
-                        onClick={() => setFilter(cat)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${filter === cat
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                            }`}
-                    >
-                        {cat}
-                    </button>
-                ))}
+            {/* Busca */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar item..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                />
             </div>
 
-            {/* Adicionar Bem */}
-            <Card>
-                <CardContent className="p-3">
-                    <Form method="post" encType="multipart/form-data" className="space-y-3" onSubmit={() => setPreviewUrl(null)}>
-                        <div className="flex gap-3 items-start">
-                            <div className="relative h-20 w-20 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-dashed border-muted-foreground/50">
-                                {previewUrl ? (
-                                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
-                                ) : (
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground opacity-50" />
-                                )}
-                                <input
-                                    type="file"
-                                    name="photo"
-                                    accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={handleFileChange}
-                                />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <Input name="name" placeholder="Nome (ex: Geladeira)" required className="h-9" />
-                                <div className="flex gap-2">
-                                    <select
-                                        name="category"
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                        required
-                                    >
-                                        <option value="">Categoria...</option>
-                                        {categories.filter(c => c !== 'todos').map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">R$</span>
-                                <Input name="value" type="number" step="0.01" placeholder="Valor" className="pl-8 h-9" />
-                            </div>
-                            <Input name="notes" placeholder="Notas (opcional)" className="flex-[2] h-9" />
-                        </div>
-                        <Button type="submit" name="intent" value="add" className="w-full h-9" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                            Adicionar Item
-                        </Button>
-                    </Form>
-                </CardContent>
-            </Card>
+            {/* Tabs: Meus Bens | Presentes Pendentes */}
+            <Tabs defaultValue="bens" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="bens">Meus Bens</TabsTrigger>
+                    <TabsTrigger value="presentes" className="relative">
+                        Presentes do Chá
+                        {pendingGifts.length > 0 && (
+                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center">
+                                {pendingGifts.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                </TabsList>
 
-            {/* Lista de Bens */}
-            <div className="space-y-3">
-                {filteredAssets.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground text-sm">
-                        Nenhum item encontrado nesta categoria.
+                {/* Tab: Meus Bens */}
+                <TabsContent value="bens" className="mt-4 space-y-4">
+                    {/* Filtros por Categoria */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                        {categories.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setFilter(cat)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${filter === cat
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
                     </div>
-                ) : (
-                    filteredAssets.map((item: any) => (
-                        <div
-                            key={item.id}
-                            className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-secondary/20 transition-colors cursor-pointer"
-                            onClick={() => setSelectedAsset(item)}
-                        >
-                            <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden shrink-0 flex items-center justify-center">
-                                {item.photo_url ? (
-                                    <img src={item.photo_url} alt={item.name} className="h-full w-full object-cover" />
-                                ) : (
-                                    <Package className="h-6 w-6 text-muted-foreground opacity-50" />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-medium text-sm truncate">{item.name}</h3>
-                                    <span className="text-xs font-bold text-primary">
-                                        {(item.value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">{item.category}</p>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
 
-            {/* Detalhes Dialog */}
+                    {/* Lista de Bens */}
+                    <AnimatePresence mode="popLayout">
+                        {filteredAssets.length === 0 ? (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="text-center py-12 text-muted-foreground text-sm"
+                            >
+                                {searchTerm ? "Nenhum item encontrado na busca." : "Nenhum item nesta categoria."}
+                            </motion.div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredAssets.map((item, index) => (
+                                    <motion.div
+                                        key={item.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ delay: index * 0.03 }}
+                                        className="flex items-center gap-3 p-3 rounded-xl border bg-card hover:bg-secondary/20 transition-colors cursor-pointer"
+                                        onClick={() => setSelectedAsset(item)}
+                                    >
+                                        <div className="h-14 w-14 rounded-lg bg-secondary overflow-hidden shrink-0 flex items-center justify-center">
+                                            {item.photo_url ? (
+                                                <img src={item.photo_url} alt={item.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <Package className="h-6 w-6 text-muted-foreground opacity-50" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h3 className="font-medium text-sm truncate">{item.name}</h3>
+                                                <span className="text-xs font-bold text-primary whitespace-nowrap">
+                                                    {(item.value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs text-muted-foreground">{item.category}</span>
+                                                {item.source === "bridal_shower" && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+                                                        🎁 Do Chá
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </AnimatePresence>
+                </TabsContent>
+
+                {/* Tab: Presentes do Chá */}
+                <TabsContent value="presentes" className="mt-4 space-y-4">
+                    {pendingGifts.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Gift className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
+                            <p className="text-muted-foreground text-sm">
+                                Todos os presentes já foram adicionados!
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-xs text-muted-foreground">
+                                Presentes reservados no Chá de Casa Nova que ainda não foram adicionados ao seu inventário:
+                            </p>
+                            <div className="space-y-3">
+                                {pendingGifts.map((gift) => (
+                                    <motion.div
+                                        key={gift.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex items-center gap-3 p-3 rounded-xl border bg-card"
+                                    >
+                                        <div className="h-14 w-14 rounded-lg bg-rose-50 dark:bg-rose-900/20 overflow-hidden shrink-0 flex items-center justify-center">
+                                            {gift.image_url ? (
+                                                <img src={gift.image_url} alt={gift.item_name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <Gift className="h-6 w-6 text-rose-400" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-medium text-sm truncate">{gift.item_name}</h3>
+                                            <p className="text-xs text-muted-foreground">
+                                                Reservado por: {gift.reserved_by || "Anônimo"}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => addGiftAsAsset(gift)}
+                                            disabled={isAddingGift}
+                                            className="shrink-0"
+                                        >
+                                            {isAddingGift ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    Adicionar <ArrowRight className="ml-1 h-3 w-3" />
+                                                </>
+                                            )}
+                                        </Button>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </TabsContent>
+            </Tabs>
+
+            {/* FAB - Botão Flutuante para Adicionar */}
+            <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="fixed bottom-24 right-4 z-40"
+            >
+                <Button
+                    size="lg"
+                    className="h-14 w-14 rounded-full shadow-lg"
+                    onClick={() => setShowAddDialog(true)}
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </motion.div>
+
+            {/* Dialog para Adicionar */}
+            <AddAssetDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
+
+            {/* Dialog de Detalhes */}
             <Dialog open={!!selectedAsset} onOpenChange={(open) => !open && setSelectedAsset(null)}>
                 <DialogContent className="max-w-sm w-full p-0 overflow-hidden bg-background">
                     {selectedAsset && (
@@ -256,6 +287,11 @@ export default function Assets() {
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
+                                {selectedAsset.source === "bridal_shower" && (
+                                    <span className="absolute top-2 left-2 px-2 py-1 rounded-full bg-rose-500 text-white text-xs font-medium">
+                                        🎁 Presente do Chá
+                                    </span>
+                                )}
                             </div>
                             <div className="p-6 space-y-4">
                                 <div>
@@ -278,23 +314,19 @@ export default function Assets() {
                                     <span className="text-xs text-muted-foreground">
                                         Adicionado em {new Date(selectedAsset.created_at).toLocaleDateString('pt-BR')}
                                     </span>
-                                    <Form method="post">
-                                        <input type="hidden" name="id" value={selectedAsset.id} />
-                                        <Button
-                                            type="submit"
-                                            name="intent"
-                                            value="delete"
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                if (!confirm("Tem certeza que deseja excluir?")) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                                        </Button>
-                                    </Form>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                    >
+                                        {isDeleting ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                        )}
+                                        Excluir
+                                    </Button>
                                 </div>
                             </div>
                         </div>
