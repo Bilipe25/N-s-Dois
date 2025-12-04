@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, X } from "lucide-react";
-import { GIFT_CATEGORIES } from "./types";
+import { GIFT_CATEGORIES } from "@/schemas/bridal-shower";
 
 interface GiftFilterProps {
     searchTerm: string;

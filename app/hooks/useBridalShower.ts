@@ -1,53 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase";
-import type { Gift, Guest, Config, ReserveGiftInput, AddGiftInput, AddGuestInput, UpdateConfigSchema } from "@/schemas/bridal-shower";
+import type {
+    Gift,
+    Guest,
+    Config,
+    ReserveGiftInput,
+    CreateGiftInput,
+    UpdateGiftInput,
+    CreateGuestInput,
+    UpdateConfigInput,
+    BulkUpdateCategoryInput
+} from "@/schemas/bridal-shower";
 import { toast } from "sonner";
-import { z } from "zod";
-
-const supabase = createClient(null as any);
 
 // --- QUERIES ---
 
-export const useGifts = () => {
+export const useBridalData = () => {
     return useQuery({
-        queryKey: ["bridal_gifts"],
+        queryKey: ["bridal_data"],
         queryFn: async () => {
-            const { data, error } = await supabase
-                .from("bridal_shower_gifts")
-                .select("*")
-                .order("item_name");
-            if (error) throw error;
-            return data as Gift[];
+            const response = await fetch("/api/bridal-shower");
+            if (!response.ok) throw new Error("Erro ao carregar dados");
+            return await response.json() as { gifts: Gift[], guests: Guest[], config: Config };
         }
     });
+};
+
+export const useGifts = () => {
+    const { data } = useBridalData();
+    return { data: data?.gifts || [] };
 };
 
 export const useGuests = () => {
-    return useQuery({
-        queryKey: ["bridal_guests"],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from("bridal_shower_guests")
-                .select("*")
-                .order("name");
-            if (error) throw error;
-            return data as Guest[];
-        }
-    });
+    const { data } = useBridalData();
+    return { data: data?.guests || [] };
 };
 
 export const useBridalConfig = () => {
-    return useQuery({
-        queryKey: ["bridal_config"],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from("app_config")
-                .select("*")
-                .single();
-            if (error) throw error;
-            return data as Config;
-        }
-    });
+    const { data } = useBridalData();
+    return { data: data?.config };
 };
 
 // --- MUTATIONS (PUBLIC) ---
@@ -65,48 +55,29 @@ export const useReserveGift = () => {
             if (!response.ok) throw new Error(data.error || "Erro ao reservar presente");
             return data;
         },
-        onMutate: async (newReservation) => {
-            await queryClient.cancelQueries({ queryKey: ["bridal_gifts"] });
-            const previousGifts = queryClient.getQueryData<Gift[]>(["bridal_gifts"]);
-
-            // Optimistic Update
-            if (previousGifts) {
-                queryClient.setQueryData<Gift[]>(["bridal_gifts"], (old) =>
-                    old?.map(gift =>
-                        gift.id === newReservation.id
-                            ? { ...gift, status: "comprado", reserved_by: newReservation.name }
-                            : gift
-                    )
-                );
-            }
-            return { previousGifts };
-        },
-        onError: (err, newReservation, context) => {
-            if (context?.previousGifts) {
-                queryClient.setQueryData(["bridal_gifts"], context.previousGifts);
-            }
-            toast.error(err.message);
-        },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
-        }
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
+        },
+        onError: (error: any) => toast.error(error.message)
     });
 };
 
 // --- MUTATIONS (ADMIN) ---
 
-export const useAddGift = () => {
+export const useCreateGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (input: AddGiftInput) => {
-            const { error } = await supabase.from("bridal_shower_gifts").insert({
-                ...input,
-                status: "disponivel"
+        mutationFn: async (input: CreateGiftInput) => {
+            const response = await fetch("/api/bridal-shower?intent=create_gift", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
             });
-            if (error) throw error;
+            if (!response.ok) throw new Error("Erro ao criar presente");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Presente adicionado!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -116,12 +87,17 @@ export const useAddGift = () => {
 export const useUpdateGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, ...updates }: Partial<Gift> & { id: string }) => {
-            const { error } = await supabase.from("bridal_shower_gifts").update(updates).eq("id", id);
-            if (error) throw error;
+        mutationFn: async (input: UpdateGiftInput) => {
+            const response = await fetch("/api/bridal-shower?intent=update_gift", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error("Erro ao atualizar presente");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Presente atualizado!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -132,11 +108,14 @@ export const useDeleteGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from("bridal_shower_gifts").delete().eq("id", id);
-            if (error) throw error;
+            const response = await fetch(`/api/bridal-shower?intent=delete_gift&id=${id}`, {
+                method: "DELETE"
+            });
+            if (!response.ok) throw new Error("Erro ao remover presente");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Presente removido!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -147,12 +126,16 @@ export const useToggleGiftStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, currentStatus }: { id: string, currentStatus: string }) => {
-            const newStatus = currentStatus === 'comprado' ? 'disponivel' : 'comprado';
-            const { error } = await supabase.from("bridal_shower_gifts").update({ status: newStatus }).eq("id", id);
-            if (error) throw error;
+            const response = await fetch("/api/bridal-shower?intent=toggle_gift_status", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, currentStatus })
+            });
+            if (!response.ok) throw new Error("Erro ao alterar status");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
         },
         onError: (error: any) => toast.error(error.message)
     });
@@ -161,27 +144,37 @@ export const useToggleGiftStatus = () => {
 export const useBulkUpdateCategory = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ ids, category }: { ids: string[], category: string }) => {
-            const { error } = await supabase.from("bridal_shower_gifts").update({ category }).in("id", ids);
-            if (error) throw error;
+        mutationFn: async (input: BulkUpdateCategoryInput) => {
+            const response = await fetch("/api/bridal-shower?intent=bulk_update_category", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error("Erro ao atualizar categorias");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Categorias atualizadas!");
         },
         onError: (error: any) => toast.error(error.message)
     });
 };
 
-export const useAddGuest = () => {
+export const useCreateGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async (input: AddGuestInput) => {
-            const { error } = await supabase.from("bridal_shower_guests").insert(input);
-            if (error) throw error;
+        mutationFn: async (input: CreateGuestInput) => {
+            const response = await fetch("/api/bridal-shower?intent=create_guest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error("Erro ao criar convidado");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_guests"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Convidado adicionado!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -192,11 +185,14 @@ export const useDeleteGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase.from("bridal_shower_guests").delete().eq("id", id);
-            if (error) throw error;
+            const response = await fetch(`/api/bridal-shower?intent=delete_guest&id=${id}`, {
+                method: "DELETE"
+            });
+            if (!response.ok) throw new Error("Erro ao remover convidado");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_guests"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Convidado removido!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -207,11 +203,16 @@ export const useToggleGuestConfirm = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, current }: { id: string, current: boolean }) => {
-            const { error } = await supabase.from("bridal_shower_guests").update({ confirmed: !current }).eq("id", id);
-            if (error) throw error;
+            const response = await fetch("/api/bridal-shower?intent=toggle_guest_confirm", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, current })
+            });
+            if (!response.ok) throw new Error("Erro ao alterar confirmação");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_guests"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
         },
         onError: (error: any) => toast.error(error.message)
     });
@@ -220,15 +221,17 @@ export const useToggleGuestConfirm = () => {
 export const useUpdateConfig = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, updates }: { id: string, updates: z.infer<typeof UpdateConfigSchema> }) => {
-            const { error } = await supabase.from("app_config").update({
-                bridal_shower_date: updates.date || null,
-                bridal_shower_location: updates.location
-            }).eq("id", id);
-            if (error) throw error;
+        mutationFn: async ({ id, updates }: { id: string, updates: UpdateConfigInput }) => {
+            const response = await fetch(`/api/bridal-shower?intent=update_config&id=${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updates)
+            });
+            if (!response.ok) throw new Error("Erro ao atualizar configurações");
+            return await response.json();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_config"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Configurações salvas!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -240,7 +243,7 @@ export const useImportGifts = () => {
     return useMutation({
         mutationFn: async (importText: string) => {
             const lines = importText.split('\n');
-            const giftsToInsert = [];
+            const gifts = [];
 
             for (const line of lines) {
                 const trimmedLine = line.trim();
@@ -256,26 +259,32 @@ export const useImportGifts = () => {
                 }
 
                 const item_name = parts[0]?.trim();
-                const suggested_store = parts[1]?.trim() || null;
-                const price_range = parts[2]?.trim() || null;
+                const suggested_store = parts[1]?.trim() || undefined;
+                const price_range = parts[2]?.trim() || undefined;
 
                 if (item_name) {
-                    giftsToInsert.push({
+                    gifts.push({
                         item_name,
                         suggested_store,
                         price_range,
-                        status: 'disponivel'
+                        status: 'disponivel',
+                        category: 'Outros'
                     });
                 }
             }
 
-            if (giftsToInsert.length > 0) {
-                const { error } = await supabase.from("bridal_shower_gifts").insert(giftsToInsert);
-                if (error) throw error;
+            if (gifts.length > 0) {
+                const response = await fetch("/api/bridal-shower?intent=import_gifts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ gifts })
+                });
+                if (!response.ok) throw new Error("Erro ao importar presentes");
+                return await response.json();
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_gifts"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Presentes importados!");
         },
         onError: (error: any) => toast.error(error.message)
@@ -287,7 +296,7 @@ export const useImportGuests = () => {
     return useMutation({
         mutationFn: async (importText: string) => {
             const lines = importText.split('\n');
-            const guestsToInsert = [];
+            const guests = [];
 
             for (const line of lines) {
                 const trimmedLine = line.trim();
@@ -303,10 +312,10 @@ export const useImportGuests = () => {
                 }
 
                 const name = parts[0]?.trim();
-                const phone = parts[1]?.trim() || null;
+                const phone = parts[1]?.trim() || undefined;
 
                 if (name) {
-                    guestsToInsert.push({
+                    guests.push({
                         name,
                         phone,
                         confirmed: false
@@ -314,13 +323,18 @@ export const useImportGuests = () => {
                 }
             }
 
-            if (guestsToInsert.length > 0) {
-                const { error } = await supabase.from("bridal_shower_guests").insert(guestsToInsert);
-                if (error) throw error;
+            if (guests.length > 0) {
+                const response = await fetch("/api/bridal-shower?intent=import_guests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ guests })
+                });
+                if (!response.ok) throw new Error("Erro ao importar convidados");
+                return await response.json();
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["bridal_guests"] });
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Convidados importados!");
         },
         onError: (error: any) => toast.error(error.message)

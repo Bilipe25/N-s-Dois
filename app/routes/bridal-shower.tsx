@@ -12,25 +12,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { Route } from "./+types/bridal-shower";
 import { StatsDashboard } from "@/components/bridal-shower/stats-dashboard";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
-import { GIFT_CATEGORIES } from "@/components/bridal-shower/types";
+import { GIFT_CATEGORIES, type GiftCategory, type Gift, type CreateGiftInput, CreateGiftSchema, type UpdateGiftInput, UpdateGiftSchema, type CreateGuestInput, CreateGuestSchema, type UpdateConfigInput, UpdateConfigSchema } from "@/schemas/bridal-shower";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     useGifts,
     useGuests,
     useBridalConfig,
-    useAddGift,
+    useCreateGift,
     useUpdateGift,
     useDeleteGift,
     useToggleGiftStatus,
     useBulkUpdateCategory,
-    useAddGuest,
+    useCreateGuest,
     useDeleteGuest,
     useToggleGuestConfirm,
     useUpdateConfig,
     useImportGifts,
     useImportGuests
 } from "@/hooks/useBridalShower";
-import type { Gift } from "@/schemas/bridal-shower";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Chá de Casa Nova - Admin" }];
@@ -42,17 +44,17 @@ export default function BridalShower() {
     const { data: config } = useBridalConfig();
 
     // Mutations
-    const { mutate: addGift } = useAddGift();
-    const { mutate: updateGift } = useUpdateGift();
-    const { mutate: deleteGift } = useDeleteGift();
-    const { mutate: toggleGiftStatus } = useToggleGiftStatus();
-    const { mutate: bulkUpdateCategory } = useBulkUpdateCategory();
-    const { mutate: addGuest } = useAddGuest();
-    const { mutate: deleteGuest } = useDeleteGuest();
-    const { mutate: toggleGuestConfirm } = useToggleGuestConfirm();
-    const { mutate: updateConfig, isPending: isUpdatingConfig } = useUpdateConfig();
-    const { mutate: importGifts, isPending: isImportingGifts } = useImportGifts();
-    const { mutate: importGuests, isPending: isImportingGuests } = useImportGuests();
+    const createGift = useCreateGift();
+    const updateGift = useUpdateGift();
+    const deleteGift = useDeleteGift();
+    const toggleGiftStatus = useToggleGiftStatus();
+    const bulkUpdateCategory = useBulkUpdateCategory();
+    const createGuest = useCreateGuest();
+    const deleteGuest = useDeleteGuest();
+    const toggleGuestConfirm = useToggleGuestConfirm();
+    const updateConfig = useUpdateConfig();
+    const importGifts = useImportGifts();
+    const importGuests = useImportGuests();
 
     const defaultDate = config?.bridal_shower_date
         ? new Date(config.bridal_shower_date).toISOString().slice(0, 16)
@@ -68,12 +70,12 @@ export default function BridalShower() {
 
     // Filters & Selection
     const [giftSearch, setGiftSearch] = useState("");
-    const [giftCategory, setGiftCategory] = useState<string | null>(null);
+    const [giftCategory, setGiftCategory] = useState<GiftCategory | null>(null);
     const [guestSearch, setGuestSearch] = useState("");
     const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
     const [showBulkCategory, setShowBulkCategory] = useState(false);
-    const [bulkCategory, setBulkCategory] = useState<string>("");
-    const [editCategory, setEditCategory] = useState<string>("");
+    const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
+    const [editCategory, setEditCategory] = useState<GiftCategory | "">("");
 
     // Import Text State
     const [importGiftsText, setImportGiftsText] = useState("");
@@ -111,56 +113,10 @@ export default function BridalShower() {
         setShowEditGift(true);
     };
 
-    // Form Handlers
-    const handleConfigSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (!config) return;
-        const formData = new FormData(e.currentTarget);
-        updateConfig({
-            id: config.id,
-            updates: {
-                date: formData.get("date") as string,
-                location: formData.get("location") as string
-            }
-        });
-    };
-
-    const handleAddGiftSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        addGift({
-            item_name: formData.get("item_name") as string,
-            category: formData.get("category") as string,
-            suggested_store: formData.get("suggested_store") as string,
-            price_range: formData.get("price_range") as string,
-            link: formData.get("link") as string,
-            image_url: formData.get("image_url") as string
-        }, {
-            onSuccess: () => setShowAddGift(false)
-        });
-    };
-
-    const handleUpdateGiftSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (!editingGift) return;
-        const formData = new FormData(e.currentTarget);
-        updateGift({
-            id: editingGift.id,
-            item_name: formData.get("item_name") as string,
-            category: editCategory, // Use state for select
-            suggested_store: formData.get("suggested_store") as string,
-            price_range: formData.get("price_range") as string,
-            link: formData.get("link") as string,
-            image_url: formData.get("image_url") as string
-        }, {
-            onSuccess: () => setShowEditGift(false)
-        });
-    };
-
     const handleBulkCategorySubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedGifts.length === 0 || !bulkCategory) return;
-        bulkUpdateCategory({ ids: selectedGifts, category: bulkCategory }, {
+        bulkUpdateCategory.mutate({ ids: selectedGifts, category: bulkCategory }, {
             onSuccess: () => {
                 setShowBulkCategory(false);
                 setSelectedGifts([]);
@@ -168,21 +124,10 @@ export default function BridalShower() {
         });
     };
 
-    const handleAddGuestSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        addGuest({
-            name: formData.get("name") as string,
-            phone: formData.get("phone") as string
-        }, {
-            onSuccess: () => setShowAddGuest(false)
-        });
-    };
-
     const handleImportGiftsSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!importGiftsText) return;
-        importGifts(importGiftsText, {
+        importGifts.mutate(importGiftsText, {
             onSuccess: () => {
                 setShowImport(false);
                 setImportGiftsText("");
@@ -193,7 +138,7 @@ export default function BridalShower() {
     const handleImportGuestsSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!importGuestsText) return;
-        importGuests(importGuestsText, {
+        importGuests.mutate(importGuestsText, {
             onSuccess: () => {
                 setShowImportGuests(false);
                 setImportGuestsText("");
@@ -245,39 +190,7 @@ export default function BridalShower() {
             )}
 
             {/* Configuração Rápida */}
-            <Card className="bg-stone-50 border-stone-200">
-                <CardContent className="p-4">
-                    <form onSubmit={handleConfigSubmit} className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
-                                    <Calendar className="h-3 w-3" /> Data e Hora
-                                </div>
-                                <Input
-                                    type="datetime-local"
-                                    name="date"
-                                    defaultValue={defaultDate}
-                                    className="bg-white h-9 text-sm"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
-                                    <MapPin className="h-3 w-3" /> Local
-                                </div>
-                                <Input
-                                    name="location"
-                                    defaultValue={config?.bridal_shower_location || ""}
-                                    placeholder="Ex: Salão de Festas..."
-                                    className="bg-white h-9 text-sm"
-                                />
-                            </div>
-                        </div>
-                        <Button type="submit" size="sm" variant="outline" className="w-full mt-2" disabled={isUpdatingConfig}>
-                            {isUpdatingConfig ? "Salvando..." : "Salvar Detalhes"}
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
+            <ConfigForm config={config} updateConfig={updateConfig} defaultDate={defaultDate} />
 
             <Tabs defaultValue="gifts" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -354,7 +267,7 @@ export default function BridalShower() {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <button
-                                                        onClick={() => toggleGiftStatus({ id: gift.id, currentStatus: gift.status })}
+                                                        onClick={() => toggleGiftStatus.mutate({ id: gift.id, currentStatus: gift.status })}
                                                         className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
                                                     >
                                                         {gift.status === 'comprado' ? (
@@ -364,7 +277,7 @@ export default function BridalShower() {
                                                         )}
                                                     </button>
                                                     <button
-                                                        onClick={() => deleteGift(gift.id)}
+                                                        onClick={() => deleteGift.mutate(gift.id)}
                                                         className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer"
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" /> Excluir
@@ -428,7 +341,7 @@ export default function BridalShower() {
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Button
-                                            onClick={() => toggleGuestConfirm({ id: guest.id, current: guest.confirmed })}
+                                            onClick={() => toggleGuestConfirm.mutate({ id: guest.id, current: guest.confirmed })}
                                             variant={guest.confirmed ? "default" : "outline"}
                                             size="sm"
                                             className={`h-8 px-2 text-xs ${guest.confirmed ? 'bg-green-600 hover:bg-green-700' : ''}`}
@@ -436,7 +349,7 @@ export default function BridalShower() {
                                             {guest.confirmed ? "Confirmado" : "Confirmar"}
                                         </Button>
                                         <Button
-                                            onClick={() => deleteGuest(guest.id)}
+                                            onClick={() => deleteGuest.mutate(guest.id)}
                                             variant="ghost"
                                             size="icon"
                                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
@@ -470,78 +383,68 @@ export default function BridalShower() {
                 </TabsContent>
             </Tabs>
 
-            {/* Modal de Adicionar Presente */}
-            <Dialog open={showAddGift} onOpenChange={setShowAddGift}>
+            {/* Modals */}
+            <AddGiftDialog open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
+            <EditGiftDialog open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
+            <AddGuestDialog open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
+
+            {/* Modal de Importação em Massa de Presentes */}
+            <Dialog open={showImport} onOpenChange={setShowImport}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Adicionar Presente</DialogTitle>
+                        <DialogTitle>Importar Presentes em Massa</DialogTitle>
                         <DialogDescription>
-                            Adicione um novo item à sua lista de presentes.
+                            Cole sua lista abaixo. Cada linha será um presente.<br />
+                            Formato: <code>Nome | Loja | Preço</code>
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddGiftSubmit} className="space-y-3">
-                        <Input name="item_name" placeholder="Nome do Item (ex: Liquidificador)" required />
-
-                        <Select name="category">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Categoria" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {GIFT_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input name="suggested_store" placeholder="Loja (Opcional)" />
-                            <Input name="price_range" placeholder="Preço (ex: R$ 100)" />
+                    <form onSubmit={handleImportGiftsSubmit}>
+                        <div className="py-4">
+                            <textarea
+                                value={importGiftsText}
+                                onChange={(e) => setImportGiftsText(e.target.value)}
+                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
+                                placeholder="Exemplo:&#10;Liquidificador | Magalu | 150&#10;Jogo de Panelas | Tramontina&#10;Toalha de Banho"
+                                required
+                            />
                         </div>
-                        <Input name="link" placeholder="Link do Produto (http://...)" />
-                        <Input name="image_url" placeholder="URL da Imagem (Opcional)" />
-
                         <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowAddGift(false)}>Cancelar</Button>
-                            <Button type="submit">Adicionar</Button>
+                            <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={importGifts.isPending}>
+                                {importGifts.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
-            {/* Modal de Editar Presente */}
-            <Dialog open={showEditGift} onOpenChange={setShowEditGift}>
+            {/* Modal de Importação em Massa de Convidados */}
+            <Dialog open={showImportGuests} onOpenChange={setShowImportGuests}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Editar Presente</DialogTitle>
+                        <DialogTitle>Importar Convidados em Massa</DialogTitle>
+                        <DialogDescription>
+                            Cole sua lista de nomes abaixo. Cada linha será um convidado.<br />
+                            Opcional: <code>Nome | Telefone</code>
+                        </DialogDescription>
                     </DialogHeader>
-                    {editingGift && (
-                        <form onSubmit={handleUpdateGiftSubmit} className="space-y-3">
-                            <Input name="item_name" defaultValue={editingGift.item_name} placeholder="Nome do Item" required />
-
-                            <Select value={editCategory} onValueChange={setEditCategory}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Categoria" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {GIFT_CATEGORIES.map(cat => (
-                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <Input name="suggested_store" defaultValue={editingGift.suggested_store || ""} placeholder="Loja (Opcional)" />
-                                <Input name="price_range" defaultValue={editingGift.price_range || ""} placeholder="Preço (ex: R$ 100)" />
-                            </div>
-                            <Input name="link" defaultValue={editingGift.link || ""} placeholder="Link do Produto" />
-                            <Input name="image_url" defaultValue={editingGift.image_url || ""} placeholder="URL da Imagem" />
-
-                            <DialogFooter>
-                                <Button type="button" variant="ghost" onClick={() => setShowEditGift(false)}>Cancelar</Button>
-                                <Button type="submit">Salvar Alterações</Button>
-                            </DialogFooter>
-                        </form>
-                    )}
+                    <form onSubmit={handleImportGuestsSubmit}>
+                        <div className="py-4">
+                            <textarea
+                                value={importGuestsText}
+                                onChange={(e) => setImportGuestsText(e.target.value)}
+                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
+                                placeholder="Exemplo:&#10;João Silva&#10;Maria Souza | 11999999999&#10;Pedro"
+                                required
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={importGuests.isPending}>
+                                {importGuests.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
@@ -574,86 +477,393 @@ export default function BridalShower() {
                     </form>
                 </DialogContent>
             </Dialog>
-
-            {/* Modal de Adicionar Convidado */}
-            <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Adicionar Convidado</DialogTitle>
-                        <DialogDescription>
-                            Adicione um novo convidado à sua lista.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAddGuestSubmit} className="space-y-3">
-                        <Input name="name" placeholder="Nome" required />
-                        <Input name="phone" placeholder="Telefone (Opcional)" />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
-                            <Button type="submit">Adicionar</Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de Importação em Massa de Presentes */}
-            <Dialog open={showImport} onOpenChange={setShowImport}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Importar Presentes em Massa</DialogTitle>
-                        <DialogDescription>
-                            Cole sua lista abaixo. Cada linha será um presente.<br />
-                            Formato: <code>Nome | Loja | Preço</code>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleImportGiftsSubmit}>
-                        <div className="py-4">
-                            <textarea
-                                value={importGiftsText}
-                                onChange={(e) => setImportGiftsText(e.target.value)}
-                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
-                                placeholder="Exemplo:&#10;Liquidificador | Magalu | 150&#10;Jogo de Panelas | Tramontina&#10;Toalha de Banho"
-                                required
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isImportingGifts}>
-                                {isImportingGifts ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de Importação em Massa de Convidados */}
-            <Dialog open={showImportGuests} onOpenChange={setShowImportGuests}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Importar Convidados em Massa</DialogTitle>
-                        <DialogDescription>
-                            Cole sua lista de nomes abaixo. Cada linha será um convidado.<br />
-                            Opcional: <code>Nome | Telefone</code>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleImportGuestsSubmit}>
-                        <div className="py-4">
-                            <textarea
-                                value={importGuestsText}
-                                onChange={(e) => setImportGuestsText(e.target.value)}
-                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
-                                placeholder="Exemplo:&#10;João Silva&#10;Maria Souza | 11999999999&#10;Pedro"
-                                required
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isImportingGuests}>
-                                {isImportingGuests ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </div>
+    );
+}
+
+// --- SUB-COMPONENTS ---
+
+function ConfigForm({ config, updateConfig, defaultDate }: { config: any, updateConfig: any, defaultDate: string }) {
+    const form = useForm<UpdateConfigInput>({
+        resolver: zodResolver(UpdateConfigSchema),
+        defaultValues: {
+            date: defaultDate,
+            location: config?.bridal_shower_location || ""
+        }
+    });
+
+    const onSubmit = (data: UpdateConfigInput) => {
+        if (!config) return;
+        updateConfig.mutate({ id: config.id, updates: data });
+    };
+
+    return (
+        <Card className="bg-stone-50 border-stone-200">
+            <CardContent className="p-4">
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="date"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
+                                            <Calendar className="h-3 w-3" /> Data e Hora
+                                        </div>
+                                        <FormControl>
+                                            <Input type="datetime-local" className="bg-white h-9 text-sm" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="location"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
+                                            <MapPin className="h-3 w-3" /> Local
+                                        </div>
+                                        <FormControl>
+                                            <Input placeholder="Ex: Salão de Festas..." className="bg-white h-9 text-sm" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <Button type="submit" size="sm" variant="outline" className="w-full mt-2" disabled={updateConfig.isPending}>
+                            {updateConfig.isPending ? "Salvando..." : "Salvar Detalhes"}
+                        </Button>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    );
+}
+
+function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOpenChange: (open: boolean) => void, createGift: any }) {
+    const form = useForm<CreateGiftInput>({
+        resolver: zodResolver(CreateGiftSchema),
+        defaultValues: {
+            item_name: "",
+            category: "Outros",
+            suggested_store: "",
+            price_range: "",
+            link: "",
+            image_url: ""
+        }
+    });
+
+    const onSubmit = (data: CreateGiftInput) => {
+        createGift.mutate(data, {
+            onSuccess: () => {
+                onOpenChange(false);
+                form.reset();
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Adicionar Presente</DialogTitle>
+                    <DialogDescription>Adicione um novo item à sua lista.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                        <FormField
+                            control={form.control}
+                            name="item_name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Nome do Item (ex: Liquidificador)" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Categoria" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {GIFT_CATEGORIES.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                            <FormField
+                                control={form.control}
+                                name="suggested_store"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input placeholder="Loja (Opcional)" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="price_range"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input placeholder="Preço (ex: R$ 100)" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="link"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Link do Produto (http://...)" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="image_url"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="URL da Imagem (Opcional)" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={createGift.isPending}>Adicionar</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolean, onOpenChange: (open: boolean) => void, gift: Gift | null, updateGift: any }) {
+    const form = useForm<UpdateGiftInput>({
+        resolver: zodResolver(UpdateGiftSchema),
+        defaultValues: {
+            id: gift?.id || "",
+            item_name: gift?.item_name || "",
+            category: (gift?.category as any) || "Outros",
+            suggested_store: gift?.suggested_store || "",
+            price_range: gift?.price_range || "",
+            link: gift?.link || "",
+            image_url: gift?.image_url || ""
+        }
+    });
+
+    // Update form values when gift changes
+    if (gift && form.getValues("id") !== gift.id) {
+        form.reset({
+            id: gift.id,
+            item_name: gift.item_name,
+            category: (gift.category as any) || "Outros",
+            suggested_store: gift.suggested_store || "",
+            price_range: gift.price_range || "",
+            link: gift.link || "",
+            image_url: gift.image_url || ""
+        });
+    }
+
+    const onSubmit = (data: UpdateGiftInput) => {
+        updateGift.mutate(data, {
+            onSuccess: () => {
+                onOpenChange(false);
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar Presente</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                        <FormField
+                            control={form.control}
+                            name="item_name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Nome do Item" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Categoria" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {GIFT_CATEGORIES.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                            <FormField
+                                control={form.control}
+                                name="suggested_store"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input placeholder="Loja (Opcional)" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="price_range"
+                                render={({ field }: { field: any }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input placeholder="Preço (ex: R$ 100)" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="link"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Link do Produto" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="image_url"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="URL da Imagem" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={updateGift.isPending}>Salvar Alterações</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AddGuestDialog({ open, onOpenChange, createGuest }: { open: boolean, onOpenChange: (open: boolean) => void, createGuest: any }) {
+    const form = useForm<CreateGuestInput>({
+        resolver: zodResolver(CreateGuestSchema),
+        defaultValues: {
+            name: "",
+            phone: ""
+        }
+    });
+
+    const onSubmit = (data: CreateGuestInput) => {
+        createGuest.mutate(data, {
+            onSuccess: () => {
+                onOpenChange(false);
+                form.reset();
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Adicionar Convidado</DialogTitle>
+                    <DialogDescription>Adicione um novo convidado à sua lista.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Nome" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Telefone (Opcional)" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={createGuest.isPending}>Adicionar</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
     );
 }

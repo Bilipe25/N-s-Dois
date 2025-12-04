@@ -36,4 +36,5 @@ export default [
     route("api/notifications", "routes/api.notifications.ts"),
     route("api/settings", "routes/api.settings.ts"),
     route("api/budget", "routes/api.budget.ts"),
+    route("api/bridal-shower", "routes/api.bridal-shower.ts"),
 ] satisfies RouteConfig;
