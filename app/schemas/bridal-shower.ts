@@ -33,6 +33,7 @@ export const GuestSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
     phone: z.string().nullable().optional(),
     confirmed: z.boolean(),
+    confirmed_location: z.enum(["local1", "local2"]).nullable().optional(),
     created_at: z.string()
 });
 
@@ -40,15 +41,29 @@ export const ConfigSchema = z.object({
     id: z.string().uuid(),
     bridal_shower_date: z.string().nullable().optional(),
     bridal_shower_location: z.string().nullable().optional(),
+    bridal_shower_address_1: z.string().nullable().optional(),
+    bridal_shower_map_link_1: z.string().nullable().optional(),
+    bridal_shower_date_2: z.string().nullable().optional(),
+    bridal_shower_location_2: z.string().nullable().optional(),
+    bridal_shower_address_2: z.string().nullable().optional(),
+    bridal_shower_map_link_2: z.string().nullable().optional(),
     bridal_shower_hero_url: z.string().nullable().optional(),
-    pix_key: z.string().nullable().optional()
+    pix_key: z.string().nullable().optional(),
+    contact_phone_gabriel: z.string().nullable().optional(),
+    contact_phone_raabe: z.string().nullable().optional()
 });
 
 // --- INPUT SCHEMAS (MUTATIONS) ---
 
 export const ReserveGiftSchema = z.object({
     id: z.string().uuid(),
-    name: z.string().min(3, "Nome deve ter pelo menos 3 letras")
+    name: z.string().min(3, "Nome deve ter pelo menos 3 letras"),
+    confirmed_location: z.enum(["local1", "local2"]).optional()
+});
+
+export const ConfirmPresenceSchema = z.object({
+    name: z.string().min(1, "Nome é obrigatório"),
+    confirmed_location: z.enum(["local1", "local2"])
 });
 
 export const CreateGiftSchema = z.object({
@@ -66,12 +81,23 @@ export const UpdateGiftSchema = CreateGiftSchema.partial().extend({
 
 export const CreateGuestSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
-    phone: z.string().optional()
+    phone: z.string().optional(),
+    confirmed_location: z.enum(["local1", "local2"]).optional()
 });
 
 export const UpdateConfigSchema = z.object({
     date: z.string().optional(),
-    location: z.string().optional()
+    location: z.string().optional(),
+    address_1: z.string().optional(),
+    map_link_1: z.string().optional(),
+    date_2: z.string().optional(),
+    location_2: z.string().optional(),
+    address_2: z.string().optional(),
+    map_link_2: z.string().optional(),
+    hero_url: z.string().optional(),
+    pix_key: z.string().optional(),
+    contact_phone_gabriel: z.string().optional(),
+    contact_phone_raabe: z.string().optional()
 });
 
 export const BulkUpdateCategorySchema = z.object({
@@ -86,6 +112,8 @@ export type Guest = z.infer<typeof GuestSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 
 export type ReserveGiftInput = z.input<typeof ReserveGiftSchema>;
+
+export type ConfirmPresenceInput = z.input<typeof ConfirmPresenceSchema>;
 
 export type CreateGiftInput = z.input<typeof CreateGiftSchema>;
 export type CreateGiftOutput = z.infer<typeof CreateGiftSchema>;
