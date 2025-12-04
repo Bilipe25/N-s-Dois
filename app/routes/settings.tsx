@@ -1,14 +1,15 @@
-import { Form, useLoaderData, useNavigation, useActionData } from "react-router";
+import { useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
-import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Save, ArrowLeft, UploadCloud, Image as ImageIcon, Bell } from "lucide-react";
-import { Link } from "react-router";
+import { Save, UploadCloud, Image as ImageIcon, Bell } from "lucide-react";
 import { PushManager } from "@/components/push-manager";
 import type { Route } from "./+types/settings";
+import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Configurações - Nós Dois" }];
@@ -21,7 +22,6 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         .select("*")
         .single();
 
-    // Se não existir configuração, cria uma padrão
     if (!config) {
         const { data: newConfig, error } = await supabase
             .from("app_config")
@@ -37,176 +37,30 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { config };
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-
-    // Usar Service Role Key para bypassar RLS (permissões)
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.SUPABASE_URL;
-
-    if (!serviceRoleKey || !supabaseUrl) {
-        console.error("Faltam variáveis de ambiente: SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY");
-        return { error: "Erro interno: Chave de administração não configurada. Verifique o arquivo .env" };
-    }
-
-    const supabaseAdmin = createSupabaseJsClient(supabaseUrl, serviceRoleKey);
-
-    // Garantir que existe configuração
-    let { data: currentConfig } = await supabaseAdmin.from("app_config").select("id").single();
-    let configId = currentConfig?.id;
-
-    if (!configId) {
-        const { data: newConfig } = await supabaseAdmin
-            .from("app_config")
-            .insert({ wedding_date: '2025-09-20 16:00:00-03' })
-            .select()
-            .single();
-        configId = newConfig?.id;
-    }
-
-    if (!configId) {
-        return { error: "Erro crítico: Não foi possível inicializar as configurações." };
-    }
-
-    const intent = formData.get("intent");
-
-    if (intent === "save_all") {
-        const date = formData.get("wedding_date") as string;
-        const address = formData.get("wedding_address") as string;
-        const loginPhoto = formData.get("login_photo") as File;
-        const homePhoto = formData.get("home_photo") as File;
-        const bridalHeroPhoto = formData.get("bridal_hero_photo") as File;
-
-        const updates: any = { wedding_date: date, wedding_address: address };
-        let successMessage = "Configurações salvas com sucesso!";
-
-        // Upload Login Photo
-        if (loginPhoto && loginPhoto.size > 0) {
-            const fileExt = loginPhoto.name.split('.').pop();
-            const fileName = `login_${Date.now()}.${fileExt}`;
-
-            const arrayBuffer = await loginPhoto.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-
-            const { error: uploadError } = await supabaseAdmin.storage
-                .from("images")
-                .upload(fileName, fileBuffer, {
-                    contentType: loginPhoto.type,
-                    upsert: true
-                });
-
-            if (uploadError) {
-                return { error: `Erro ao salvar foto de login: ${uploadError.message}` };
-            }
-
-            const { data: { publicUrl } } = supabaseAdmin.storage
-                .from("images")
-                .getPublicUrl(fileName);
-
-            updates.login_photo_url = publicUrl;
-        }
-
-        // Upload Home Photo
-        if (homePhoto && homePhoto.size > 0) {
-            const fileExt = homePhoto.name.split('.').pop();
-            const fileName = `home_${Date.now()}.${fileExt}`;
-
-            const arrayBuffer = await homePhoto.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-
-            const { error: uploadError } = await supabaseAdmin.storage
-                .from("images")
-                .upload(fileName, fileBuffer, {
-                    contentType: homePhoto.type,
-                    upsert: true
-                });
-
-            if (uploadError) {
-                return { error: `Erro ao salvar foto da home: ${uploadError.message}` };
-            }
-
-            const { data: { publicUrl } } = supabaseAdmin.storage
-                .from("images")
-                .getPublicUrl(fileName);
-
-            updates.home_photo_url = publicUrl;
-        }
-
-        // Upload Bridal Hero Photo
-        if (bridalHeroPhoto && bridalHeroPhoto.size > 0) {
-            const fileExt = bridalHeroPhoto.name.split('.').pop();
-            const fileName = `bridal_hero_${Date.now()}.${fileExt}`;
-
-            const arrayBuffer = await bridalHeroPhoto.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-
-            const { error: uploadError } = await supabaseAdmin.storage
-                .from("images")
-                .upload(fileName, fileBuffer, {
-                    contentType: bridalHeroPhoto.type,
-                    upsert: true
-                });
-
-            if (uploadError) {
-                return { error: `Erro ao salvar foto do Chá: ${uploadError.message}` };
-            }
-
-            const { data: { publicUrl } } = supabaseAdmin.storage
-                .from("images")
-                .getPublicUrl(fileName);
-
-            updates.bridal_shower_hero_url = publicUrl;
-        }
-
-        // Upload Logo
-        const logo = formData.get("logo") as File;
-        if (logo && logo.size > 0) {
-            const fileExt = logo.name.split('.').pop();
-            const fileName = `logo_${Date.now()}.${fileExt}`;
-
-            const arrayBuffer = await logo.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-
-            const { error: uploadError } = await supabaseAdmin.storage
-                .from("images")
-                .upload(fileName, fileBuffer, {
-                    contentType: logo.type,
-                    upsert: true
-                });
-
-            if (uploadError) {
-                return { error: `Erro ao salvar logo: ${uploadError.message}` };
-            }
-
-            const { data: { publicUrl } } = supabaseAdmin.storage
-                .from("images")
-                .getPublicUrl(fileName);
-
-            updates.logo_url = publicUrl;
-        }
-
-        const { error: updateError } = await supabaseAdmin.from("app_config").update(updates).eq("id", configId);
-
-        if (updateError) {
-            return { error: `Erro ao atualizar banco de dados: ${updateError.message}` };
-        }
-
-        return { success: successMessage };
-    }
-
-    return null;
-};
-
 export default function Settings() {
-    const { config } = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const { config: initialConfig } = useLoaderData<typeof loader>();
+    const { data: config } = useSettings(initialConfig);
+    const updateSettings = useUpdateSettings();
 
-    // Formatar data para input datetime-local
-    const defaultDate = config?.wedding_date
-        ? new Date(config.wedding_date).toISOString().slice(0, 16)
-        : "";
+    const { register, handleSubmit, setValue, watch } = useForm({
+        defaultValues: {
+            wedding_date: config?.wedding_date ? new Date(config.wedding_date).toISOString().slice(0, 16) : "",
+            wedding_address: config?.wedding_address || "",
+        }
+    });
+
+    // Update form values when config changes (e.g. after refetch)
+    useEffect(() => {
+        if (config) {
+            setValue("wedding_date", config.wedding_date ? new Date(config.wedding_date).toISOString().slice(0, 16) : "");
+            setValue("wedding_address", config.wedding_address || "");
+        }
+    }, [config, setValue]);
+
+    const onSubmit = (data: any, event: any) => {
+        const formData = new FormData(event.target);
+        updateSettings.mutate(formData);
+    };
 
     return (
         <div className="p-4 space-y-6 pb-20">
@@ -224,19 +78,7 @@ export default function Settings() {
                 </CardContent>
             </Card>
 
-            {actionData?.error && (
-                <div className="bg-destructive/10 text-destructive p-4 rounded-lg text-sm font-medium border border-destructive/20">
-                    {actionData.error}
-                </div>
-            )}
-
-            {actionData?.success && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-lg text-sm font-medium border border-green-200">
-                    {actionData.success}
-                </div>
-            )}
-
-            <Form method="post" encType="multipart/form-data" className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} encType="multipart/form-data" className="space-y-6">
                 {/* Data do Casamento */}
                 <Card>
                     <CardHeader>
@@ -252,8 +94,7 @@ export default function Settings() {
                                 <Input
                                     type="datetime-local"
                                     id="wedding_date"
-                                    name="wedding_date"
-                                    defaultValue={defaultDate}
+                                    {...register("wedding_date")}
                                     required
                                 />
                             </div>
@@ -262,8 +103,7 @@ export default function Settings() {
                                 <Input
                                     type="text"
                                     id="wedding_address"
-                                    name="wedding_address"
-                                    defaultValue={config?.wedding_address || ""}
+                                    {...register("wedding_address")}
                                     placeholder="Ex: Chácara Recanto dos Sonhos - Rua das Flores, 123"
                                 />
                             </div>
@@ -310,7 +150,6 @@ export default function Settings() {
                             )}
                             <Input id="home_photo" name="home_photo" type="file" accept="image/*" />
                             <p className="text-[10px] text-muted-foreground">Recomendado: Foto mais clara ou com bom contraste.</p>
-                            <p className="text-[10px] text-muted-foreground">Recomendado: Foto mais clara ou com bom contraste.</p>
                         </div>
 
                         <div className="h-px bg-border" />
@@ -349,15 +188,14 @@ export default function Settings() {
                     </CardContent>
                 </Card>
 
-                {/* Botão Salvar Fixo ou no final */}
-                <Button type="submit" name="intent" value="save_all" className="w-full h-12 text-lg font-medium shadow-lg" disabled={isSubmitting}>
-                    {isSubmitting ? (
+                <Button type="submit" className="w-full h-12 text-lg font-medium shadow-lg" disabled={updateSettings.isPending}>
+                    {updateSettings.isPending ? (
                         <>Salvando...</>
                     ) : (
                         <><UploadCloud className="mr-2 h-5 w-5" /> Salvar Alterações</>
                     )}
                 </Button>
-            </Form>
+            </form>
         </div>
     );
 }
