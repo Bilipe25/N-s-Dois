@@ -15,21 +15,35 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
 export const meta: Route.MetaFunction = ({ data }) => {
-    const title = "Chá de Casa Nova - Gabriel & Raabe";
-    const description = "Estamos montando nosso lar! Escolha um presente ou contribua com nosso sonho. ❤️";
-    const ogImage = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop&v=2";
+    const title = "Chá de Casa Nova | Gabriel & Raabe 💍";
+    const description = "Estamos montando nosso lar com muito amor! Venha celebrar conosco e, se desejar, escolha um presente para nos ajudar nessa nova jornada. ❤️";
+    // Imagem elegante de casa/decoração para compartilhamento
+    const ogImage = "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=1200&h=630&auto=format&fit=crop";
+    const siteUrl = "https://nosdois.vercel.app/public/bridal-shower";
 
     return [
         { title },
         { name: "description", content: description },
+        { name: "theme-color", content: "#f43f5e" },
+        // Open Graph
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: siteUrl },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:image", content: ogImage },
-        { property: "og:type", content: "website" },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: "Chá de Casa Nova - Gabriel & Raabe" },
+        { property: "og:site_name", content: "Nós Dois" },
+        { property: "og:locale", content: "pt_BR" },
+        // Twitter Card
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:url", content: siteUrl },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
         { name: "twitter:image", content: ogImage },
+        // WhatsApp specific
+        { property: "og:image:type", content: "image/jpeg" },
     ];
 };
 
