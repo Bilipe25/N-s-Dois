@@ -34,4 +34,5 @@ export default [
     route("api/groomsmen", "routes/api.groomsmen.ts"),
     route("api/checklist", "routes/api.checklist.ts"),
     route("api/notifications", "routes/api.notifications.ts"),
+    route("api/settings", "routes/api.settings.ts"),
 ] satisfies RouteConfig;
