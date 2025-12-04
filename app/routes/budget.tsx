@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useLoaderData, useSubmit } from "react-router";
+import { useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Plus, Filter, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Route } from "./+types/budget";
 
 import { BudgetSummary } from "@/components/budget/budget-summary";
@@ -12,6 +11,7 @@ import { BudgetCharts } from "@/components/budget/budget-charts";
 import { BudgetCard } from "@/components/budget/budget-card";
 import { BudgetForm } from "@/components/budget/budget-form";
 import { BUDGET_CATEGORIES, type BudgetItem } from "@/components/budget/types";
+import { useBudget } from "@/hooks/useBudget";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Orçamento - Nós Dois" }];
@@ -34,58 +34,13 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         return { items: [], suppliers: [] };
     }
 
-    return { items: items as BudgetItem[], suppliers: suppliers || [] };
-};
-
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-
-    if (intent === "add" || intent === "update") {
-        const description = formData.get("description") as string;
-        const category = formData.get("category") as string;
-        const estimated_value = parseFloat(formData.get("estimated_value") as string) || 0;
-        const paid_value = parseFloat(formData.get("paid_value") as string) || 0;
-        const installments_current = parseInt(formData.get("installments_current") as string) || 1;
-        const installments_total = parseInt(formData.get("installments_total") as string) || 1;
-        const due_date = formData.get("due_date") as string || null;
-        let supplier_id = formData.get("supplier_id") as string | null;
-
-        if (supplier_id === "none") supplier_id = null;
-
-        const status = paid_value >= estimated_value ? "pago" : paid_value > 0 ? "parcial" : "pendente";
-        // Simple logic for 'atrasado': if due_date < today and status != pago
-        const isLate = due_date && new Date(due_date) < new Date() && status !== "pago";
-        const finalStatus = isLate ? "atrasado" : status;
-
-        const data = {
-            description,
-            category,
-            estimated_value,
-            paid_value,
-            status: finalStatus,
-            installments_total,
-            due_date,
-            supplier_id
-        };
-
-        if (intent === "add") {
-            await supabase.from("budget_items").insert(data);
-        } else {
-            const id = formData.get("id") as string;
-            await supabase.from("budget_items").update(data).eq("id", id);
-        }
-    } else if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase.from("budget_items").delete().eq("id", id);
-    }
-
-    return null;
+    return { items: items as unknown as BudgetItem[], suppliers: suppliers || [] };
 };
 
 export default function Budget() {
-    const { items, suppliers } = useLoaderData<typeof loader>();
+    const { items: initialItems, suppliers } = useLoaderData<typeof loader>();
+    const { data: items = [] } = useBudget(initialItems);
+
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
