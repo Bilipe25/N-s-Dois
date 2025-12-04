@@ -130,7 +130,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
                 const { error } = await supabase.from("app_config").update({
                     bridal_shower_date: parsedData.date || null,
-                    bridal_shower_location: parsedData.location
+                    bridal_shower_location: parsedData.location,
+                    bridal_shower_address_1: parsedData.address_1,
+                    bridal_shower_map_link_1: parsedData.map_link_1,
+                    bridal_shower_date_2: parsedData.date_2 || null,
+                    bridal_shower_location_2: parsedData.location_2,
+                    bridal_shower_address_2: parsedData.address_2,
+                    bridal_shower_map_link_2: parsedData.map_link_2,
+                    bridal_shower_hero_url: parsedData.hero_url,
+                    pix_key: parsedData.pix_key,
+                    contact_phone_gabriel: parsedData.contact_phone_gabriel,
+                    contact_phone_raabe: parsedData.contact_phone_raabe
                 }).eq("id", id);
                 if (error) throw error;
                 return { success: true };

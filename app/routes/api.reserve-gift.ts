@@ -10,7 +10,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     try {
         const jsonData = await request.json();
-        const { id, name } = ReserveGiftSchema.parse(jsonData);
+        const { id, name, confirmed_location } = ReserveGiftSchema.parse(jsonData);
 
         const supabase = createClient(request);
 
@@ -41,6 +41,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         if (updateError) {
             throw updateError;
+        }
+
+        // Upsert Guest (Confirm Presence logic)
+        // Check if guest exists
+        const { data: existingGuest } = await supabase
+            .from("bridal_shower_guests")
+            .select("id")
+            .ilike("name", name)
+            .single();
+
+        if (existingGuest) {
+            // Update existing guest
+            await supabase.from("bridal_shower_guests").update({
+                confirmed: true,
+                // Only update location if provided in this request, otherwise keep existing
+                ...(jsonData.confirmed_location ? { confirmed_location: jsonData.confirmed_location } : {})
+            }).eq("id", existingGuest.id);
+        } else {
+            // Create new guest
+            await supabase.from("bridal_shower_guests").insert({
+                name,
+                confirmed: true,
+                confirmed_location: jsonData.confirmed_location || null
+            });
         }
 
         // Send Notifications - don't throw if this fails

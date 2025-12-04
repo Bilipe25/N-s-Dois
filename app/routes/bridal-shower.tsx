@@ -190,7 +190,7 @@ export default function BridalShower() {
             )}
 
             {/* Configuração Rápida */}
-            <ConfigForm config={config} updateConfig={updateConfig} defaultDate={defaultDate} />
+            <ConfigForm config={config} updateConfig={updateConfig} />
 
             <Tabs defaultValue="gifts" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -204,7 +204,7 @@ export default function BridalShower() {
                         searchTerm={giftSearch}
                         onSearchChange={setGiftSearch}
                         selectedCategory={giftCategory}
-                        onCategorySelect={setGiftCategory}
+                        onCategorySelect={setGiftCategory as any}
                     />
 
                     {/* Bulk Actions Bar */}
@@ -459,7 +459,7 @@ export default function BridalShower() {
                     </DialogHeader>
                     <form onSubmit={handleBulkCategorySubmit}>
                         <div className="py-4">
-                            <Select value={bulkCategory} onValueChange={setBulkCategory} required>
+                            <Select value={bulkCategory} onValueChange={setBulkCategory as any} required>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione a Categoria" />
                                 </SelectTrigger>
@@ -483,12 +483,27 @@ export default function BridalShower() {
 
 // --- SUB-COMPONENTS ---
 
-function ConfigForm({ config, updateConfig, defaultDate }: { config: any, updateConfig: any, defaultDate: string }) {
+function ConfigForm({ config, updateConfig }: { config: any, updateConfig: any }) {
+    const formatDate = (dateString: string | null) => {
+        if (!dateString) return "";
+        return new Date(dateString).toISOString().slice(0, 16);
+    };
+
     const form = useForm<UpdateConfigInput>({
         resolver: zodResolver(UpdateConfigSchema),
         defaultValues: {
-            date: defaultDate,
-            location: config?.bridal_shower_location || ""
+            date: formatDate(config?.bridal_shower_date),
+            location: config?.bridal_shower_location || "",
+            address_1: config?.bridal_shower_address_1 || "",
+            map_link_1: config?.bridal_shower_map_link_1 || "",
+            date_2: formatDate(config?.bridal_shower_date_2),
+            location_2: config?.bridal_shower_location_2 || "",
+            address_2: config?.bridal_shower_address_2 || "",
+            map_link_2: config?.bridal_shower_map_link_2 || "",
+            hero_url: config?.bridal_shower_hero_url || "",
+            pix_key: config?.pix_key || "",
+            contact_phone_gabriel: config?.contact_phone_gabriel || "",
+            contact_phone_raabe: config?.contact_phone_raabe || ""
         }
     });
 
@@ -501,41 +516,192 @@ function ConfigForm({ config, updateConfig, defaultDate }: { config: any, update
         <Card className="bg-stone-50 border-stone-200">
             <CardContent className="p-4">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="date"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
-                                            <Calendar className="h-3 w-3" /> Data e Hora
-                                        </div>
-                                        <FormControl>
-                                            <Input type="datetime-local" className="bg-white h-9 text-sm" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="location"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <div className="flex items-center gap-2 text-stone-600 font-medium text-xs uppercase tracking-wider">
-                                            <MapPin className="h-3 w-3" /> Local
-                                        </div>
-                                        <FormControl>
-                                            <Input placeholder="Ex: Salão de Festas..." className="bg-white h-9 text-sm" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <Button type="submit" size="sm" variant="outline" className="w-full mt-2" disabled={updateConfig.isPending}>
-                            {updateConfig.isPending ? "Salvando..." : "Salvar Detalhes"}
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <Tabs defaultValue="local1" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4">
+                                <TabsTrigger value="local1">Local 1</TabsTrigger>
+                                <TabsTrigger value="local2">Local 2</TabsTrigger>
+                                <TabsTrigger value="contato">Contato</TabsTrigger>
+                                <TabsTrigger value="geral">Geral</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="local1" className="space-y-3 mt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="date"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>Data e Hora (Local 1)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="location"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>Nome do Local 1</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Salão de Festas A" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="address_1"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem className="col-span-full">
+                                                <FormLabel>Endereço Completo (Local 1)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Rua, Número, Bairro, Cidade" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="map_link_1"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem className="col-span-full">
+                                                <FormLabel>Link do Google Maps (Local 1)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://maps.google.com/..." className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="local2" className="space-y-3 mt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="date_2"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>Data e Hora (Local 2)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="datetime-local" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="location_2"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>Nome do Local 2</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Casa da Mãe" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="address_2"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem className="col-span-full">
+                                                <FormLabel>Endereço Completo (Local 2)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Rua, Número, Bairro, Cidade" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="map_link_2"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem className="col-span-full">
+                                                <FormLabel>Link do Google Maps (Local 2)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://maps.google.com/..." className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="contato" className="space-y-3 mt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="contact_phone_gabriel"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>WhatsApp Gabriel</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="5511999999999" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="contact_phone_raabe"
+                                        render={({ field }: { field: any }) => (
+                                            <FormItem>
+                                                <FormLabel>WhatsApp Raabe</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="5511999999999" className="bg-white" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="geral" className="space-y-3 mt-4">
+                                <FormField
+                                    control={form.control}
+                                    name="hero_url"
+                                    render={({ field }: { field: any }) => (
+                                        <FormItem>
+                                            <FormLabel>URL da Imagem de Fundo (Hero)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="https://..." className="bg-white" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="pix_key"
+                                    render={({ field }: { field: any }) => (
+                                        <FormItem>
+                                            <FormLabel>Chave Pix</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="CPF, Email ou Aleatória" className="bg-white" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </TabsContent>
+                        </Tabs>
+
+                        <Button type="submit" size="sm" className="w-full mt-4 bg-stone-900 hover:bg-stone-800" disabled={updateConfig.isPending}>
+                            {updateConfig.isPending ? "Salvando..." : "Salvar Configurações"}
                         </Button>
                     </form>
                 </Form>

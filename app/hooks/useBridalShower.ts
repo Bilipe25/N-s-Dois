@@ -8,7 +8,8 @@ import type {
     UpdateGiftInput,
     CreateGuestInput,
     UpdateConfigInput,
-    BulkUpdateCategoryInput
+    BulkUpdateCategoryInput,
+    ConfirmPresenceInput
 } from "@/schemas/bridal-shower";
 import { toast } from "sonner";
 
@@ -26,8 +27,8 @@ export const useBridalData = () => {
 };
 
 export const useGifts = () => {
-    const { data } = useBridalData();
-    return { data: data?.gifts || [] };
+    const result = useBridalData();
+    return { ...result, data: result.data?.gifts || [] };
 };
 
 export const useGuests = () => {
@@ -233,6 +234,26 @@ export const useUpdateConfig = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
             toast.success("Configurações salvas!");
+        },
+        onError: (error: any) => toast.error(error.message)
+    });
+};
+
+export const useConfirmPresence = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (input: ConfirmPresenceInput) => {
+            const response = await fetch("/api/confirm-presence", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            if (!response.ok) throw new Error("Erro ao confirmar presença");
+            return await response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
+            toast.success("Presença confirmada!");
         },
         onError: (error: any) => toast.error(error.message)
     });
