@@ -14,11 +14,26 @@ import type { Gift } from "@/schemas/bridal-shower";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
+import { createClient } from "@/lib/supabase";
+import type { LoaderFunctionArgs } from "react-router";
+
+// Loader para buscar config (necessário para meta tags OG)
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+    const supabase = createClient(request);
+    const { data: config } = await supabase
+        .from("app_config")
+        .select("bridal_shower_hero_url")
+        .single();
+
+    return { heroUrl: config?.bridal_shower_hero_url };
+};
+
 export const meta: Route.MetaFunction = ({ data }) => {
     const title = "Chá de Casa Nova | Gabriel & Raabe 💍";
     const description = "Estamos montando nosso lar com muito amor! Venha celebrar conosco e, se desejar, escolha um presente para nos ajudar nessa nova jornada. ❤️";
-    // Imagem elegante de casa/decoração para compartilhamento
-    const ogImage = "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=1200&h=630&auto=format&fit=crop";
+    // Usa imagem do config ou fallback para imagem elegante
+    const defaultImage = "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=1200&h=630&auto=format&fit=crop";
+    const ogImage = (data as any)?.heroUrl || defaultImage;
     const siteUrl = "https://nosdois.vercel.app/public/bridal-shower";
 
     return [
