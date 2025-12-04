@@ -84,9 +84,22 @@ export function useUpdateChecklistItem() {
 
             if (previousChecklist) {
                 queryClient.setQueryData<ChecklistItem[]>(["checklist"], (old) => {
-                    return old?.map((item) =>
-                        item.id === newItem.id ? { ...item, ...newItem } : item
-                    );
+                    return old?.map((item) => {
+                        if (item.id === newItem.id) {
+                            // Ensure subtasks match the expected type (done is required)
+                            const updatedSubtasks = newItem.subtasks?.map(st => ({
+                                ...st,
+                                done: st.done ?? false
+                            }));
+
+                            return {
+                                ...item,
+                                ...newItem,
+                                subtasks: updatedSubtasks || item.subtasks
+                            };
+                        }
+                        return item;
+                    });
                 });
             }
 
