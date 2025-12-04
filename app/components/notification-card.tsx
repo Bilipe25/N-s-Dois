@@ -1,5 +1,6 @@
 import { motion, useAnimation, type PanInfo } from "framer-motion";
-import { useFetcher, Link } from "react-router";
+import { Link } from "react-router";
+import { useMarkNotificationRead, useDeleteNotification } from "@/hooks/useNotifications";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Gift, Users, Check, ExternalLink, Trash2, DollarSign, MailOpen, X } from "lucide-react";
@@ -31,14 +32,16 @@ const getIcon = (type: string) => {
 };
 
 export const NotificationCard = memo(({ notification }: NotificationCardProps) => {
-    const fetcher = useFetcher();
     const controls = useAnimation();
     const [isVisible, setIsVisible] = useState(true);
     const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
+    const markRead = useMarkNotificationRead();
+    const deleteNotification = useDeleteNotification();
+
     // Optimistic UI state
-    const isRead = fetcher.formData?.get("intent") === "mark_read" ? true : notification.read;
-    const isDeleting = fetcher.formData?.get("intent") === "delete";
+    const isRead = notification.read; // React Query handles optimistic updates
+    const isDeleting = deleteNotification.isPending && deleteNotification.variables === notification.id;
 
     useEffect(() => {
         if (isDeleting) {
@@ -61,20 +64,14 @@ export const NotificationCard = memo(({ notification }: NotificationCardProps) =
 
         if (info.offset.x > threshold && !isRead) {
             // Swipe Right -> Mark Read
-            fetcher.submit(
-                { intent: "mark_read", id: notification.id },
-                { method: "post" }
-            );
+            markRead.mutate(notification.id);
             await controls.start({ x: 0 }); // Reset position
         } else if (info.offset.x < -threshold) {
             // Swipe Left -> Delete
             setIsVisible(false); // Optimistic hide
             // Wait for animation to finish before submitting
             setTimeout(() => {
-                fetcher.submit(
-                    { intent: "delete", id: notification.id },
-                    { method: "post" }
-                );
+                deleteNotification.mutate(notification.id);
             }, 300);
         } else {
             // Reset if not enough swipe

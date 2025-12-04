@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, CartesianGrid } from 'recharts';
-import type { BudgetItem } from "./types";
+import type { BudgetItem } from "@/schemas/budget";
 
 interface BudgetChartsProps {
     items: BudgetItem[];

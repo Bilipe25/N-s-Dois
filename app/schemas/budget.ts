@@ -46,5 +46,7 @@ export const UpdateBudgetItemSchema = CreateBudgetItemSchema.partial().extend({
 });
 
 export type BudgetItem = z.infer<typeof BudgetItemSchema>;
+export type BudgetCategory = BudgetItem['category'];
 export type CreateBudgetItemInput = z.input<typeof CreateBudgetItemSchema>;
+export type CreateBudgetItemOutput = z.infer<typeof CreateBudgetItemSchema>;
 export type UpdateBudgetItemInput = z.input<typeof UpdateBudgetItemSchema>;
