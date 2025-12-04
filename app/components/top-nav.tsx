@@ -1,10 +1,12 @@
 import { useLocation, useNavigate, Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, Settings, Bell } from "lucide-react";
+import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
-export function TopNav({ unreadCount = 0, action }: { unreadCount?: number; action?: React.ReactNode }) {
+export function TopNav({ action }: { action?: React.ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
+    const unreadCount = useUnreadNotificationsCount();
 
     // Mapa de títulos baseado na rota
     const getTitle = (pathname: string) => {

@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useLoaderData, Form, useSubmit, Link } from "react-router";
+import { useLoaderData, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { getSession } from "@/sessions";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, Gift, Users, Check, ExternalLink, Trash2, DollarSign } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Bell, Check } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
-import { NotificationCard, type Notification } from "@/components/notification-card";
+import { NotificationCard } from "@/components/notification-card";
 import type { Route } from "./+types/notifications";
+import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/useNotifications";
+import type { Notification } from "@/schemas/notifications";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Notificações - Nós Dois" }];
@@ -26,35 +26,11 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { notifications: notifications || [] };
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-
-    if (intent === "mark_all_read") {
-        await supabase
-            .from("notifications")
-            .update({ read: true })
-            .eq("read", false);
-    } else if (intent === "mark_read") {
-        const id = formData.get("id") as string;
-        await supabase
-            .from("notifications")
-            .update({ read: true })
-            .eq("id", id);
-    } else if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase
-            .from("notifications")
-            .delete()
-            .eq("id", id);
-    }
-
-    return null;
-};
-
 export default function Notifications() {
-    const { notifications } = useLoaderData<typeof loader>();
+    const { notifications: initialNotifications } = useLoaderData<typeof loader>();
+    const { data: notifications = [] } = useNotifications(initialNotifications as any);
+    const markAllRead = useMarkAllNotificationsRead();
+
     const [filter, setFilter] = useState<"all" | "unread">("all");
 
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -92,12 +68,15 @@ export default function Notifications() {
             <div className="sticky top-0 z-20 bg-[#FDFCF8]/80 backdrop-blur-md border-b border-stone-100 px-4 py-4">
                 <div className="flex items-center justify-end mb-4">
                     {unreadCount > 0 && (
-                        <Form method="post">
-                            <input type="hidden" name="intent" value="mark_all_read" />
-                            <Button type="submit" variant="ghost" size="sm" className="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50">
-                                <Check className="h-3 w-3 mr-1" /> Marcar tudo como lido
-                            </Button>
-                        </Form>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                            onClick={() => markAllRead.mutate()}
+                            disabled={markAllRead.isPending}
+                        >
+                            <Check className="h-3 w-3 mr-1" /> Marcar tudo como lido
+                        </Button>
                     )}
                 </div>
 
