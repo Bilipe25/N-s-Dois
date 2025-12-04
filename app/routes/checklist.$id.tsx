@@ -1,13 +1,16 @@
-import { Form, useNavigation, useActionData, redirect, useLoaderData } from "react-router";
+import { useLoaderData, Link, useNavigate, useParams } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router";
-import { useState } from "react";
 import type { Route } from "./+types/checklist.$id";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UpdateChecklistItemSchema, type UpdateChecklistItemInput } from "@/schemas/checklist";
+import { useUpdateChecklistItem } from "@/hooks/useChecklist";
+import { toast } from "sonner";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Editar Tarefa - Nós Dois" }];
@@ -28,61 +31,37 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
     return { task };
 };
 
-export const action = async ({ request, params }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const supabase = createClient(request);
-
-    const title = formData.get("title") as string;
-    const category = formData.get("category") as string;
-    const due_date = formData.get("due_date") as string;
-    const assigned_to = formData.get("assigned_to") as string;
-
-    if (!title) {
-        return { error: "Título é obrigatório" };
-    }
-
-    // Check if assigned_to is changing
-    const { data: currentTask } = await supabase
-        .from("checklist_items")
-        .select("assigned_to")
-        .eq("id", params.id)
-        .single();
-
-    const { error } = await supabase
-        .from("checklist_items")
-        .update({
-            title,
-            category,
-            due_date: due_date || null,
-            assigned_to: assigned_to || null
-        })
-        .eq("id", params.id);
-
-    // Create notification if assigned_to changed and is specific
-    if (!error && assigned_to && assigned_to !== "Ambos" && currentTask?.assigned_to !== assigned_to) {
-        await supabase.from("notifications").insert({
-            type: "task",
-            title: "Nova Tarefa Atribuída 📋",
-            message: `A tarefa "${title}" foi atribuída a ${assigned_to}.`,
-            link: `/checklist/${params.id}`
-        });
-    }
-
-    if (error) {
-        return { error: error.message };
-    }
-
-    return redirect("/checklist");
-};
-
 export default function EditChecklistTask() {
     const { task } = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const navigate = useNavigate();
+    const params = useParams();
+    const updateItem = useUpdateChecklistItem();
 
-    // Format date for input type="date" (YYYY-MM-DD)
     const defaultDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : "";
+
+    const form = useForm<UpdateChecklistItemInput>({
+        resolver: zodResolver(UpdateChecklistItemSchema),
+        defaultValues: {
+            title: task.title,
+            category: task.category || "geral",
+            due_date: defaultDate,
+            assigned_to: task.assigned_to || "",
+        }
+    });
+
+    const onSubmit = (data: UpdateChecklistItemInput) => {
+        if (!params.id) return;
+
+        updateItem.mutate({ id: params.id, ...data }, {
+            onSuccess: () => {
+                toast.success("Tarefa atualizada com sucesso!");
+                navigate("/checklist");
+            },
+            onError: (error) => {
+                toast.error(`Erro ao atualizar: ${error.message}`);
+            }
+        });
+    };
 
     return (
         <div className="p-4 space-y-6 pb-20">
@@ -100,27 +79,26 @@ export default function EditChecklistTask() {
                     <CardTitle className="text-base">Detalhes da Tarefa</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Form method="post" className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="title">Título</Label>
                             <Input
                                 id="title"
-                                name="title"
-                                defaultValue={task.title}
+                                {...form.register("title")}
                                 placeholder="Ex: Contratar Buffet"
-                                required
                             />
+                            {form.formState.errors.title && (
+                                <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="category">Categoria</Label>
                             <Input
                                 id="category"
-                                name="category"
+                                {...form.register("category")}
                                 list="categories"
-                                defaultValue={task.category}
                                 placeholder="Selecione ou Digite"
-                                required
                             />
                             <datalist id="categories">
                                 <option value="Cerimônia" />
@@ -137,9 +115,8 @@ export default function EditChecklistTask() {
                             <Label htmlFor="due_date">Data de Vencimento</Label>
                             <Input
                                 id="due_date"
-                                name="due_date"
                                 type="date"
-                                defaultValue={defaultDate}
+                                {...form.register("due_date")}
                             />
                         </div>
 
@@ -148,8 +125,7 @@ export default function EditChecklistTask() {
                             <div className="relative">
                                 <select
                                     id="assigned_to"
-                                    name="assigned_to"
-                                    defaultValue={task.assigned_to || ""}
+                                    {...form.register("assigned_to")}
                                     className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none"
                                 >
                                     <option value="">Sem responsável</option>
@@ -160,16 +136,10 @@ export default function EditChecklistTask() {
                             </div>
                         </div>
 
-                        {actionData?.error && (
-                            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                                {actionData.error}
-                            </div>
-                        )}
-
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+                        <Button type="submit" className="w-full" disabled={updateItem.isPending}>
+                            {updateItem.isPending ? "Salvando..." : "Salvar Alterações"}
                         </Button>
-                    </Form>
+                    </form>
                 </CardContent>
             </Card>
         </div>

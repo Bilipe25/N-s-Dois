@@ -32,4 +32,5 @@ export default [
     route("api/guests", "routes/api.guests.ts"),
     route("api/reserve-gift", "routes/api.reserve-gift.ts"),
     route("api/groomsmen", "routes/api.groomsmen.ts"),
+    route("api/checklist", "routes/api.checklist.ts"),
 ] satisfies RouteConfig;
