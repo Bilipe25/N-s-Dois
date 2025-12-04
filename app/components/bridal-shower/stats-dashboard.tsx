@@ -1,10 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "../ui/progress";
-import { Gift, Users } from "lucide-react";
-import type { Gift as GiftType, Guest } from "./types";
+import { Gift as GiftIcon, Users } from "lucide-react";
+import type { Gift, Guest } from "@/schemas/bridal-shower";
 
 interface StatsDashboardProps {
-    gifts: GiftType[];
+    gifts: Gift[];
     guests: Guest[];
 }
 
@@ -23,7 +23,7 @@ export function StatsDashboard({ gifts, guests }: StatsDashboardProps) {
                 <CardContent className="p-3 flex flex-col justify-center h-full gap-2">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2 text-muted-foreground">
-                            <Gift className="h-3.5 w-3.5" />
+                            <GiftIcon className="h-3.5 w-3.5" />
                             <span className="text-xs font-medium uppercase tracking-wider">Presentes</span>
                         </div>
                         <span className="text-xs font-bold text-stone-700">{Math.round(progressGifts)}%</span>
