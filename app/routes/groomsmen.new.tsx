@@ -1,123 +1,84 @@
 import { useState } from "react";
-import { Form, useNavigation, useActionData, redirect } from "react-router";
-import { createClient } from "@/lib/supabase";
-import { getSession } from "@/sessions";
+import { useNavigate } from "react-router";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UploadCloud, User } from "lucide-react";
+import { UploadCloud } from "lucide-react";
 import type { Route } from "./+types/groomsmen.new";
+import { CreateGroomsmanSchema, type CreateGroomsmanInput } from "@/schemas/groomsmen";
+import { useCreateGroomsman } from "@/hooks/useGroomsmen";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Novo Padrinho - Nós Dois" }];
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const { sendPushToUser } = await import("@/services/push.server");
-    const name = formData.get("name") as string;
-    const role = formData.get("role") as string;
-    const side = formData.get("side") as string;
-    const photo = formData.get("photo") as File;
-
-    const supabase = createClient(request);
-
-    let photoUrl = null;
-
-    // Verificar se existe arquivo e se tem tamanho > 0
-    if (photo && photo.size > 0 && photo.name !== "undefined") {
-        const fileExt = photo.name.split('.').pop();
-        const fileName = `groomsman_${Date.now()}.${fileExt}`;
-
-        const arrayBuffer = await photo.arrayBuffer();
-        const fileBuffer = Buffer.from(arrayBuffer);
-
-        const { error: uploadError } = await supabase.storage
-            .from("images")
-            .upload(fileName, fileBuffer, {
-                contentType: photo.type,
-                upsert: true
-            });
-
-        if (uploadError) {
-            // Se falhar o upload, retornamos erro mas não impedimos o cadastro se o usuário tentar de novo sem foto?
-            // Melhor avisar o erro.
-            return { error: `Erro no upload da foto: ${uploadError.message}` };
-        }
-
-        const { data } = supabase.storage
-            .from("images")
-            .getPublicUrl(fileName);
-
-        photoUrl = data.publicUrl;
-    }
-
-    const { error } = await supabase.from("groomsmen").insert({
-        name,
-        role,
-        side,
-        photo_url: photoUrl
-    });
-
-    if (!error) {
-        // Notificar
-        const session = await getSession(request.headers.get("Cookie"));
-        const user = session.get("user");
-
-        if (user) {
-            await supabase.from("notifications").insert({
-                type: "rsvp", // Usando tipo rsvp ou gift, ou criar um novo 'groomsmen' se necessário, mas rsvp/gift servem
-                title: "Novo Padrinho/Madrinha ✨",
-                message: `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`,
-                link: "/groomsmen",
-                image_url: photoUrl // Inclui a foto se houver
-            });
-
-            // Enviar Push
-            const partnerName = user === "Gabriel" ? "Raabe" : "Gabriel";
-            await sendPushToUser(request, "all", "Novo Padrinho/Madrinha ✨", `${user} adicionou ${name} como ${role} (${side === 'noivo' ? 'Noivo' : 'Noiva'}).`, "/groomsmen");
-        }
-    }
-
-    if (error) {
-        return { error: `Erro ao salvar: ${error.message}` };
-    }
-
-    return redirect("/groomsmen");
-};
-
 export default function NewGroomsman() {
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const navigate = useNavigate();
+    const { mutate: createGroomsman, isPending } = useCreateGroomsman("Gabriel"); // Hardcoded user for now, or get from context
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        formState: { errors },
+    } = useForm<CreateGroomsmanInput>({
+        resolver: zodResolver(CreateGroomsmanSchema),
+        defaultValues: {
+            role: "padrinho",
+            side: "noivo"
+        }
+    });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
+            setValue("photo", file);
         } else {
             setPreviewUrl(null);
+            setValue("photo", undefined);
         }
+    };
+
+    const onSubmit = (data: CreateGroomsmanInput) => {
+        createGroomsman(data, {
+            onSuccess: () => {
+                navigate("/groomsmen");
+            }
+        });
     };
 
     return (
         <div className="space-y-6 max-w-md mx-auto">
             <Card>
                 <CardContent className="p-6">
-                    <Form method="post" encType="multipart/form-data" className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Nome</Label>
-                            <Input id="name" name="name" required placeholder="Ex: João Silva" />
+                            <Input
+                                id="name"
+                                placeholder="Ex: João Silva"
+                                {...register("name")}
+                            />
+                            {errors.name && (
+                                <p className="text-xs text-destructive">{errors.name.message}</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="role">Função</Label>
-                                <Select name="role" required defaultValue="padrinho">
+                                <Select
+                                    onValueChange={(val) => setValue("role", val as any)}
+                                    defaultValue={watch("role")}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -128,11 +89,17 @@ export default function NewGroomsman() {
                                         <SelectItem value="pajem">Pajem</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {errors.role && (
+                                    <p className="text-xs text-destructive">{errors.role.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="side">Lado</Label>
-                                <Select name="side" required defaultValue="noivo">
+                                <Select
+                                    onValueChange={(val) => setValue("side", val as any)}
+                                    defaultValue={watch("side")}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -141,6 +108,9 @@ export default function NewGroomsman() {
                                         <SelectItem value="noiva">Da Noiva</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {errors.side && (
+                                    <p className="text-xs text-destructive">{errors.side.message}</p>
+                                )}
                             </div>
                         </div>
 
@@ -149,7 +119,6 @@ export default function NewGroomsman() {
                             <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative overflow-hidden min-h-[150px] flex items-center justify-center">
                                 <Input
                                     id="photo"
-                                    name="photo"
                                     type="file"
                                     accept="image/*"
                                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
@@ -166,16 +135,10 @@ export default function NewGroomsman() {
                             </div>
                         </div>
 
-                        {actionData?.error && (
-                            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                                {actionData.error}
-                            </div>
-                        )}
-
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Salvando..." : "Adicionar Padrinho"}
+                        <Button type="submit" className="w-full" disabled={isPending}>
+                            {isPending ? "Salvando..." : "Adicionar Padrinho"}
                         </Button>
-                    </Form>
+                    </form>
                 </CardContent>
             </Card>
         </div>

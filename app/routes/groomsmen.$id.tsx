@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Form, useNavigation, useActionData, redirect, useLoaderData } from "react-router";
+import { useNavigate, useLoaderData } from "react-router";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UploadCloud } from "lucide-react";
 import type { Route } from "./+types/groomsmen.$id";
+import { UpdateGroomsmanSchema, type UpdateGroomsmanInput } from "@/schemas/groomsmen";
+import { useUpdateGroomsman } from "@/hooks/useGroomsmen";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Editar Padrinho - Nós Dois" }];
@@ -28,100 +32,69 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
     return { groomsman };
 };
 
-export const action = async ({ request, params }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const name = formData.get("name") as string;
-    const role = formData.get("role") as string;
-    const side = formData.get("side") as string;
-    const photo = formData.get("photo") as File;
-
-    const supabase = createClient(request);
-
-    let photoUrl = null;
-
-    // Verificar se existe arquivo e se tem tamanho > 0
-    if (photo && photo.size > 0 && photo.name !== "undefined") {
-        const fileExt = photo.name.split('.').pop();
-        const fileName = `groomsman_${Date.now()}.${fileExt}`;
-
-        const arrayBuffer = await photo.arrayBuffer();
-        const fileBuffer = Buffer.from(arrayBuffer);
-
-        const { error: uploadError } = await supabase.storage
-            .from("images")
-            .upload(fileName, fileBuffer, {
-                contentType: photo.type,
-                upsert: true
-            });
-
-        if (uploadError) {
-            return { error: `Erro no upload da foto: ${uploadError.message}` };
-        }
-
-        const { data } = supabase.storage
-            .from("images")
-            .getPublicUrl(fileName);
-
-        photoUrl = data.publicUrl;
-    }
-
-    const updates: any = {
-        name,
-        role,
-        side,
-    };
-
-    if (photoUrl) {
-        updates.photo_url = photoUrl;
-    }
-
-    const { error } = await supabase
-        .from("groomsmen")
-        .update(updates)
-        .eq("id", params.id);
-
-    if (error) {
-        return { error: `Erro ao salvar: ${error.message}` };
-    }
-
-    return redirect("/groomsmen");
-};
-
 export default function EditGroomsman() {
     const { groomsman } = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
-    const navigation = useNavigation();
-    const isSubmitting = navigation.state === "submitting";
+    const navigate = useNavigate();
+    const { mutate: updateGroomsman, isPending } = useUpdateGroomsman();
     const [previewUrl, setPreviewUrl] = useState<string | null>(groomsman.photo_url);
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        formState: { errors },
+    } = useForm<UpdateGroomsmanInput>({
+        resolver: zodResolver(UpdateGroomsmanSchema),
+        defaultValues: {
+            id: groomsman.id,
+            name: groomsman.name,
+            role: groomsman.role as any,
+            side: groomsman.side as any,
+        }
+    });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
             setPreviewUrl(url);
+            setValue("photo", file);
         }
+    };
+
+    const onSubmit = (data: UpdateGroomsmanInput) => {
+        updateGroomsman(data, {
+            onSuccess: () => {
+                navigate("/groomsmen");
+            }
+        });
     };
 
     return (
         <div className="space-y-6 max-w-md mx-auto">
             <Card>
                 <CardContent className="p-6">
-                    <Form method="post" encType="multipart/form-data" className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Nome</Label>
                             <Input
                                 id="name"
-                                name="name"
-                                required
                                 placeholder="Ex: João Silva"
-                                defaultValue={groomsman.name}
+                                {...register("name")}
                             />
+                            {errors.name && (
+                                <p className="text-xs text-destructive">{errors.name.message}</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="role">Função</Label>
-                                <Select name="role" required defaultValue={groomsman.role}>
+                                <Select
+                                    onValueChange={(val) => setValue("role", val as any)}
+                                    defaultValue={watch("role")}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -132,11 +105,17 @@ export default function EditGroomsman() {
                                         <SelectItem value="pajem">Pajem</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {errors.role && (
+                                    <p className="text-xs text-destructive">{errors.role.message}</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="side">Lado</Label>
-                                <Select name="side" required defaultValue={groomsman.side}>
+                                <Select
+                                    onValueChange={(val) => setValue("side", val as any)}
+                                    defaultValue={watch("side")}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
                                     </SelectTrigger>
@@ -145,6 +124,9 @@ export default function EditGroomsman() {
                                         <SelectItem value="noiva">Da Noiva</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {errors.side && (
+                                    <p className="text-xs text-destructive">{errors.side.message}</p>
+                                )}
                             </div>
                         </div>
 
@@ -153,7 +135,6 @@ export default function EditGroomsman() {
                             <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-muted/50 transition-colors cursor-pointer relative overflow-hidden min-h-[150px] flex items-center justify-center">
                                 <Input
                                     id="photo"
-                                    name="photo"
                                     type="file"
                                     accept="image/*"
                                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
@@ -175,16 +156,10 @@ export default function EditGroomsman() {
                             )}
                         </div>
 
-                        {actionData?.error && (
-                            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                                {actionData.error}
-                            </div>
-                        )}
-
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+                        <Button type="submit" className="w-full" disabled={isPending}>
+                            {isPending ? "Salvando..." : "Salvar Alterações"}
                         </Button>
-                    </Form>
+                    </form>
                 </CardContent>
             </Card>
         </div>
