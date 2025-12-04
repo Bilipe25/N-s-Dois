@@ -236,10 +236,17 @@ export default function PublicBridalShower() {
                             </Button>
                             <Button
                                 variant="outline"
+                                onClick={() => scrollToSection("paleta-cores")}
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                            >
+                                🎨 Paleta
+                            </Button>
+                            <Button
+                                variant="outline"
                                 onClick={() => scrollToSection("lista-presentes")}
                                 className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
                             >
-                                <PartyPopper className="mr-2 h-4 w-4" /> Lista
+                                <PartyPopper className="mr-2 h-4 w-4" /> Presentes
                             </Button>
                         </div>
                     </motion.div>
@@ -312,35 +319,37 @@ export default function PublicBridalShower() {
                 </section>
 
                 {/* Palette Info */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    className="bg-white rounded-2xl p-8 shadow-sm border border-stone-100 text-center space-y-6 mx-auto max-w-3xl"
-                >
-                    <h2 className="text-sm font-bold text-stone-400 uppercase tracking-widest">Paleta de Cores Sugerida</h2>
-                    <div className="flex justify-center items-center gap-8">
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-stone-900 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Preto</span>
+                <section id="paleta-cores" className="scroll-mt-20">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        className="bg-white rounded-2xl p-8 shadow-sm border border-stone-100 text-center space-y-6 mx-auto max-w-3xl"
+                    >
+                        <h2 className="text-sm font-bold text-stone-400 uppercase tracking-widest">Paleta de Cores Sugerida</h2>
+                        <div className="flex justify-center items-center gap-8">
+                            <div className="group flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-stone-900 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Preto</span>
+                            </div>
+                            <div className="group flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-white border border-stone-200 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Branco</span>
+                            </div>
+                            <div className="group flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-stone-400 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Cinza</span>
+                            </div>
+                            <div className="group flex flex-col items-center gap-3">
+                                <div className="w-12 h-12 rounded-full bg-[#d4c4b7] shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
+                                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Bege</span>
+                            </div>
                         </div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-white border border-stone-200 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Branco</span>
-                        </div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-stone-400 shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Cinza</span>
-                        </div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-[#d4c4b7] shadow-md ring-4 ring-stone-50 transition-transform group-hover:scale-110"></div>
-                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Bege</span>
-                        </div>
-                    </div>
-                    <p className="text-sm text-stone-500 max-w-md mx-auto leading-relaxed">
-                        Para mantermos a harmonia visual, adoraríamos que os presentes seguissem esta paleta de cores neutras.
-                    </p>
-                </motion.div>
+                        <p className="text-sm text-stone-500 max-w-md mx-auto leading-relaxed">
+                            Para mantermos a harmonia visual, adoraríamos que os presentes seguissem esta paleta de cores neutras.
+                        </p>
+                    </motion.div>
+                </section>
 
                 {/* Gift List */}
                 <section id="lista-presentes" className="space-y-8 scroll-mt-20">
