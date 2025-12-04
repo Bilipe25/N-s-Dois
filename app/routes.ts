@@ -29,4 +29,6 @@ export default [
     route("public/wedding", "routes/public.wedding.tsx"),
     route("api/subscribe", "routes/api.subscribe.tsx"),
     route("api/inspirations", "routes/api.inspirations.ts"),
+    route("api/guests", "routes/api.guests.ts"),
+    route("api/reserve-gift", "routes/api.reserve-gift.ts"),
 ] satisfies RouteConfig;
