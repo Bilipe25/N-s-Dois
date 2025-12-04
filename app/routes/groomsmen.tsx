@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useLoaderData, Link, Form } from "react-router";
+import { useLoaderData, Link } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, User, Trash2, Pencil, MoreHorizontal } from "lucide-react";
 import type { Route } from "./+types/groomsmen";
+import { useGroomsmen, useDeleteGroomsman } from "@/hooks/useGroomsmen";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Padrinhos - Nós Dois" }];
@@ -33,31 +33,26 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { groomsmen };
 };
 
-export const action = async ({ request }: Route.ActionArgs) => {
-    const formData = await request.formData();
-    const intent = formData.get("intent");
-    const supabase = createClient(request);
-
-    if (intent === "delete") {
-        const id = formData.get("id") as string;
-        await supabase.from("groomsmen").delete().eq("id", id);
-    }
-
-    return null;
-};
-
 export default function Groomsmen() {
-    const { groomsmen } = useLoaderData<typeof loader>();
+    const { groomsmen: initialData } = useLoaderData<typeof loader>();
+    const { data: groomsmen = [] } = useGroomsmen(initialData);
+    const { mutate: deleteGroomsman } = useDeleteGroomsman();
     const [roleFilter, setRoleFilter] = useState<string>("todos");
 
     const roles = ["todos", "padrinho", "madrinha", "daminha", "pajem"];
 
     const filterGroomsmen = (side: string) => {
-        return groomsmen.filter((person: any) => {
+        return groomsmen.filter((person) => {
             const matchesSide = person.side === side;
             const matchesRole = roleFilter === "todos" ? true : person.role === roleFilter;
             return matchesSide && matchesRole;
         });
+    };
+
+    const handleDelete = (id: string) => {
+        if (confirm("Tem certeza que deseja remover?")) {
+            deleteGroomsman(id);
+        }
     };
 
     const renderList = (side: string) => {
@@ -73,7 +68,7 @@ export default function Groomsmen() {
 
         return (
             <div className="grid grid-cols-2 gap-4">
-                {list.map((person: any) => (
+                {list.map((person) => (
                     <Card key={person.id} className="overflow-hidden relative group">
                         <div className="aspect-square bg-secondary flex items-center justify-center relative">
                             {person.photo_url ? (
@@ -99,24 +94,9 @@ export default function Groomsmen() {
                                                 <span>Editar</span>
                                             </Link>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem asChild>
-                                            <Form method="post" className="w-full">
-                                                <input type="hidden" name="id" value={person.id} />
-                                                <button
-                                                    type="submit"
-                                                    name="intent"
-                                                    value="delete"
-                                                    className="flex w-full items-center gap-2 text-destructive cursor-pointer"
-                                                    onClick={(e) => {
-                                                        if (!confirm("Tem certeza que deseja remover?")) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                    <span>Excluir</span>
-                                                </button>
-                                            </Form>
+                                        <DropdownMenuItem onClick={() => person.id && handleDelete(person.id)} className="cursor-pointer flex items-center gap-2 text-destructive focus:text-destructive">
+                                            <Trash2 className="h-4 w-4" />
+                                            <span>Excluir</span>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
