@@ -219,34 +219,34 @@ export default function PublicBridalShower() {
                         >
                             <Heart className="mr-2 h-5 w-5 fill-current" /> Confirmar Presença
                         </Button>
-                        <div className="flex gap-3 w-full">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
                             <Button
                                 variant="outline"
                                 onClick={() => setShowPixModal(true)}
-                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-12 transition-all hover:-translate-y-1 text-sm"
                             >
-                                <QrCode className="mr-2 h-4 w-4" /> Pix
+                                <QrCode className="mr-1.5 h-4 w-4" /> Pix
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => scrollToSection("locais")}
-                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-12 transition-all hover:-translate-y-1 text-sm"
                             >
-                                <MapPin className="mr-2 h-4 w-4" /> Locais
+                                <MapPin className="mr-1.5 h-4 w-4" /> Locais
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => scrollToSection("paleta-cores")}
-                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-12 transition-all hover:-translate-y-1 text-sm"
                             >
                                 🎨 Paleta
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => scrollToSection("lista-presentes")}
-                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-12 transition-all hover:-translate-y-1 text-sm"
                             >
-                                <PartyPopper className="mr-2 h-4 w-4" /> Presentes
+                                <PartyPopper className="mr-1.5 h-4 w-4" /> Presentes
                             </Button>
                         </div>
                     </motion.div>
