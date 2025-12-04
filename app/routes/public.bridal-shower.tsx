@@ -48,6 +48,8 @@ export default function PublicBridalShower() {
 
     // Confirmation State
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showConfirmSuccessModal, setShowConfirmSuccessModal] = useState(false);
+    const [confirmSuccessData, setConfirmSuccessData] = useState<{ guestName: string, locationName: string } | null>(null);
     const [guestName, setGuestName] = useState("");
     const [selectedLocation, setSelectedLocation] = useState<"local1" | "local2" | null>(null);
 
@@ -105,17 +107,21 @@ export default function PublicBridalShower() {
         if (!guestName.trim() || !selectedLocation) return;
 
         confirmPresence({ name: guestName, confirmed_location: selectedLocation }, {
-            onSuccess: () => {
+            onSuccess: (data) => {
                 setShowConfirmModal(false);
                 setGuestName("");
                 setSelectedLocation(null);
+                setConfirmSuccessData({
+                    guestName: data.guestName || guestName,
+                    locationName: data.locationName || (selectedLocation === 'local1' ? config?.bridal_shower_location : config?.bridal_shower_location_2) || "Local"
+                });
+                setShowConfirmSuccessModal(true);
                 confetti({
                     particleCount: 150,
                     spread: 100,
                     origin: { y: 0.6 },
                     colors: ['#f43f5e', '#fb7185', '#ffe4e6']
                 });
-                // Optional: Show a success toast or small modal
             }
         });
     };
@@ -212,10 +218,17 @@ export default function PublicBridalShower() {
                         <div className="flex gap-3 w-full">
                             <Button
                                 variant="outline"
+                                onClick={() => setShowPixModal(true)}
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
+                            >
+                                <QrCode className="mr-2 h-4 w-4" /> Pix
+                            </Button>
+                            <Button
+                                variant="outline"
                                 onClick={() => scrollToSection("locais")}
                                 className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-14 flex-1 transition-all hover:-translate-y-1"
                             >
-                                <MapPin className="mr-2 h-4 w-4" /> Ver Locais
+                                <MapPin className="mr-2 h-4 w-4" /> Locais
                             </Button>
                             <Button
                                 variant="outline"
@@ -547,6 +560,32 @@ export default function PublicBridalShower() {
                     </DialogHeader>
                     <DialogFooter className="sm:justify-center mt-4">
                         <Button onClick={() => setShowSuccessModal(false)} className="w-full sm:w-auto bg-stone-900 text-white">
+                            Fechar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Success Modal */}
+            <Dialog open={showConfirmSuccessModal} onOpenChange={setShowConfirmSuccessModal}>
+                <DialogContent className="sm:max-w-md text-center">
+                    <div className="flex justify-center my-4">
+                        <div className="h-20 w-20 bg-rose-100 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                            <Heart className="h-10 w-10 text-rose-500 fill-rose-500" />
+                        </div>
+                    </div>
+                    <DialogHeader>
+                        <DialogTitle className="text-center text-2xl font-serif text-stone-800">
+                            Presença Confirmada! 🎉
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-base pt-2 text-stone-600">
+                            <strong>{confirmSuccessData?.guestName}</strong>, sua presença está confirmada para o Chá de Casa Nova em <strong>{confirmSuccessData?.locationName}</strong>!
+                            <br /><br />
+                            Estamos ansiosos para celebrar esse momento com você!
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="sm:justify-center mt-4">
+                        <Button onClick={() => setShowConfirmSuccessModal(false)} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white">
                             Fechar
                         </Button>
                     </DialogFooter>

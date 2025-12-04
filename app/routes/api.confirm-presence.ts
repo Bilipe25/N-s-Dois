@@ -14,15 +14,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         const supabase = createClient(request);
 
-        // Check if guest exists
+        // Fetch config to get location names
+        const { data: configData } = await supabase
+            .from("app_config")
+            .select("bridal_shower_location, bridal_shower_location_2")
+            .single();
+
+        const locationName = confirmed_location === 'local1'
+            ? (configData?.bridal_shower_location || 'Local 1')
+            : (configData?.bridal_shower_location_2 || 'Local 2');
+
+        // Check if guest exists (case-insensitive search)
         const { data: existingGuest } = await supabase
             .from("bridal_shower_guests")
-            .select("id")
+            .select("id, name")
             .ilike("name", name)
             .single();
 
+        let isNewGuest = false;
+        let guestDisplayName = name;
+
         if (existingGuest) {
             // Update existing guest
+            guestDisplayName = existingGuest.name; // Use the name as stored in DB for consistency
             const { error } = await supabase.from("bridal_shower_guests").update({
                 confirmed: true,
                 confirmed_location
@@ -31,6 +45,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             if (error) throw error;
         } else {
             // Create new guest
+            isNewGuest = true;
             const { error } = await supabase.from("bridal_shower_guests").insert({
                 name,
                 confirmed: true,
@@ -40,21 +55,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             if (error) throw error;
         }
 
-        // Send Notifications
+        // Send Notifications with location name
         try {
             await supabase.from("notifications").insert({
                 type: "guest",
                 title: "Presença Confirmada! ✅",
-                message: `${name} confirmou presença no Chá de Casa Nova (${confirmed_location === 'local1' ? 'Local 1' : 'Local 2'}).`,
+                message: `${guestDisplayName} confirmou presença no Chá de Casa Nova em ${locationName}.`,
                 link: "/bridal-shower"
             });
 
-            await sendPushToUser(request, "all", "Presença Confirmada! ✅", `${name} confirmou presença no Chá de Casa Nova.`, "/bridal-shower");
+            await sendPushToUser(
+                request,
+                "all",
+                "Presença Confirmada! ✅",
+                `${guestDisplayName} confirmou presença no Chá de Casa Nova em ${locationName}.`,
+                "/bridal-shower"
+            );
         } catch (notifError) {
             console.error("Error sending notification for guest confirmation (non-fatal):", notifError);
         }
 
-        return Response.json({ success: true });
+        return Response.json({
+            success: true,
+            guestName: guestDisplayName,
+            locationName,
+            isNewGuest
+        });
 
     } catch (error: any) {
         console.error("Error confirming presence:", error);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -506,6 +506,26 @@ function ConfigForm({ config, updateConfig }: { config: any, updateConfig: any }
             contact_phone_raabe: config?.contact_phone_raabe || ""
         }
     });
+
+    // Sincronizar formulário quando config for recarregado
+    useEffect(() => {
+        if (config) {
+            form.reset({
+                date: formatDate(config.bridal_shower_date),
+                location: config.bridal_shower_location || "",
+                address_1: config.bridal_shower_address_1 || "",
+                map_link_1: config.bridal_shower_map_link_1 || "",
+                date_2: formatDate(config.bridal_shower_date_2),
+                location_2: config.bridal_shower_location_2 || "",
+                address_2: config.bridal_shower_address_2 || "",
+                map_link_2: config.bridal_shower_map_link_2 || "",
+                hero_url: config.bridal_shower_hero_url || "",
+                pix_key: config.pix_key || "",
+                contact_phone_gabriel: config.contact_phone_gabriel || "",
+                contact_phone_raabe: config.contact_phone_raabe || ""
+            });
+        }
+    }, [config, form]);
 
     const onSubmit = (data: UpdateConfigInput) => {
         if (!config) return;
