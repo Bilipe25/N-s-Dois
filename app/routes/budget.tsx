@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useLoaderData } from "react-router";
 import { createClient } from "@/lib/supabase";
-import { Plus, Filter, Download } from "lucide-react";
+import { Plus, Filter, Download, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import type { Route } from "./+types/budget";
 
 import { BudgetSummary } from "@/components/budget/budget-summary";
@@ -159,25 +159,40 @@ export default function Budget() {
             </div>
 
             {/* FAB */}
-            <div className="fixed bottom-24 right-6 z-20 md:right-[calc(50%-20rem)]">
-                <Button
-                    onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
-                    size="icon"
-                    className="h-14 w-14 rounded-full shadow-xl bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {!isAddOpen && (
+                <div className="fixed bottom-24 right-6 z-40 md:right-[calc(50%-20rem)]">
+                    <Button
+                        onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
+                        size="icon"
+                        className="h-14 w-14 rounded-full shadow-xl bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
+                    >
+                        <Plus className="h-6 w-6" />
+                    </Button>
+                </div>
+            )}
 
-            {/* Dialog Form */}
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>{editingItem ? "Editar Gasto" : "Novo Gasto"}</DialogTitle>
-                    </DialogHeader>
-                    <BudgetForm item={editingItem} suppliers={suppliers} onCancel={handleClose} />
-                </DialogContent>
-            </Dialog>
+            {/* Drawer Form */}
+            <Drawer open={isAddOpen} onOpenChange={setIsAddOpen}>
+                <DrawerContent className="max-h-[90vh]">
+                    <DrawerHeader className="text-left border-b pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-xl ${editingItem ? 'bg-blue-100' : 'bg-emerald-100'}`}>
+                                <Wallet className={`h-6 w-6 ${editingItem ? 'text-blue-600' : 'text-emerald-600'}`} />
+                            </div>
+                            <div>
+                                <DrawerTitle className="text-xl">{editingItem ? "Editar Gasto" : "Novo Gasto"}</DrawerTitle>
+                                <DrawerDescription>
+                                    {editingItem ? `Editando: ${editingItem.description}` : "Adicione um novo lançamento"}
+                                </DrawerDescription>
+                            </div>
+                        </div>
+                    </DrawerHeader>
+                    <div className="px-4 py-4 overflow-y-auto">
+                        <BudgetForm item={editingItem} suppliers={suppliers} onCancel={handleClose} />
+                    </div>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }
+
