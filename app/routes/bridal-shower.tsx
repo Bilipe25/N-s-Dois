@@ -458,24 +458,26 @@ export default function BridalShower() {
                         </DrawerContent>
                     </Drawer>
 
-                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
-                        <Button
-                            onClick={() => setShowImport(true)}
-                            size="icon"
-                            variant="secondary"
-                            className="h-10 w-10 rounded-full shadow-md"
-                            title="Importar Presentes"
-                        >
-                            <Upload className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            onClick={() => setShowAddGift(true)}
-                            size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
-                        >
-                            <Plus className="h-6 w-6" />
-                        </Button>
-                    </div>
+                    {!selectedGiftDetails && (
+                        <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-3">
+                            <Button
+                                onClick={() => setShowImport(true)}
+                                size="icon"
+                                variant="secondary"
+                                className="h-10 w-10 rounded-full shadow-md"
+                                title="Importar Presentes"
+                            >
+                                <Upload className="h-5 w-5" />
+                            </Button>
+                            <Button
+                                onClick={() => setShowAddGift(true)}
+                                size="icon"
+                                className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
+                            >
+                                <Plus className="h-6 w-6" />
+                            </Button>
+                        </div>
+                    )}
                 </TabsContent>
 
                 {/* Aba de Convidados */}
