@@ -3,10 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Image as ImageIcon, Loader2, X } from "lucide-react";
-import { ASSET_CATEGORIES } from "@/schemas/assets";
 import { useCreateAsset } from "@/hooks/useAssets";
 
 interface AddAssetDialogProps {
@@ -14,13 +12,15 @@ interface AddAssetDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
+const CATEGORIES = ["Cozinha", "Sala", "Quarto", "Banheiro", "Lavanderia", "Escritório", "Outros"];
+
 export function AddAssetDialog({ open, onOpenChange }: AddAssetDialogProps) {
     const { mutate: createAsset, isPending } = useCreateAsset();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState({
         name: "",
-        category: "Outros" as typeof ASSET_CATEGORIES[number],
+        category: "Outros",
         value: "",
         notes: ""
     });
@@ -59,7 +59,6 @@ export function AddAssetDialog({ open, onOpenChange }: AddAssetDialogProps) {
 
         createAsset(data, {
             onSuccess: () => {
-                // Reset form
                 setFormData({ name: "", category: "Outros", value: "", notes: "" });
                 handleClearImage();
                 onOpenChange(false);
@@ -134,19 +133,16 @@ export function AddAssetDialog({ open, onOpenChange }: AddAssetDialogProps) {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-2">
                             <Label htmlFor="category">Categoria</Label>
-                            <Select
+                            <select
+                                id="category"
                                 value={formData.category}
-                                onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as typeof ASSET_CATEGORIES[number] }))}
+                                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ASSET_CATEGORIES.map(cat => (
-                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                {CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="value">Valor (R$)</Label>
