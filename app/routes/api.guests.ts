@@ -1,7 +1,22 @@
-import type { ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { sendPushToUser } from "@/services/push.server";
 import { z } from "zod";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+    const supabase = createClient(request);
+
+    const { data: guests, error } = await supabase
+        .from("guests")
+        .select("*")
+        .order("name", { ascending: true });
+
+    if (error) {
+        return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    return Response.json({ guests: guests || [] });
+};
 
 const ActionSchema = z.discriminatedUnion("intent", [
     z.object({
