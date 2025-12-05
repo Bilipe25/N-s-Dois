@@ -3,8 +3,9 @@ import { useLoaderData, useSearchParams, redirect } from "react-router";
 import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Image as ImageIcon, Loader2, X } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
+import { Plus, Image as ImageIcon, Loader2, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { Route } from "./+types/inspirations";
 
@@ -292,32 +293,44 @@ export default function Inspirations() {
             )}
 
             {/* FAB */}
-            <div className="fixed bottom-24 right-6 z-50">
-                <Button
-                    onClick={() => setShowAddInspiration(true)}
-                    size="icon"
-                    className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {!showAddInspiration && !selectedImage && (
+                <div className="fixed bottom-24 right-6 z-40">
+                    <Button
+                        onClick={() => setShowAddInspiration(true)}
+                        size="icon"
+                        className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105"
+                    >
+                        <Plus className="h-6 w-6" />
+                    </Button>
+                </div>
+            )}
 
-            {/* Add Modal */}
-            <Dialog open={showAddInspiration} onOpenChange={setShowAddInspiration}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="font-serif text-2xl">Nova Inspiração</DialogTitle>
-                        <DialogDescription>
-                            Adicione uma foto e detalhes da sua inspiração.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAddSubmit} className="space-y-4">
-                        <div className="flex gap-4 items-start">
-                            <div className="relative h-24 w-24 bg-secondary rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-dashed border-muted-foreground/50 group hover:border-primary transition-colors">
+            {/* Add Drawer */}
+            <Drawer open={showAddInspiration} onOpenChange={setShowAddInspiration}>
+                <DrawerContent className="max-h-[90vh]">
+                    <DrawerHeader className="text-left border-b pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-amber-100">
+                                <Sparkles className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div>
+                                <DrawerTitle className="text-xl">Nova Inspiração</DrawerTitle>
+                                <DrawerDescription>Adicione uma foto e detalhes da sua inspiração</DrawerDescription>
+                            </div>
+                        </div>
+                    </DrawerHeader>
+                    <form onSubmit={handleAddSubmit} className="px-4 py-4 space-y-4 overflow-y-auto">
+                        {/* Photo Upload */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Foto</label>
+                            <div className="relative h-40 w-full bg-stone-50 rounded-xl flex items-center justify-center overflow-hidden border-2 border-dashed border-stone-200 hover:border-stone-400 transition-colors group cursor-pointer">
                                 {previewUrl ? (
                                     <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                                 ) : (
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground opacity-50 group-hover:text-primary" />
+                                    <div className="flex flex-col items-center gap-2 text-stone-400 group-hover:text-stone-600">
+                                        <ImageIcon className="h-10 w-10" />
+                                        <span className="text-sm">Clique para selecionar uma foto</span>
+                                    </div>
                                 )}
                                 <input
                                     type="file"
@@ -328,34 +341,47 @@ export default function Inspirations() {
                                     required
                                 />
                             </div>
-                            <div className="flex-1 space-y-2">
-                                <Input name="title" placeholder="Título (ex: Vestido Sereia)" required className="font-medium" />
-                                <select
-                                    name="category"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    required
-                                >
-                                    <option value="">Categoria...</option>
-                                    <option value="decoracao">Decoração</option>
-                                    <option value="cerimonia">Cerimônia</option>
-                                    <option value="festa">Festa</option>
-                                    <option value="vestidos">Vestidos</option>
-                                    <option value="lua_de_mel">Lua de Mel</option>
-                                    <option value="outros">Outros</option>
-                                </select>
-                            </div>
                         </div>
-                        <Input name="notes" placeholder="Notas (opcional)" />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowAddInspiration(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isAdding} className="bg-stone-900 text-white hover:bg-stone-800">
-                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                Adicionar
+
+                        {/* Title */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Título</label>
+                            <Input name="title" placeholder="Ex: Vestido Sereia" required className="h-11" />
+                        </div>
+
+                        {/* Category */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Categoria</label>
+                            <select
+                                name="category"
+                                className="flex h-11 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                                required
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="decoracao">Decoração</option>
+                                <option value="cerimonia">Cerimônia</option>
+                                <option value="festa">Festa</option>
+                                <option value="vestidos">Vestidos</option>
+                                <option value="lua_de_mel">Lua de Mel</option>
+                                <option value="outros">Outros</option>
+                            </select>
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Notas <span className="text-stone-400">(opcional)</span></label>
+                            <Input name="notes" placeholder="Adicione observações..." className="h-11" />
+                        </div>
+
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddInspiration(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={isAdding} className="flex-1 bg-stone-900 hover:bg-stone-800">
+                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
                             </Button>
-                        </DialogFooter>
+                        </DrawerFooter>
                     </form>
-                </DialogContent>
-            </Dialog>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }
