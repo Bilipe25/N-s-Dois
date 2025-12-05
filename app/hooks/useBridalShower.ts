@@ -12,6 +12,7 @@ import type {
     ConfirmPresenceInput
 } from "@/schemas/bridal-shower";
 import { toast } from "sonner";
+import type { Guest as MainGuest } from "@/schemas/guest";
 
 // --- QUERIES ---
 
@@ -39,6 +40,19 @@ export const useGuests = () => {
 export const useBridalConfig = () => {
     const { data } = useBridalData();
     return { data: data?.config };
+};
+
+// Hook to fetch main guests for import
+export const useMainGuests = () => {
+    return useQuery({
+        queryKey: ["main_guests"],
+        queryFn: async () => {
+            const response = await fetch("/api/guests");
+            if (!response.ok) throw new Error("Erro ao carregar convidados");
+            const data = await response.json();
+            return data.guests as MainGuest[];
+        }
+    });
 };
 
 // --- MUTATIONS (PUBLIC) ---
@@ -361,3 +375,33 @@ export const useImportGuests = () => {
         onError: (error: any) => toast.error(error.message)
     });
 };
+
+// Import selected guests from main guests list
+export const useImportGuestsFromMain = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (selectedGuests: MainGuest[]) => {
+            const guests = selectedGuests.map(g => ({
+                name: g.name,
+                phone: undefined,
+                confirmed: g.rsvp_status === 'confirmado'
+            }));
+
+            if (guests.length > 0) {
+                const response = await fetch("/api/bridal-shower?intent=import_guests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ guests })
+                });
+                if (!response.ok) throw new Error("Erro ao importar convidados");
+                return await response.json();
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
+            toast.success("Convidados importados com sucesso!");
+        },
+        onError: (error: any) => toast.error(error.message)
+    });
+};
+
