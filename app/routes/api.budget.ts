@@ -34,13 +34,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 status = "parcial";
             }
 
-            if (parsedData.due_date && new Date(parsedData.due_date) < new Date() && status !== "pago") {
+            // Tratar data vazia como null
+            const dueDate = parsedData.due_date && parsedData.due_date.trim() !== ""
+                ? parsedData.due_date
+                : null;
+
+            if (dueDate && new Date(dueDate) < new Date() && status !== "pago") {
                 status = "atrasado";
             }
 
             const { data: item, error } = await supabase
                 .from("budget_items")
-                .insert({ ...parsedData, status })
+                .insert({ ...parsedData, due_date: dueDate, status })
                 .select("*, suppliers(name)")
                 .single();
 
@@ -68,7 +73,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
             const estimated_value = updates.estimated_value ?? currentItem.estimated_value;
             const paid_value = updates.paid_value ?? currentItem.paid_value;
-            const due_date = updates.due_date !== undefined ? updates.due_date : currentItem.due_date;
+
+            // Tratar data vazia como null
+            let due_date = updates.due_date !== undefined ? updates.due_date : currentItem.due_date;
+            if (due_date && typeof due_date === 'string' && due_date.trim() === '') {
+                due_date = null;
+            }
 
             // Recalculate status
             let status = "pendente";
@@ -84,7 +94,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
             const { data: item, error } = await supabase
                 .from("budget_items")
-                .update({ ...updates, status })
+                .update({ ...updates, due_date, status })
                 .eq("id", id)
                 .select("*, suppliers(name)")
                 .single();
