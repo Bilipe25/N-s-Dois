@@ -548,9 +548,9 @@ export default function BridalShower() {
             </Tabs>
 
             {/* Modals */}
-            <AddGiftDialog open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
-            <EditGiftDialog open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
-            <AddGuestDialog open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
+            <AddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
+            <EditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
+            <AddGuestDrawer open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
 
             {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
@@ -894,7 +894,7 @@ function ConfigForm({ config, updateConfig }: { config: any, updateConfig: any }
     );
 }
 
-function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOpenChange: (open: boolean) => void, createGift: any }) {
+function AddGiftDrawer({ open, onOpenChange, createGift }: { open: boolean, onOpenChange: (open: boolean) => void, createGift: any }) {
     const form = useForm<CreateGiftInput>({
         resolver: zodResolver(CreateGiftSchema),
         defaultValues: {
@@ -917,21 +917,29 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Adicionar Presente</DialogTitle>
-                    <DialogDescription>Adicione um novo item à sua lista.</DialogDescription>
-                </DialogHeader>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+            <DrawerContent className="max-h-[90vh]">
+                <DrawerHeader className="text-left border-b pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-stone-100">
+                            <GiftIcon className="h-6 w-6 text-stone-600" />
+                        </div>
+                        <div>
+                            <DrawerTitle className="text-xl">Adicionar Presente</DrawerTitle>
+                            <DrawerDescription>Adicione um novo item à lista</DrawerDescription>
+                        </div>
+                    </div>
+                </DrawerHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4 overflow-y-auto">
                         <FormField
                             control={form.control}
                             name="item_name"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Nome do Item</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Nome do Item (ex: Liquidificador)" {...field} />
+                                        <Input placeholder="Ex: Liquidificador" className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -942,10 +950,11 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
                             name="category"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Categoria</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Categoria" />
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="Selecione" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -958,14 +967,15 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             <FormField
                                 control={form.control}
                                 name="suggested_store"
                                 render={({ field }: { field: any }) => (
                                     <FormItem>
+                                        <FormLabel>Loja</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Loja (Opcional)" {...field} />
+                                            <Input placeholder="Opcional" className="h-11" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -976,8 +986,9 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
                                 name="price_range"
                                 render={({ field }: { field: any }) => (
                                     <FormItem>
+                                        <FormLabel>Preço</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Preço (ex: R$ 100)" {...field} />
+                                            <Input placeholder="Ex: R$ 100" className="h-11" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -989,8 +1000,9 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
                             name="link"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Link do Produto</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Link do Produto (http://...)" {...field} />
+                                        <Input placeholder="https://..." className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -1001,25 +1013,28 @@ function AddGiftDialog({ open, onOpenChange, createGift }: { open: boolean, onOp
                             name="image_url"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>URL da Imagem</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="URL da Imagem (Opcional)" {...field} />
+                                        <Input placeholder="Opcional" className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={createGift.isPending}>Adicionar</Button>
-                        </DialogFooter>
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={createGift.isPending} className="flex-1 bg-stone-900 hover:bg-stone-800">
+                                {createGift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                            </Button>
+                        </DrawerFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     );
 }
 
-function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolean, onOpenChange: (open: boolean) => void, gift: Gift | null, updateGift: any }) {
+function EditGiftDrawer({ open, onOpenChange, gift, updateGift }: { open: boolean, onOpenChange: (open: boolean) => void, gift: Gift | null, updateGift: any }) {
     const form = useForm<UpdateGiftInput>({
         resolver: zodResolver(UpdateGiftSchema),
         defaultValues: {
@@ -1055,20 +1070,29 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Editar Presente</DialogTitle>
-                </DialogHeader>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+            <DrawerContent className="max-h-[90vh]">
+                <DrawerHeader className="text-left border-b pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-blue-100">
+                            <Edit className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                            <DrawerTitle className="text-xl">Editar Presente</DrawerTitle>
+                            <DrawerDescription>{gift?.item_name}</DrawerDescription>
+                        </div>
+                    </div>
+                </DrawerHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4 overflow-y-auto">
                         <FormField
                             control={form.control}
                             name="item_name"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Nome do Item</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Nome do Item" {...field} />
+                                        <Input className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -1079,10 +1103,11 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
                             name="category"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Categoria</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Categoria" />
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -1095,14 +1120,15 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             <FormField
                                 control={form.control}
                                 name="suggested_store"
                                 render={({ field }: { field: any }) => (
                                     <FormItem>
+                                        <FormLabel>Loja</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Loja (Opcional)" {...field} />
+                                            <Input className="h-11" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1113,8 +1139,9 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
                                 name="price_range"
                                 render={({ field }: { field: any }) => (
                                     <FormItem>
+                                        <FormLabel>Preço</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Preço (ex: R$ 100)" {...field} />
+                                            <Input className="h-11" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1126,8 +1153,9 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
                             name="link"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Link do Produto</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Link do Produto" {...field} />
+                                        <Input className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -1138,25 +1166,28 @@ function EditGiftDialog({ open, onOpenChange, gift, updateGift }: { open: boolea
                             name="image_url"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>URL da Imagem</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="URL da Imagem" {...field} />
+                                        <Input className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={updateGift.isPending}>Salvar Alterações</Button>
-                        </DialogFooter>
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={updateGift.isPending} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                {updateGift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+                            </Button>
+                        </DrawerFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     );
 }
 
-function AddGuestDialog({ open, onOpenChange, createGuest }: { open: boolean, onOpenChange: (open: boolean) => void, createGuest: any }) {
+function AddGuestDrawer({ open, onOpenChange, createGuest }: { open: boolean, onOpenChange: (open: boolean) => void, createGuest: any }) {
     const form = useForm<CreateGuestInput>({
         resolver: zodResolver(CreateGuestSchema),
         defaultValues: {
@@ -1175,21 +1206,29 @@ function AddGuestDialog({ open, onOpenChange, createGuest }: { open: boolean, on
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Adicionar Convidado</DialogTitle>
-                    <DialogDescription>Adicione um novo convidado à sua lista.</DialogDescription>
-                </DialogHeader>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+            <DrawerContent>
+                <DrawerHeader className="text-left border-b pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-rose-100">
+                            <User className="h-6 w-6 text-rose-600" />
+                        </div>
+                        <div>
+                            <DrawerTitle className="text-xl">Adicionar Convidado</DrawerTitle>
+                            <DrawerDescription>Adicione um novo convidado à lista</DrawerDescription>
+                        </div>
+                    </div>
+                </DrawerHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4">
                         <FormField
                             control={form.control}
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Nome</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Nome" {...field} />
+                                        <Input placeholder="Nome completo" className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -1200,20 +1239,23 @@ function AddGuestDialog({ open, onOpenChange, createGuest }: { open: boolean, on
                             name="phone"
                             render={({ field }) => (
                                 <FormItem>
+                                    <FormLabel>Telefone</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Telefone (Opcional)" {...field} />
+                                        <Input placeholder="Opcional" className="h-11" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={createGuest.isPending}>Adicionar</Button>
-                        </DialogFooter>
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={createGuest.isPending} className="flex-1 bg-rose-500 hover:bg-rose-600">
+                                {createGuest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                            </Button>
+                        </DrawerFooter>
                     </form>
                 </Form>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     );
 }
