@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Image as ImageIcon, X, Loader2, DollarSign, Package, Search, Gift, ArrowRight } from "lucide-react";
+import { Plus, Trash2, X, Loader2, DollarSign, Package, Search, Gift, ArrowRight } from "lucide-react";
 import type { Route } from "./+types/assets";
-import { useAssets, useDeleteAsset, useAddGiftAsAsset } from "@/hooks/useAssets";
-import { ASSET_CATEGORIES, type Asset } from "@/schemas/assets";
+import { useAssets, useDeleteAsset, useCreateAsset, type Asset, type ReservedGift } from "@/hooks/useAssets";
 import { AddAssetDialog } from "@/components/assets/add-asset-dialog";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,10 +14,12 @@ export const meta: Route.MetaFunction = () => {
     return [{ title: "Nossos Bens - Nós Dois" }];
 };
 
+const CATEGORIES = ["Cozinha", "Sala", "Quarto", "Banheiro", "Lavanderia", "Escritório", "Outros"];
+
 export default function Assets() {
     const { data, isLoading } = useAssets();
     const { mutate: deleteAsset, isPending: isDeleting } = useDeleteAsset();
-    const { mutate: addGiftAsAsset, isPending: isAddingGift } = useAddGiftAsAsset();
+    const { mutate: createAsset, isPending: isAddingGift } = useCreateAsset();
 
     const assets = data?.assets || [];
     const reservedGifts = data?.reservedGifts || [];
@@ -28,7 +29,7 @@ export default function Assets() {
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
 
-    const categories = ["todos", ...ASSET_CATEGORIES];
+    const categories = ["todos", ...CATEGORIES];
 
     // Filtrar assets
     const filteredAssets = assets.filter((item) => {
@@ -40,11 +41,6 @@ export default function Assets() {
     // Cálculos
     const totalValue = assets.reduce((acc, item) => acc + (item.value || 0), 0);
     const totalItems = assets.length;
-    const fromBridalShower = assets.filter(a => a.source === "bridal_shower").length;
-
-    // IDs de presentes já adicionados como bens
-    const addedGiftIds = new Set(assets.filter(a => a.bridal_gift_id).map(a => a.bridal_gift_id));
-    const pendingGifts = reservedGifts.filter(g => !addedGiftIds.has(g.id));
 
     const handleDelete = () => {
         if (selectedAsset) {
@@ -52,6 +48,18 @@ export default function Assets() {
                 onSuccess: () => setSelectedAsset(null)
             });
         }
+    };
+
+    const handleAddGift = (gift: ReservedGift) => {
+        const formData = new FormData();
+        formData.append("name", gift.item_name);
+        formData.append("category", gift.category || "Outros");
+        formData.append("value", "0");
+        formData.append("notes", `Presente do Chá de Casa Nova • Reservado por: ${gift.reserved_by || "Anônimo"}`);
+        if (gift.image_url) {
+            formData.append("photo_url", gift.image_url);
+        }
+        createAsset(formData);
     };
 
     if (isLoading) {
@@ -68,8 +76,8 @@ export default function Assets() {
                 <p className="text-sm text-muted-foreground">Inventário da nossa casa</p>
             </header>
 
-            {/* Resumo Aprimorado */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Resumo */}
+            <div className="grid grid-cols-2 gap-3">
                 <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
                     <CardContent className="p-3 flex flex-col items-center justify-center text-center">
                         <DollarSign className="h-4 w-4 text-primary mb-1" />
@@ -86,13 +94,6 @@ export default function Assets() {
                         <span className="text-sm font-bold text-primary">{totalItems}</span>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardContent className="p-3 flex flex-col items-center justify-center text-center">
-                        <Gift className="h-4 w-4 text-rose-500 mb-1" />
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Do Chá</span>
-                        <span className="text-sm font-bold text-rose-500">{fromBridalShower}</span>
-                    </CardContent>
-                </Card>
             </div>
 
             {/* Busca */}
@@ -106,15 +107,15 @@ export default function Assets() {
                 />
             </div>
 
-            {/* Tabs: Meus Bens | Presentes Pendentes */}
+            {/* Tabs: Meus Bens | Presentes do Chá */}
             <Tabs defaultValue="bens" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="bens">Meus Bens</TabsTrigger>
                     <TabsTrigger value="presentes" className="relative">
                         Presentes do Chá
-                        {pendingGifts.length > 0 && (
+                        {reservedGifts.length > 0 && (
                             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center">
-                                {pendingGifts.length}
+                                {reservedGifts.length}
                             </span>
                         )}
                     </TabsTrigger>
@@ -174,14 +175,7 @@ export default function Assets() {
                                                     {(item.value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-muted-foreground">{item.category}</span>
-                                                {item.source === "bridal_shower" && (
-                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
-                                                        🎁 Do Chá
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <span className="text-xs text-muted-foreground">{item.category}</span>
                                         </div>
                                     </motion.div>
                                 ))}
@@ -192,20 +186,20 @@ export default function Assets() {
 
                 {/* Tab: Presentes do Chá */}
                 <TabsContent value="presentes" className="mt-4 space-y-4">
-                    {pendingGifts.length === 0 ? (
+                    {reservedGifts.length === 0 ? (
                         <div className="text-center py-12">
                             <Gift className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
                             <p className="text-muted-foreground text-sm">
-                                Todos os presentes já foram adicionados!
+                                Nenhum presente reservado ainda.
                             </p>
                         </div>
                     ) : (
                         <>
                             <p className="text-xs text-muted-foreground">
-                                Presentes reservados no Chá de Casa Nova que ainda não foram adicionados ao seu inventário:
+                                Presentes reservados no Chá de Casa Nova:
                             </p>
                             <div className="space-y-3">
-                                {pendingGifts.map((gift) => (
+                                {reservedGifts.map((gift) => (
                                     <motion.div
                                         key={gift.id}
                                         initial={{ opacity: 0, y: 10 }}
@@ -228,7 +222,7 @@ export default function Assets() {
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            onClick={() => addGiftAsAsset(gift)}
+                                            onClick={() => handleAddGift(gift)}
                                             disabled={isAddingGift}
                                             className="shrink-0"
                                         >
@@ -287,11 +281,6 @@ export default function Assets() {
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
-                                {selectedAsset.source === "bridal_shower" && (
-                                    <span className="absolute top-2 left-2 px-2 py-1 rounded-full bg-rose-500 text-white text-xs font-medium">
-                                        🎁 Presente do Chá
-                                    </span>
-                                )}
                             </div>
                             <div className="p-6 space-y-4">
                                 <div>
