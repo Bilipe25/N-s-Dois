@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { MapPin, Calendar, PartyPopper, QrCode, Search, Share2, Loader2, Heart, MessageCircle, ArrowLeft, Navigation } from "lucide-react";
+import { MapPin, Calendar, PartyPopper, QrCode, Search, Share2, Loader2, Heart, MessageCircle, Navigation, ChevronUp } from "lucide-react";
 import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
@@ -88,6 +88,41 @@ export default function PublicBridalShower() {
 
     // Pix State
     const [showPixModal, setShowPixModal] = useState(false);
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
+    // Detectar scroll para mostrar botão voltar ao topo
+    useEffect(() => {
+        const handleScroll = () => {
+            setShowScrollTop(window.scrollY > 500);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Função para compartilhar
+    const handleShare = useCallback(async () => {
+        const shareData = {
+            title: 'Chá de Casa Nova - Gabriel & Raabe',
+            text: 'Estamos montando nosso lar! Venha celebrar conosco 💕',
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                // User cancelled or error
+            }
+        } else {
+            // Fallback: copiar link
+            await navigator.clipboard.writeText(window.location.href);
+            alert('Link copiado!');
+        }
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     const availableGifts = gifts.filter((g) => g.status !== 'comprado');
     const reservedGifts = gifts.filter((g) => g.status === 'comprado');
@@ -168,8 +203,42 @@ export default function PublicBridalShower() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-stone-50">
-                <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+            <div className="min-h-screen bg-stone-50">
+                {/* Skeleton Hero */}
+                <div className="relative bg-stone-200 min-h-[85vh] flex items-center justify-center animate-pulse">
+                    <div className="text-center space-y-6 px-6">
+                        <div className="h-6 w-32 bg-stone-300 rounded-full mx-auto" />
+                        <div className="h-16 w-72 bg-stone-300 rounded-xl mx-auto" />
+                        <div className="h-4 w-64 bg-stone-300 rounded mx-auto" />
+                        <div className="h-14 w-48 bg-stone-300 rounded-full mx-auto mt-8" />
+                    </div>
+                </div>
+                {/* Skeleton Content */}
+                <div className="max-w-5xl mx-auto p-4 space-y-8 -mt-10">
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div className="bg-white rounded-3xl p-8 h-64 animate-pulse">
+                            <div className="h-12 w-12 bg-stone-200 rounded-2xl mx-auto mb-4" />
+                            <div className="h-6 w-32 bg-stone-200 rounded mx-auto mb-2" />
+                            <div className="h-4 w-48 bg-stone-200 rounded mx-auto" />
+                        </div>
+                        <div className="bg-white rounded-3xl p-8 h-64 animate-pulse">
+                            <div className="h-12 w-12 bg-stone-200 rounded-2xl mx-auto mb-4" />
+                            <div className="h-6 w-32 bg-stone-200 rounded mx-auto mb-2" />
+                            <div className="h-4 w-48 bg-stone-200 rounded mx-auto" />
+                        </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="bg-white rounded-2xl h-80 animate-pulse">
+                                <div className="h-48 bg-stone-200 rounded-t-2xl" />
+                                <div className="p-4 space-y-2">
+                                    <div className="h-4 w-24 bg-stone-200 rounded" />
+                                    <div className="h-6 w-full bg-stone-200 rounded" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -178,23 +247,28 @@ export default function PublicBridalShower() {
 
     return (
         <div className="min-h-screen bg-stone-50 font-sans pb-20 selection:bg-rose-100 selection:text-rose-900">
-            {/* Floating Back Button */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1 }}
-                className="fixed bottom-6 right-6 z-50"
-            >
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 rounded-full shadow-lg bg-white/80 backdrop-blur-md border-stone-200 hover:bg-white hover:scale-105 transition-all"
-                    onClick={() => window.history.back()}
-                    title="Voltar"
-                >
-                    <ArrowLeft className="h-5 w-5 text-stone-600" />
-                </Button>
-            </motion.div>
+            {/* Floating Scroll to Top Button */}
+            <AnimatePresence>
+                {showScrollTop && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="fixed bottom-6 right-6 z-50"
+                    >
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 rounded-full shadow-lg bg-white/90 backdrop-blur-md border-stone-200 hover:bg-white hover:scale-105 transition-all"
+                            onClick={scrollToTop}
+                            title="Voltar ao topo"
+                        >
+                            <ChevronUp className="h-5 w-5 text-stone-600" />
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
 
             {/* Hero Section */}
             <header className="relative bg-stone-900 border-b border-stone-100 overflow-hidden min-h-[85vh] flex items-center justify-center">
@@ -248,7 +322,7 @@ export default function PublicBridalShower() {
                         >
                             <Heart className="mr-2 h-5 w-5 fill-current" /> Confirmar Presença
                         </Button>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full">
                             <Button
                                 variant="outline"
                                 onClick={() => setShowPixModal(true)}
@@ -277,6 +351,13 @@ export default function PublicBridalShower() {
                             >
                                 <PartyPopper className="mr-1.5 h-4 w-4" /> Presentes
                             </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleShare}
+                                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm rounded-full h-12 transition-all hover:-translate-y-1 text-sm col-span-2 sm:col-span-1"
+                            >
+                                <Share2 className="mr-1.5 h-4 w-4" /> Compartilhar
+                            </Button>
                         </div>
                     </motion.div>
                 </div>
@@ -284,7 +365,7 @@ export default function PublicBridalShower() {
 
             <main className="max-w-5xl mx-auto p-4 space-y-16 -mt-10 relative z-10">
                 {/* Locations Section */}
-                <section id="locais" className="scroll-mt-20">
+                <section id="locais" className="scroll-mt-24">
                     <div className="grid gap-6 md:grid-cols-2">
                         {/* Location 1 */}
                         {config?.bridal_shower_location && (
@@ -348,7 +429,7 @@ export default function PublicBridalShower() {
                 </section>
 
                 {/* Palette Info */}
-                <section id="paleta-cores" className="scroll-mt-20">
+                <section id="paleta-cores" className="scroll-mt-24">
                     <motion.div
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
@@ -381,7 +462,7 @@ export default function PublicBridalShower() {
                 </section>
 
                 {/* Gift List */}
-                <section id="lista-presentes" className="space-y-8 scroll-mt-20">
+                <section id="lista-presentes" className="space-y-8 scroll-mt-24">
                     <div className="text-center space-y-2">
                         <h2 className="text-3xl font-serif text-stone-800">Lista de Presentes</h2>
                         <p className="text-stone-500">Escolha um item para nos presentear</p>
