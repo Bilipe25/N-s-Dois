@@ -4,10 +4,11 @@ import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Calendar as CalendarIcon, MoreHorizontal, ListPlus, Paperclip, Download, X, CheckCircle2, Circle, AlignLeft, Clock } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, MoreHorizontal, ListPlus, Paperclip, Download, X, CheckCircle2, Circle, AlignLeft, Clock, ClipboardList } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
+import { Badge } from "@/components/ui/badge";
 import type { Route } from "./+types/checklist";
 import { useChecklist, useCreateChecklistItem, useUpdateChecklistItem, useDeleteChecklistItem } from "@/hooks/useChecklist";
 import { useForm } from "react-hook-form";
@@ -58,8 +59,8 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
     return { items };
 };
 
-// Componente de Detalhes da Tarefa (Dialog)
-function TaskDetailsDialog({ item, open, onOpenChange }: { item: ChecklistItem, open: boolean, onOpenChange: (open: boolean) => void }) {
+// Componente de Detalhes da Tarefa (Drawer)
+function TaskDetailsDrawer({ item, open, onOpenChange }: { item: ChecklistItem, open: boolean, onOpenChange: (open: boolean) => void }) {
     const updateItem = useUpdateChecklistItem();
     const deleteItem = useDeleteChecklistItem();
     const [newSubtask, setNewSubtask] = useState("");
@@ -114,171 +115,184 @@ function TaskDetailsDialog({ item, open, onOpenChange }: { item: ChecklistItem, 
         }
     };
 
-    // Anexos seriam implementados aqui com lógica similar, mas requer upload de arquivo que é mais complexo para este exemplo rápido.
-    // Mantendo a UI de anexos como readonly ou placeholder por enquanto para focar na refatoração principal.
+    const categoryColor = CATEGORIES.find(c => c.id === item.category)?.color || "bg-slate-100 text-slate-700";
+    const subtasks = item.subtasks || [];
+    const completedSubtasks = subtasks.filter((s: any) => s.done).length;
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl flex flex-col p-0 gap-0 overflow-hidden rounded-none sm:rounded-lg">
-                <DialogHeader className="p-6 pb-2">
-                    <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1 flex-1">
-                            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-                                <button onClick={handleToggleStatus} className="focus:outline-none">
-                                    {item.status === 'concluido' ? (
-                                        <CheckCircle2 className="h-6 w-6 text-green-500" />
-                                    ) : (
-                                        <Circle className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors" />
-                                    )}
-                                </button>
+        <Drawer open={open} onOpenChange={onOpenChange}>
+            <DrawerContent className="max-h-[90vh]">
+                <DrawerHeader className="text-left border-b pb-4">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                            <button onClick={handleToggleStatus} className="mt-1 focus:outline-none shrink-0">
+                                {item.status === 'concluido' ? (
+                                    <CheckCircle2 className="h-7 w-7 text-green-500" />
+                                ) : (
+                                    <Circle className="h-7 w-7 text-stone-300 hover:text-stone-500 transition-colors" />
+                                )}
+                            </button>
+                            <div className="flex-1 min-w-0">
                                 <Input
                                     defaultValue={item.title}
                                     className={`h-auto p-0 text-xl font-semibold border-none shadow-none focus-visible:ring-0 bg-transparent ${item.status === 'concluido' ? 'line-through text-muted-foreground' : ''}`}
                                     onBlur={handleUpdateTitle}
                                 />
-                            </DialogTitle>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Select
-                                    defaultValue={item.category || "geral"}
-                                    onValueChange={handleUpdateCategory}
-                                >
-                                    <SelectTrigger className={`h-6 text-xs border-none px-2 capitalize w-fit gap-2 ${CATEGORIES.find(c => c.id === item.category)?.color || "bg-slate-100"}`}>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CATEGORIES.map(cat => (
-                                            <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-
-                                {item.due_date && (
-                                    <span className="flex items-center gap-1">
-                                        <CalendarIcon className="h-3 w-3" />
-                                        {new Date(item.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleDeleteTask}>
-                                    <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                                    <span className="text-destructive">Excluir Tarefa</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </DialogHeader>
-
-                <div className="flex-1 overflow-y-auto p-6 pt-2">
-                    <div className="space-y-6">
-                        {/* Notas / Descrição */}
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                                <AlignLeft className="h-4 w-4" />
-                                Notas
-                            </div>
-                            <Textarea
-                                defaultValue={item.notes || ""}
-                                placeholder="Adicione detalhes, links ou observações..."
-                                className="min-h-[100px] resize-none bg-secondary/20 border-transparent focus:border-primary focus:bg-background transition-all"
-                                onBlur={handleUpdateNotes}
-                            />
-                        </div>
-
-                        {/* Subtarefas */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                                <div className="flex items-center gap-2">
-                                    <ListPlus className="h-4 w-4" />
-                                    Subtarefas
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <Badge className={`${categoryColor} border-0`}>
+                                        {CATEGORIES.find(c => c.id === item.category)?.label || item.category}
+                                    </Badge>
+                                    {item.due_date && (
+                                        <Badge variant="outline" className="text-xs">
+                                            <CalendarIcon className="h-3 w-3 mr-1" />
+                                            {new Date(item.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                        </Badge>
+                                    )}
+                                    {subtasks.length > 0 && (
+                                        <Badge variant="outline" className="text-xs">
+                                            <ListPlus className="h-3 w-3 mr-1" />
+                                            {completedSubtasks}/{subtasks.length}
+                                        </Badge>
+                                    )}
                                 </div>
-                                <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
-                                    {(item.subtasks || []).filter((s: any) => s.done).length}/{(item.subtasks || []).length}
-                                </span>
-                            </div>
-
-                            <div className="space-y-2">
-                                {(item.subtasks || []).map((sub: any, idx: number) => (
-                                    <div key={idx} className="flex items-center gap-3 group">
-                                        <button
-                                            onClick={() => handleToggleSubtask(idx)}
-                                            className={`h-4 w-4 rounded border flex items-center justify-center transition-colors ${sub.done ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/50 hover:border-primary'}`}
-                                        >
-                                            {sub.done && <Plus className="h-3 w-3 rotate-45" />}
-                                        </button>
-                                        <span className={`text-sm flex-1 ${sub.done ? 'line-through text-muted-foreground' : ''}`}>
-                                            {sub.title}
-                                        </span>
-                                        <button
-                                            onClick={() => handleDeleteSubtask(idx)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded text-destructive"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
-
-                                <form onSubmit={handleAddSubtask} className="flex items-center gap-2 mt-3 p-2 border border-dashed rounded-md hover:bg-secondary/50 transition-colors">
-                                    <Plus className="h-4 w-4 text-primary" />
-                                    <Input
-                                        value={newSubtask}
-                                        onChange={(e) => setNewSubtask(e.target.value)}
-                                        placeholder="Adicionar item..."
-                                        className="h-8 text-sm border-none shadow-none focus-visible:ring-0 px-0 bg-transparent placeholder:text-muted-foreground"
-                                    />
-                                    <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-xs">Adicionar</Button>
-                                </form>
                             </div>
                         </div>
+                    </div>
+                </DrawerHeader>
 
-                        {/* Anexos (Visualização apenas por enquanto) */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                    {/* Categoria */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-stone-500">Categoria</label>
+                        <Select
+                            defaultValue={item.category || "geral"}
+                            onValueChange={handleUpdateCategory}
+                        >
+                            <SelectTrigger className="h-11">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CATEGORIES.map(cat => (
+                                    <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Notas / Descrição */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
+                            <AlignLeft className="h-4 w-4" />
+                            Notas
+                        </div>
+                        <Textarea
+                            defaultValue={item.notes || ""}
+                            placeholder="Adicione detalhes, links ou observações..."
+                            className="min-h-[100px] resize-none bg-stone-50 border-stone-200 focus:border-stone-400 focus:bg-white transition-all"
+                            onBlur={handleUpdateNotes}
+                        />
+                    </div>
+
+                    {/* Subtarefas */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm font-medium text-stone-500">
+                            <div className="flex items-center gap-2">
+                                <ListPlus className="h-4 w-4" />
+                                Subtarefas
+                            </div>
+                            {subtasks.length > 0 && (
+                                <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
+                                    {completedSubtasks}/{subtasks.length}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            {subtasks.map((sub: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 group p-2 bg-stone-50 rounded-lg">
+                                    <button
+                                        onClick={() => handleToggleSubtask(idx)}
+                                        className={`h-5 w-5 rounded border flex items-center justify-center transition-colors shrink-0 ${sub.done ? 'bg-green-500 border-green-500 text-white' : 'border-stone-300 hover:border-stone-500'}`}
+                                    >
+                                        {sub.done && <CheckCircle2 className="h-3 w-3" />}
+                                    </button>
+                                    <span className={`text-sm flex-1 ${sub.done ? 'line-through text-stone-400' : ''}`}>
+                                        {sub.title}
+                                    </span>
+                                    <button
+                                        onClick={() => handleDeleteSubtask(idx)}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded text-red-500"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            <form onSubmit={handleAddSubtask} className="flex items-center gap-2 p-2 border border-dashed border-stone-300 rounded-lg hover:bg-stone-50 transition-colors">
+                                <Plus className="h-4 w-4 text-stone-400" />
+                                <Input
+                                    value={newSubtask}
+                                    onChange={(e) => setNewSubtask(e.target.value)}
+                                    placeholder="Adicionar item..."
+                                    className="h-8 text-sm border-none shadow-none focus-visible:ring-0 px-0 bg-transparent placeholder:text-stone-400"
+                                />
+                                <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-xs">Adicionar</Button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Anexos (Visualização apenas por enquanto) */}
+                    {(item.attachments || []).length > 0 && (
                         <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                            <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
                                 <Paperclip className="h-4 w-4" />
                                 Anexos
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                                 {(item.attachments || []).map((att: any, idx: number) => (
-                                    <div key={idx} className="relative group border rounded-lg p-2 flex items-center gap-2 bg-card hover:bg-secondary/50 transition-colors">
-                                        <div className="h-8 w-8 rounded bg-secondary flex items-center justify-center shrink-0">
-                                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                    <div key={idx} className="relative group border border-stone-200 rounded-lg p-2 flex items-center gap-2 bg-white hover:bg-stone-50 transition-colors">
+                                        <div className="h-8 w-8 rounded bg-stone-100 flex items-center justify-center shrink-0">
+                                            <Paperclip className="h-4 w-4 text-stone-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-medium truncate">{att.name}</p>
-                                            <p className="text-[10px] text-muted-foreground uppercase">{att.type?.split('/')[1] || 'FILE'}</p>
+                                            <p className="text-[10px] text-stone-400 uppercase">{att.type?.split('/')[1] || 'FILE'}</p>
                                         </div>
-                                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-1 top-1 bottom-1 justify-center bg-background/80 backdrop-blur-sm rounded px-1">
-                                            <a href={att.url} download target="_blank" rel="noopener noreferrer" className="p-1 hover:text-primary">
-                                                <Download className="h-3 w-3" />
-                                            </a>
-                                        </div>
+                                        <a href={att.url} download target="_blank" rel="noopener noreferrer" className="p-1 hover:text-blue-600">
+                                            <Download className="h-4 w-4" />
+                                        </a>
                                     </div>
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Info */}
+                    <div className="text-xs text-stone-400 pt-2 border-t">
+                        Criado em {new Date(item.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                     </div>
                 </div>
 
-                <DialogFooter className="p-4 border-t bg-secondary/10">
-                    <div className="flex justify-between w-full items-center">
-                        <div className="text-xs text-muted-foreground">
-                            Criado em {new Date(item.created_at).toLocaleDateString()}
-                        </div>
-                        <Button className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
-                            Concluído
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                <DrawerFooter className="flex-row gap-2 border-t pt-4">
+                    <Button
+                        variant="outline"
+                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                        onClick={handleDeleteTask}
+                    >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                    </Button>
+                    <Button
+                        className="flex-1 bg-stone-900 hover:bg-stone-800"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Concluído
+                    </Button>
+                </DrawerFooter>
+            </DrawerContent>
+        </Drawer>
     );
 }
 
@@ -511,69 +525,78 @@ export default function Checklist() {
                 )}
             </div>
 
-            <div className="fixed bottom-24 right-6 z-50">
-                <Button
-                    onClick={() => setShowAddTask(true)}
-                    size="icon"
-                    className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-transform hover:scale-105 active:scale-95"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {/* FAB para Adicionar Tarefa */}
+            {!showAddTask && !selectedTask && (
+                <div className="fixed bottom-24 right-6 z-40">
+                    <Button
+                        onClick={() => setShowAddTask(true)}
+                        size="icon"
+                        className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
+                    >
+                        <Plus className="h-6 w-6" />
+                    </Button>
+                </div>
+            )}
 
-            <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Nova Tarefa</DialogTitle>
-                        <DialogDescription>
-                            O que precisamos resolver?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Título</label>
-                                <Input {...form.register("title")} placeholder="Ex: Contratar DJ" />
-                                {form.formState.errors.title && (
-                                    <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
-                                )}
+            {/* Drawer de Adicionar Tarefa */}
+            <Drawer open={showAddTask} onOpenChange={setShowAddTask}>
+                <DrawerContent className="max-h-[90vh]">
+                    <DrawerHeader className="text-left border-b pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-stone-100">
+                                <ClipboardList className="h-6 w-6 text-stone-600" />
                             </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-muted-foreground">Categoria</label>
-                                    <Select
-                                        onValueChange={(val) => form.setValue("category", val)}
-                                        defaultValue={form.getValues("category")}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {CATEGORIES.map(cat => (
-                                                <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-muted-foreground">Vencimento</label>
-                                    <Input {...form.register("due_date")} type="date" />
-                                </div>
+                            <div>
+                                <DrawerTitle className="text-xl">Nova Tarefa</DrawerTitle>
+                                <DrawerDescription>O que precisamos resolver?</DrawerDescription>
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowAddTask(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={createItem.isPending}>
+                    </DrawerHeader>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4 overflow-y-auto">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Título</label>
+                            <Input {...form.register("title")} placeholder="Ex: Contratar DJ" className="h-11" />
+                            {form.formState.errors.title && (
+                                <p className="text-xs text-red-500">{form.formState.errors.title.message}</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-stone-700">Categoria</label>
+                                <Select
+                                    onValueChange={(val) => form.setValue("category", val)}
+                                    defaultValue={form.getValues("category")}
+                                >
+                                    <SelectTrigger className="h-11">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {CATEGORIES.map(cat => (
+                                            <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-stone-700">Vencimento</label>
+                                <Input {...form.register("due_date")} type="date" className="h-11" />
+                            </div>
+                        </div>
+
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddTask(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={createItem.isPending} className="flex-1 bg-stone-900 hover:bg-stone-800">
                                 {createItem.isPending ? "Adicionando..." : "Adicionar"}
                             </Button>
-                        </DialogFooter>
+                        </DrawerFooter>
                     </form>
-                </DialogContent>
-            </Dialog>
+                </DrawerContent>
+            </Drawer>
 
+            {/* Drawer de Detalhes da Tarefa */}
             {selectedTask && (
-                <TaskDetailsDialog
+                <TaskDetailsDrawer
                     item={selectedTask}
                     open={!!selectedTask}
                     onOpenChange={(open) => !open && setSelectedTask(null)}
