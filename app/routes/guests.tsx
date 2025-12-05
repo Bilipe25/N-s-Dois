@@ -4,18 +4,20 @@ import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Plus, FileDown, Loader2 } from "lucide-react";
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerDescription,
+    DrawerFooter,
+} from "@/components/ui/drawer";
+import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil } from "lucide-react";
 import type { Route } from "./+types/guests";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router";
 
 // Components
 import { GuestStats } from "@/components/guests/guest-stats";
@@ -95,6 +97,7 @@ export default function Guests() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [showAddGuest, setShowAddGuest] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
 
     // Derived Data
     const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
@@ -139,6 +142,10 @@ export default function Guests() {
         addGuest({ name, group_name, adults_count, children_count }, {
             onSuccess: () => setShowAddGuest(false)
         });
+    };
+
+    const handleGuestClick = (guest: Guest) => {
+        setSelectedGuest(guest);
     };
 
     const handleExportPdf = useCallback(async () => {
@@ -317,6 +324,12 @@ export default function Guests() {
         );
     }
 
+    const statusColors = {
+        confirmado: "bg-green-100 text-green-700",
+        recusado: "bg-red-100 text-red-700",
+        pendente: "bg-yellow-100 text-yellow-700",
+    };
+
     return (
         <div className="min-h-screen bg-stone-50 pb-24">
             <div className="container mx-auto max-w-5xl p-4 space-y-6">
@@ -345,47 +358,55 @@ export default function Guests() {
                         onToggleSelect={handleToggleSelect}
                         onUpdateRSVP={(id, status) => updateRSVP({ id, status })}
                         onDelete={(id) => deleteGuest(id)}
+                        onGuestClick={handleGuestClick}
                     />
                 </div>
             </div>
 
             {/* FAB para Adicionar Convidado */}
-            <div className="fixed bottom-24 right-6 z-50">
-                <Button
-                    onClick={() => setShowAddGuest(true)}
-                    size="icon"
-                    className="h-14 w-14 rounded-full shadow-xl bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
+            {!showAddGuest && !selectedGuest && (
+                <div className="fixed bottom-24 right-6 z-40">
+                    <Button
+                        onClick={() => setShowAddGuest(true)}
+                        size="icon"
+                        className="h-14 w-14 rounded-full shadow-xl bg-stone-900 hover:bg-stone-800 text-white transition-transform hover:scale-105 active:scale-95"
+                    >
+                        <Plus className="h-6 w-6" />
+                    </Button>
+                </div>
+            )}
 
-            {/* Modal de Adicionar Convidado */}
-            <Dialog open={showAddGuest} onOpenChange={setShowAddGuest}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Adicionar Convidado</DialogTitle>
-                        <DialogDescription>
-                            Adicione um ou mais convidados. Para adicionar vários, cole uma lista de nomes (um por linha).
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleAddSubmit} className="space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-xs font-medium text-stone-500">Nome(s)</label>
+            {/* Drawer de Adicionar Convidado */}
+            <Drawer open={showAddGuest} onOpenChange={setShowAddGuest}>
+                <DrawerContent className="max-h-[90vh]">
+                    <DrawerHeader className="text-left border-b pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-stone-100">
+                                <User className="h-6 w-6 text-stone-600" />
+                            </div>
+                            <div>
+                                <DrawerTitle className="text-xl">Adicionar Convidado</DrawerTitle>
+                                <DrawerDescription>Adicione um ou mais convidados</DrawerDescription>
+                            </div>
+                        </div>
+                    </DrawerHeader>
+                    <form onSubmit={handleAddSubmit} className="px-4 py-4 space-y-4 overflow-y-auto">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Nome(s)</label>
                             <textarea
                                 name="name"
                                 placeholder="Ex: Gabriel Silva&#10;Raabe Silva"
                                 required
-                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[100px] w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2"
                             />
-                            <p className="text-[10px] text-stone-400">Dica: Cole uma lista de nomes para adicionar vários de uma vez.</p>
+                            <p className="text-xs text-stone-400">Dica: Cole uma lista de nomes para adicionar vários de uma vez.</p>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-xs font-medium text-stone-500">Grupo</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700">Grupo</label>
                             <select
                                 name="group_name"
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-11 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
                                 required
                             >
                                 <option value="">Selecione...</option>
@@ -400,25 +421,166 @@ export default function Guests() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-xs font-medium text-stone-500">Adultos (por convite)</label>
-                                <Input name="adults_count" type="number" min="1" defaultValue="1" />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-stone-700">Adultos</label>
+                                <Input name="adults_count" type="number" min="1" defaultValue="1" className="h-11" />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-medium text-stone-500">Crianças (por convite)</label>
-                                <Input name="children_count" type="number" min="0" defaultValue="0" />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-stone-700">Crianças</label>
+                                <Input name="children_count" type="number" min="0" defaultValue="0" className="h-11" />
                             </div>
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isAdding} className="bg-stone-900">
-                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                Adicionar
+
+                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddGuest(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={isAdding} className="flex-1 bg-stone-900 hover:bg-stone-800">
+                                {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
                             </Button>
-                        </DialogFooter>
+                        </DrawerFooter>
                     </form>
-                </DialogContent>
-            </Dialog>
+                </DrawerContent>
+            </Drawer>
+
+            {/* Drawer de Detalhes do Convidado */}
+            <Drawer open={!!selectedGuest} onOpenChange={(open) => !open && setSelectedGuest(null)}>
+                <DrawerContent className="max-h-[90vh]">
+                    {selectedGuest && (
+                        <>
+                            <DrawerHeader className="text-left border-b pb-4">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`h-14 w-14 rounded-full flex items-center justify-center text-lg font-bold border-2 ${statusColors[selectedGuest.rsvp_status as keyof typeof statusColors] || statusColors.pendente}`}>
+                                            {selectedGuest.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <DrawerTitle className="text-xl">{selectedGuest.name}</DrawerTitle>
+                                            <Badge
+                                                variant="outline"
+                                                className={`mt-1 ${selectedGuest.rsvp_status === 'confirmado' ? 'bg-green-100 text-green-700 border-green-200' :
+                                                        selectedGuest.rsvp_status === 'recusado' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                            'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                                    }`}
+                                            >
+                                                {selectedGuest.rsvp_status === 'confirmado' ? 'Confirmado' :
+                                                    selectedGuest.rsvp_status === 'recusado' ? 'Recusado' : 'Pendente'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </DrawerHeader>
+
+                            <div className="px-4 py-4 space-y-4 overflow-y-auto">
+                                {/* Info Cards */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-stone-50 rounded-xl p-4">
+                                        <div className="flex items-center gap-2 text-stone-500 mb-1">
+                                            <Users className="h-4 w-4" />
+                                            <span className="text-xs">Grupo</span>
+                                        </div>
+                                        <p className="font-medium text-stone-900">{selectedGuest.group_name}</p>
+                                    </div>
+                                    <div className="bg-stone-50 rounded-xl p-4">
+                                        <div className="flex items-center gap-2 text-stone-500 mb-1">
+                                            <User className="h-4 w-4" />
+                                            <span className="text-xs">Pessoas</span>
+                                        </div>
+                                        <p className="font-medium text-stone-900">
+                                            {selectedGuest.adults_count} adulto{selectedGuest.adults_count !== 1 ? 's' : ''}, {selectedGuest.children_count} criança{selectedGuest.children_count !== 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {selectedGuest.created_at && (
+                                    <div className="bg-stone-50 rounded-xl p-4">
+                                        <div className="flex items-center gap-2 text-stone-500 mb-1">
+                                            <Calendar className="h-4 w-4" />
+                                            <span className="text-xs">Adicionado em</span>
+                                        </div>
+                                        <p className="font-medium text-stone-900">
+                                            {new Date(selectedGuest.created_at).toLocaleDateString('pt-BR', {
+                                                day: '2-digit',
+                                                month: 'long',
+                                                year: 'numeric'
+                                            })}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Ações Rápidas */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-medium text-stone-500">Ações Rápidas</h3>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {selectedGuest.rsvp_status !== 'confirmado' && (
+                                            <Button
+                                                variant="outline"
+                                                className="h-12 border-green-200 text-green-700 hover:bg-green-50"
+                                                onClick={() => {
+                                                    updateRSVP({ id: selectedGuest.id, status: 'confirmado' });
+                                                    setSelectedGuest({ ...selectedGuest, rsvp_status: 'confirmado' });
+                                                }}
+                                            >
+                                                <Check className="h-4 w-4 mr-2" />
+                                                Confirmar
+                                            </Button>
+                                        )}
+                                        {selectedGuest.rsvp_status !== 'recusado' && (
+                                            <Button
+                                                variant="outline"
+                                                className="h-12 border-red-200 text-red-700 hover:bg-red-50"
+                                                onClick={() => {
+                                                    updateRSVP({ id: selectedGuest.id, status: 'recusado' });
+                                                    setSelectedGuest({ ...selectedGuest, rsvp_status: 'recusado' });
+                                                }}
+                                            >
+                                                <X className="h-4 w-4 mr-2" />
+                                                Recusar
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Link para WhatsApp */}
+                                <a
+                                    href={`https://wa.me/?text=Olá ${selectedGuest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-2 w-full h-12 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    <MessageCircle className="h-5 w-5" />
+                                    Enviar Convite via WhatsApp
+                                </a>
+                            </div>
+
+                            <DrawerFooter className="flex-row gap-2 border-t pt-4">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    asChild
+                                >
+                                    <Link to={`/guests/${selectedGuest.id}`}>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Editar
+                                    </Link>
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                                    onClick={() => {
+                                        if (confirm("Tem certeza que deseja excluir este convidado?")) {
+                                            deleteGuest(selectedGuest.id);
+                                            setSelectedGuest(null);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir
+                                </Button>
+                            </DrawerFooter>
+                        </>
+                    )}
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }
+
