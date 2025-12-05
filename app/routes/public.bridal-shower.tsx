@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MapPin, Calendar, PartyPopper, QrCode, Search, Share2, Loader2, Heart, MessageCircle, Navigation, ChevronUp } from "lucide-react";
@@ -82,9 +83,19 @@ export default function PublicBridalShower() {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showConfirmSuccessModal, setShowConfirmSuccessModal] = useState(false);
     const [confirmSuccessData, setConfirmSuccessData] = useState<{ guestName: string, locationName: string } | null>(null);
-    const [guestName, setGuestName] = useState("");
+    const [reserveGuestName, setReserveGuestName] = useState("");
+    const [confirmGuestName, setConfirmGuestName] = useState("");
     const [selectedLocation, setSelectedLocation] = useState<"local1" | "local2" | null>(null);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detectar mobile
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 640);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Pix State
     const [showPixModal, setShowPixModal] = useState(false);
@@ -146,12 +157,9 @@ export default function PublicBridalShower() {
 
     const handleReserve = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedGift || !guestName.trim()) return;
+        if (!selectedGift || !reserveGuestName.trim()) return;
 
-        // If reserving a gift, we can optionally capture location if we wanted, 
-        // but for now we just reserve the gift. The user can confirm presence separately if needed,
-        // or we could merge the flows. Keeping it simple as per original logic for now.
-        reserveGift({ id: selectedGift.id, name: guestName }, {
+        reserveGift({ id: selectedGift.id, name: reserveGuestName }, {
             onSuccess: (data) => {
                 setSuccessData({
                     giftName: data.giftName,
@@ -160,7 +168,7 @@ export default function PublicBridalShower() {
                 });
                 setShowSuccessModal(true);
                 setSelectedGift(null);
-                setGuestName("");
+                setReserveGuestName("");
                 confetti({
                     particleCount: 100,
                     spread: 70,
@@ -172,15 +180,15 @@ export default function PublicBridalShower() {
 
     const handleConfirmPresence = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!guestName.trim() || !selectedLocation) return;
+        if (!confirmGuestName.trim() || !selectedLocation) return;
 
-        confirmPresence({ name: guestName, confirmed_location: selectedLocation }, {
+        confirmPresence({ name: confirmGuestName, confirmed_location: selectedLocation }, {
             onSuccess: (data) => {
                 setShowConfirmModal(false);
-                setGuestName("");
+                setConfirmGuestName("");
                 setSelectedLocation(null);
                 setConfirmSuccessData({
-                    guestName: data.guestName || guestName,
+                    guestName: data.guestName || confirmGuestName,
                     locationName: data.locationName || (selectedLocation === 'local1' ? config?.bridal_shower_location : config?.bridal_shower_location_2) || "Local"
                 });
                 setShowConfirmSuccessModal(true);
@@ -554,153 +562,274 @@ export default function PublicBridalShower() {
 
             {/* Modals */}
 
-            {/* Gift Reservation Modal */}
-            <Dialog open={!!selectedGift} onOpenChange={(open) => !open && setSelectedGift(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirmar Presente</DialogTitle>
-                        <DialogDescription>
-                            Que legal! Você escolheu presentear com: <strong>{selectedGift?.item_name}</strong>.
-                            Por favor, informe seu nome para marcarmos como reservado.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleReserve}>
-                        <div className="py-4 space-y-4">
-                            <Input
-                                value={guestName}
-                                onChange={(e) => setGuestName(e.target.value)}
-                                placeholder="Seu Nome Completo"
-                                required
-                                autoFocus
-                                className="h-12 text-lg"
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setSelectedGift(null)}>Cancelar</Button>
-                            <Button type="submit" disabled={isReserving} className="bg-rose-500 hover:bg-rose-600">
-                                {isReserving ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...
-                                    </>
-                                ) : (
-                                    "Confirmar Reserva"
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Presence Confirmation Modal */}
-            <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirmar Presença</DialogTitle>
-                        <DialogDescription>
-                            Ficaremos muito felizes em ter você conosco! ❤️
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleConfirmPresence}>
-                        <div className="py-4 space-y-6">
-                            <div className="space-y-2 relative">
-                                <Label htmlFor="guest-name">Seu Nome Completo</Label>
+            {/* Gift Reservation Modal - Responsive */}
+            {isMobile ? (
+                <Drawer open={!!selectedGift} onOpenChange={(open) => !open && setSelectedGift(null)}>
+                    <DrawerContent>
+                        <DrawerHeader className="text-left">
+                            <DrawerTitle>Confirmar Presente</DrawerTitle>
+                            <DrawerDescription>
+                                Você escolheu: <strong>{selectedGift?.item_name}</strong>
+                            </DrawerDescription>
+                        </DrawerHeader>
+                        <form onSubmit={handleReserve} className="px-4">
+                            <div className="space-y-4">
                                 <Input
-                                    id="guest-name"
-                                    value={guestName}
-                                    onChange={(e) => {
-                                        setGuestName(e.target.value);
-                                        setShowSuggestions(e.target.value.length >= 2);
-                                    }}
-                                    onFocus={() => setShowSuggestions(guestName.length >= 2)}
-                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                    placeholder="Digite seu nome..."
-                                    autoComplete="off"
+                                    value={reserveGuestName}
+                                    onChange={(e) => setReserveGuestName(e.target.value)}
+                                    placeholder="Seu Nome Completo"
                                     required
-                                    className="h-11"
+                                    autoFocus
+                                    className="h-12 text-lg"
                                 />
-                                {/* Autocomplete Suggestions */}
-                                {showSuggestions && (
-                                    <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                                        {guests
-                                            .filter(g => g.name.toLowerCase().includes(guestName.toLowerCase()))
-                                            .slice(0, 5)
-                                            .map(guest => (
-                                                <button
-                                                    key={guest.id}
-                                                    type="button"
-                                                    className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center justify-between text-sm"
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault();
-                                                        setGuestName(guest.name);
-                                                        setShowSuggestions(false);
-                                                    }}
-                                                >
-                                                    <span>{guest.name}</span>
-                                                    {guest.confirmed && (
-                                                        <span className="text-xs text-green-600 flex items-center gap-1">
-                                                            <Heart className="h-3 w-3 fill-green-600" /> Confirmado
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            ))
-                                        }
-                                        {guests.filter(g => g.name.toLowerCase().includes(guestName.toLowerCase())).length === 0 && (
-                                            <div className="px-3 py-2 text-sm text-stone-500">
-                                                Nenhum convidado encontrado. Você será adicionado à lista.
+                            </div>
+                            <DrawerFooter className="flex-row gap-2 px-0">
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setSelectedGift(null)}>Cancelar</Button>
+                                <Button type="submit" disabled={isReserving} className="flex-1 bg-rose-500 hover:bg-rose-600">
+                                    {isReserving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+                                </Button>
+                            </DrawerFooter>
+                        </form>
+                    </DrawerContent>
+                </Drawer>
+            ) : (
+                <Dialog open={!!selectedGift} onOpenChange={(open) => !open && setSelectedGift(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Confirmar Presente</DialogTitle>
+                            <DialogDescription>
+                                Que legal! Você escolheu presentear com: <strong>{selectedGift?.item_name}</strong>.
+                                Por favor, informe seu nome para marcarmos como reservado.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleReserve}>
+                            <div className="py-4 space-y-4">
+                                <Input
+                                    value={reserveGuestName}
+                                    onChange={(e) => setReserveGuestName(e.target.value)}
+                                    placeholder="Seu Nome Completo"
+                                    required
+                                    autoFocus
+                                    className="h-12 text-lg"
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setSelectedGift(null)}>Cancelar</Button>
+                                <Button type="submit" disabled={isReserving} className="bg-rose-500 hover:bg-rose-600">
+                                    {isReserving ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...</>
+                                    ) : "Confirmar Reserva"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Presence Confirmation Modal - Responsive */}
+            {isMobile ? (
+                <Drawer open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+                    <DrawerContent className="max-h-[85vh]">
+                        <DrawerHeader className="text-left">
+                            <DrawerTitle>Confirmar Presença</DrawerTitle>
+                            <DrawerDescription>
+                                Ficaremos muito felizes em ter você conosco! ❤️
+                            </DrawerDescription>
+                        </DrawerHeader>
+                        <form onSubmit={handleConfirmPresence} className="px-4 overflow-y-auto">
+                            <div className="space-y-6">
+                                <div className="space-y-2 relative">
+                                    <Label htmlFor="guest-name-mobile">Seu Nome Completo</Label>
+                                    <Input
+                                        id="guest-name-mobile"
+                                        value={confirmGuestName}
+                                        onChange={(e) => {
+                                            setConfirmGuestName(e.target.value);
+                                            setShowSuggestions(e.target.value.length >= 2);
+                                        }}
+                                        onFocus={() => setShowSuggestions(confirmGuestName.length >= 2)}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                        placeholder="Digite seu nome..."
+                                        autoComplete="off"
+                                        required
+                                        className="h-11"
+                                    />
+                                    {showSuggestions && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                            {guests
+                                                .filter(g => g.name.toLowerCase().includes(confirmGuestName.toLowerCase()))
+                                                .slice(0, 5)
+                                                .map(guest => (
+                                                    <button
+                                                        key={guest.id}
+                                                        type="button"
+                                                        className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center justify-between text-sm"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            setConfirmGuestName(guest.name);
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                    >
+                                                        <span>{guest.name}</span>
+                                                        {guest.confirmed && (
+                                                            <span className="text-xs text-green-600 flex items-center gap-1">
+                                                                <Heart className="h-3 w-3 fill-green-600" /> Confirmado
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            {guests.filter(g => g.name.toLowerCase().includes(confirmGuestName.toLowerCase())).length === 0 && (
+                                                <div className="px-3 py-2 text-sm text-stone-500">
+                                                    Nenhum convidado encontrado. Você será adicionado à lista.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {hasTwoLocations ? (
+                                    <div className="space-y-3">
+                                        <Label>Qual local você irá comparecer?</Label>
+                                        <RadioGroup value={selectedLocation || ""} onValueChange={(v: "local1" | "local2") => setSelectedLocation(v)} required>
+                                            <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local1' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
+                                                <RadioGroupItem value="local1" id="r1m" className="mt-1" />
+                                                <Label htmlFor="r1m" className="cursor-pointer w-full">
+                                                    <div className="font-medium text-stone-900">{config?.bridal_shower_location || "Local 1"}</div>
+                                                    <div className="text-xs text-stone-500 mt-1">
+                                                        {config?.bridal_shower_date ? new Date(config.bridal_shower_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
+                                                    </div>
+                                                </Label>
                                             </div>
-                                        )}
+                                            <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local2' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
+                                                <RadioGroupItem value="local2" id="r2m" className="mt-1" />
+                                                <Label htmlFor="r2m" className="cursor-pointer w-full">
+                                                    <div className="font-medium text-stone-900">{config?.bridal_shower_location_2 || "Local 2"}</div>
+                                                    <div className="text-xs text-stone-500 mt-1">
+                                                        {config?.bridal_shower_date_2 ? new Date(config.bridal_shower_date_2).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
+                                                    </div>
+                                                </Label>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
+                                ) : (
+                                    <div className="bg-stone-50 p-3 rounded-lg text-sm text-stone-600 flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-rose-500" />
+                                        Confirmando presença em: <strong>{config?.bridal_shower_location || "Local Principal"}</strong>
                                     </div>
                                 )}
                             </div>
+                            <DrawerFooter className="flex-row gap-2 px-0">
+                                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowConfirmModal(false)}>Cancelar</Button>
+                                <Button type="submit" disabled={isConfirming} className="flex-1 bg-rose-500 hover:bg-rose-600">
+                                    {isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar"}
+                                </Button>
+                            </DrawerFooter>
+                        </form>
+                    </DrawerContent>
+                </Drawer>
+            ) : (
+                <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Confirmar Presença</DialogTitle>
+                            <DialogDescription>
+                                Ficaremos muito felizes em ter você conosco! ❤️
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleConfirmPresence}>
+                            <div className="py-4 space-y-6">
+                                <div className="space-y-2 relative">
+                                    <Label htmlFor="guest-name">Seu Nome Completo</Label>
+                                    <Input
+                                        id="guest-name"
+                                        value={confirmGuestName}
+                                        onChange={(e) => {
+                                            setConfirmGuestName(e.target.value);
+                                            setShowSuggestions(e.target.value.length >= 2);
+                                        }}
+                                        onFocus={() => setShowSuggestions(confirmGuestName.length >= 2)}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                        placeholder="Digite seu nome..."
+                                        autoComplete="off"
+                                        required
+                                        className="h-11"
+                                    />
+                                    {showSuggestions && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                            {guests
+                                                .filter(g => g.name.toLowerCase().includes(confirmGuestName.toLowerCase()))
+                                                .slice(0, 5)
+                                                .map(guest => (
+                                                    <button
+                                                        key={guest.id}
+                                                        type="button"
+                                                        className="w-full px-3 py-2 text-left hover:bg-stone-50 flex items-center justify-between text-sm"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            setConfirmGuestName(guest.name);
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                    >
+                                                        <span>{guest.name}</span>
+                                                        {guest.confirmed && (
+                                                            <span className="text-xs text-green-600 flex items-center gap-1">
+                                                                <Heart className="h-3 w-3 fill-green-600" /> Confirmado
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            {guests.filter(g => g.name.toLowerCase().includes(confirmGuestName.toLowerCase())).length === 0 && (
+                                                <div className="px-3 py-2 text-sm text-stone-500">
+                                                    Nenhum convidado encontrado. Você será adicionado à lista.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
 
-                            {hasTwoLocations ? (
-                                <div className="space-y-3">
-                                    <Label>Qual local você irá comparecer?</Label>
-                                    <RadioGroup value={selectedLocation || ""} onValueChange={(v: "local1" | "local2") => setSelectedLocation(v)} required>
-                                        <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local1' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
-                                            <RadioGroupItem value="local1" id="r1" className="mt-1" />
-                                            <Label htmlFor="r1" className="cursor-pointer w-full">
-                                                <div className="font-medium text-stone-900">{config?.bridal_shower_location || "Local 1"}</div>
-                                                <div className="text-xs text-stone-500 mt-1">
-                                                    {config?.bridal_shower_date ? new Date(config.bridal_shower_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
-                                                </div>
-                                            </Label>
-                                        </div>
-                                        <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local2' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
-                                            <RadioGroupItem value="local2" id="r2" className="mt-1" />
-                                            <Label htmlFor="r2" className="cursor-pointer w-full">
-                                                <div className="font-medium text-stone-900">{config?.bridal_shower_location_2 || "Local 2"}</div>
-                                                <div className="text-xs text-stone-500 mt-1">
-                                                    {config?.bridal_shower_date_2 ? new Date(config.bridal_shower_date_2).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
-                                                </div>
-                                            </Label>
-                                        </div>
-                                    </RadioGroup>
-                                </div>
-                            ) : (
-                                <div className="bg-stone-50 p-3 rounded-lg text-sm text-stone-600 flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-rose-500" />
-                                    Confirmando presença em: <strong>{config?.bridal_shower_location || "Local Principal"}</strong>
-                                </div>
-                            )}
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={isConfirming} className="bg-rose-500 hover:bg-rose-600">
-                                {isConfirming ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...
-                                    </>
+                                {hasTwoLocations ? (
+                                    <div className="space-y-3">
+                                        <Label>Qual local você irá comparecer?</Label>
+                                        <RadioGroup value={selectedLocation || ""} onValueChange={(v: "local1" | "local2") => setSelectedLocation(v)} required>
+                                            <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local1' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
+                                                <RadioGroupItem value="local1" id="r1" className="mt-1" />
+                                                <Label htmlFor="r1" className="cursor-pointer w-full">
+                                                    <div className="font-medium text-stone-900">{config?.bridal_shower_location || "Local 1"}</div>
+                                                    <div className="text-xs text-stone-500 mt-1">
+                                                        {config?.bridal_shower_date ? new Date(config.bridal_shower_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
+                                                    </div>
+                                                </Label>
+                                            </div>
+                                            <div className={`flex items-start space-x-3 border p-3 rounded-lg cursor-pointer transition-colors ${selectedLocation === 'local2' ? 'border-rose-500 bg-rose-50' : 'border-stone-200'}`}>
+                                                <RadioGroupItem value="local2" id="r2" className="mt-1" />
+                                                <Label htmlFor="r2" className="cursor-pointer w-full">
+                                                    <div className="font-medium text-stone-900">{config?.bridal_shower_location_2 || "Local 2"}</div>
+                                                    <div className="text-xs text-stone-500 mt-1">
+                                                        {config?.bridal_shower_date_2 ? new Date(config.bridal_shower_date_2).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ''}
+                                                    </div>
+                                                </Label>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
                                 ) : (
-                                    "Confirmar Minha Presença"
+                                    <div className="bg-stone-50 p-3 rounded-lg text-sm text-stone-600 flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-rose-500" />
+                                        Confirmando presença em: <strong>{config?.bridal_shower_location || "Local Principal"}</strong>
+                                    </div>
                                 )}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setShowConfirmModal(false)}>Cancelar</Button>
+                                <Button type="submit" disabled={isConfirming} className="bg-rose-500 hover:bg-rose-600">
+                                    {isConfirming ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...</>
+                                    ) : "Confirmar Minha Presença"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            )}
 
             {/* Success Modal */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
