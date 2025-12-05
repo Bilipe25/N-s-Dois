@@ -18,9 +18,10 @@ interface GuestListProps {
     onToggleSelect: (id: string) => void;
     onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void;
     onDelete: (id: string) => void;
+    onGuestClick?: (guest: Guest) => void;
 }
 
-export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, onDelete }: GuestListProps) {
+export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, onDelete, onGuestClick }: GuestListProps) {
     return (
         <div className="space-y-2 pb-24">
             <AnimatePresence mode="popLayout">
@@ -45,6 +46,7 @@ export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, o
                             onToggleSelect={() => onToggleSelect(guest.id)}
                             onUpdateRSVP={onUpdateRSVP}
                             onDelete={onDelete}
+                            onGuestClick={onGuestClick}
                         />
                     ))
                 )}
@@ -58,13 +60,15 @@ function GuestItem({
     isSelected,
     onToggleSelect,
     onUpdateRSVP,
-    onDelete
+    onDelete,
+    onGuestClick
 }: {
     guest: Guest,
     isSelected: boolean,
     onToggleSelect: () => void,
     onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void,
-    onDelete: (id: string) => void
+    onDelete: (id: string) => void,
+    onGuestClick?: (guest: Guest) => void
 }) {
     // Optimistic RSVP is handled by React Query now, so we just use the prop
     const rsvpStatus = guest.rsvp_status;
@@ -88,17 +92,20 @@ function GuestItem({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
+            onClick={() => onGuestClick?.(guest)}
             className={`
-                group flex items-center justify-between p-3 rounded-xl border transition-all duration-200
+                group flex items-center justify-between p-3 rounded-xl border transition-all duration-200 cursor-pointer
                 ${isSelected ? "bg-primary/5 border-primary shadow-sm" : "bg-white border-stone-100 hover:border-stone-200 hover:shadow-sm"}
             `}
         >
             <div className="flex items-center gap-3 overflow-hidden">
-                <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={onToggleSelect}
-                    className={`transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} data-[state=checked]:opacity-100`}
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={onToggleSelect}
+                        className={`transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} data-[state=checked]:opacity-100`}
+                    />
+                </div>
 
                 <div className={`
                     h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-xs font-bold border
@@ -117,54 +124,56 @@ function GuestItem({
                 </div>
             </div>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-stone-600">
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem asChild>
-                        <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
-                            <Pencil className="mr-2 h-4 w-4" />
-                            <span>Editar</span>
-                        </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <a
-                            href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="cursor-pointer flex items-center text-green-600"
+            <div onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-stone-600">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem asChild>
+                            <Link to={`/guests/${guest.id}`} className="cursor-pointer flex items-center">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>Editar</span>
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <a
+                                href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="cursor-pointer flex items-center text-green-600"
+                            >
+                                <MessageCircle className="mr-2 h-4 w-4" />
+                                <span>Enviar Convite</span>
+                            </a>
+                        </DropdownMenuItem>
+
+                        {rsvpStatus !== 'confirmado' && (
+                            <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "confirmado")} className="cursor-pointer">
+                                <Check className="mr-2 h-4 w-4 text-green-600" />
+                                <span>Confirmar Presença</span>
+                            </DropdownMenuItem>
+                        )}
+
+                        {rsvpStatus !== 'recusado' && (
+                            <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "recusado")} className="cursor-pointer">
+                                <X className="mr-2 h-4 w-4 text-red-600" />
+                                <span>Recusar Presença</span>
+                            </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuItem
+                            onClick={() => { if (confirm("Tem certeza?")) onDelete(guest.id) }}
+                            className="text-destructive focus:text-destructive cursor-pointer"
                         >
-                            <MessageCircle className="mr-2 h-4 w-4" />
-                            <span>Enviar Convite</span>
-                        </a>
-                    </DropdownMenuItem>
-
-                    {rsvpStatus !== 'confirmado' && (
-                        <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "confirmado")} className="cursor-pointer">
-                            <Check className="mr-2 h-4 w-4 text-green-600" />
-                            <span>Confirmar Presença</span>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Excluir</span>
                         </DropdownMenuItem>
-                    )}
-
-                    {rsvpStatus !== 'recusado' && (
-                        <DropdownMenuItem onClick={() => onUpdateRSVP(guest.id, "recusado")} className="cursor-pointer">
-                            <X className="mr-2 h-4 w-4 text-red-600" />
-                            <span>Recusar Presença</span>
-                        </DropdownMenuItem>
-                    )}
-
-                    <DropdownMenuItem
-                        onClick={() => { if (confirm("Tem certeza?")) onDelete(guest.id) }}
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>Excluir</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </motion.div>
     );
 }
