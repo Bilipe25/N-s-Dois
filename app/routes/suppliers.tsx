@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, LayoutGrid, List as ListIcon, Phone, MessageCircle, FileText, Pencil, X, Loader2 } from "lucide-react";
+import { Plus, LayoutGrid, List as ListIcon, Phone, MessageCircle, FileText, Pencil, Loader2, Trash2, Store, DollarSign, CheckCircle2 } from "lucide-react";
 import type { Route } from "./+types/suppliers";
 import { SupplierCard } from "@/components/suppliers/supplier-card";
 import { SupplierKanban } from "@/components/suppliers/supplier-kanban";
 import type { Supplier } from "@/components/suppliers/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
-import { useSuppliers } from "@/hooks/useSuppliers";
+import { useSuppliers, useDeleteSupplier } from "@/hooks/useSuppliers";
 import { createClient } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 
@@ -36,6 +36,7 @@ const useBudgetItems = () => {
 export default function Suppliers() {
     const { data: suppliersData, isLoading: isLoadingSuppliers } = useSuppliers();
     const { data: budgetItems } = useBudgetItems();
+    const { mutate: deleteSupplier } = useDeleteSupplier();
 
     const [view, setView] = useState<"list" | "kanban">("list");
     const [filter, setFilter] = useState<"todos" | "contratado" | "pendente">("todos");
@@ -63,6 +64,28 @@ export default function Suppliers() {
         return null;
     };
 
+    const handleDelete = (id: string) => {
+        if (confirm("Tem certeza que deseja excluir este fornecedor?")) {
+            deleteSupplier(id);
+            setSelectedSupplier(null);
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "contratado": return "bg-green-100 text-green-700";
+            case "pago": return "bg-blue-100 text-blue-700";
+            case "negociando": return "bg-amber-100 text-amber-700";
+            case "pesquisando": return "bg-purple-100 text-purple-700";
+            default: return "bg-stone-100 text-stone-700";
+        }
+    };
+
+    // Stats
+    const contratados = suppliers.filter(s => s.status === "contratado" || s.status === "pago").length;
+    const totalValue = suppliers.reduce((sum, s) => sum + (s.price || 0), 0);
+    const totalPaid = suppliers.reduce((sum, s) => sum + (s.total_paid || 0), 0);
+
     if (isLoadingSuppliers) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-stone-50">
@@ -73,17 +96,33 @@ export default function Suppliers() {
 
     return (
         <div className="min-h-screen bg-stone-50 pb-24">
-            {/* Header removed as title is in TopNav */}
+            <div className="max-w-5xl mx-auto p-4 space-y-4 pt-4">
+                {/* Stats Header */}
+                <div className="flex justify-between items-center bg-white rounded-xl p-4 border border-stone-200">
+                    <div className="text-center flex-1">
+                        <p className="text-2xl font-bold text-green-600">{contratados}</p>
+                        <p className="text-xs text-stone-500">Contratados</p>
+                    </div>
+                    <div className="h-10 w-px bg-stone-200" />
+                    <div className="text-center flex-1">
+                        <p className="text-2xl font-bold text-stone-800">{suppliers.length}</p>
+                        <p className="text-xs text-stone-500">Total</p>
+                    </div>
+                    <div className="h-10 w-px bg-stone-200" />
+                    <div className="text-center flex-1">
+                        <p className="text-lg font-bold text-blue-600">{(totalPaid / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 })}</p>
+                        <p className="text-xs text-stone-500">Pago</p>
+                    </div>
+                </div>
 
-            <div className="max-w-5xl mx-auto p-4 space-y-6 pt-6">
                 <Tabs defaultValue="list" className="w-full" onValueChange={(v) => setView(v as "list" | "kanban")}>
                     <div className="flex justify-between items-center mb-4">
                         {/* View Switcher */}
-                        <TabsList className="grid w-[180px] grid-cols-2">
-                            <TabsTrigger value="list">
+                        <TabsList className="grid w-[180px] grid-cols-2 bg-stone-100">
+                            <TabsTrigger value="list" className="data-[state=active]:bg-white">
                                 <ListIcon className="h-4 w-4 mr-2" /> Lista
                             </TabsTrigger>
-                            <TabsTrigger value="kanban">
+                            <TabsTrigger value="kanban" className="data-[state=active]:bg-white">
                                 <LayoutGrid className="h-4 w-4 mr-2" /> Quadro
                             </TabsTrigger>
                         </TabsList>
@@ -91,16 +130,20 @@ export default function Suppliers() {
                         {/* Filter (Only for List view usually, but keeping for both) */}
                         {view === "list" && (
                             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                                {["todos", "contratado", "pendente"].map((f) => (
+                                {[
+                                    { id: "todos", label: "Todos" },
+                                    { id: "contratado", label: "Contratados" },
+                                    { id: "pendente", label: "Pendentes" }
+                                ].map((f) => (
                                     <button
-                                        key={f}
-                                        onClick={() => setFilter(f as any)}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors whitespace-nowrap ${filter === f
+                                        key={f.id}
+                                        onClick={() => setFilter(f.id as any)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${filter === f.id
                                             ? "bg-stone-900 text-white"
                                             : "bg-white border border-stone-200 text-stone-600 hover:bg-stone-50"
                                             }`}
                                     >
-                                        {f}
+                                        {f.label}
                                     </button>
                                 ))}
                             </div>
@@ -109,7 +152,10 @@ export default function Suppliers() {
 
                     <TabsContent value="list" className="mt-0">
                         {filteredSuppliers.length === 0 ? (
-                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-stone-200">
+                            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-stone-200 flex flex-col items-center">
+                                <div className="h-16 w-16 rounded-full bg-stone-100 flex items-center justify-center mb-4">
+                                    <Store className="h-8 w-8 text-stone-300" />
+                                </div>
                                 <p className="text-stone-400 text-sm">Nenhum fornecedor encontrado.</p>
                             </div>
                         ) : (
@@ -132,112 +178,94 @@ export default function Suppliers() {
             </div>
 
             {/* FAB - Floating Action Button */}
-            <Link
-                to="/suppliers/new"
-                className="fixed bottom-20 right-4 h-14 w-14 bg-stone-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-stone-800 transition-transform hover:scale-105 active:scale-95 z-40"
-            >
-                <Plus className="h-6 w-6" />
-            </Link>
+            {!selectedSupplier && (
+                <Link
+                    to="/suppliers/new"
+                    className="fixed bottom-24 right-6 h-14 w-14 bg-stone-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-stone-800 transition-transform hover:scale-105 active:scale-95 z-40"
+                >
+                    <Plus className="h-6 w-6" />
+                </Link>
+            )}
 
-            {/* Details Dialog */}
-            <Dialog open={!!selectedSupplier} onOpenChange={(open) => !open && setSelectedSupplier(null)}>
-                <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
+            {/* Details Drawer */}
+            <Drawer open={!!selectedSupplier} onOpenChange={(open) => !open && setSelectedSupplier(null)}>
+                <DrawerContent className="max-h-[90vh]">
                     {selectedSupplier && (
                         <>
-                            {selectedSupplier.photo_url && (
-                                <div className="h-40 w-full relative">
+                            {/* Header with photo or simple */}
+                            {selectedSupplier.photo_url ? (
+                                <div className="relative h-48 w-full">
                                     <img
                                         src={selectedSupplier.photo_url}
                                         alt={selectedSupplier.name}
                                         className="w-full h-full object-cover"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute top-2 right-2 text-white hover:bg-black/20 rounded-full"
-                                        onClick={() => setSelectedSupplier(null)}
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </Button>
-                                    <div className="absolute bottom-3 left-4 text-white">
-                                        <Badge variant="secondary" className="mb-1 bg-white/20 text-white hover:bg-white/30 border-none backdrop-blur-sm">
-                                            {selectedSupplier.category}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                                    <div className="absolute bottom-4 left-4 right-4">
+                                        <Badge className={`${getStatusColor(selectedSupplier.status)} border-0 mb-2`}>
+                                            {selectedSupplier.status}
                                         </Badge>
-                                        <DialogTitle className="text-xl font-bold text-white leading-tight">
-                                            {selectedSupplier.name}
-                                        </DialogTitle>
+                                        <h2 className="text-2xl font-bold text-white">{selectedSupplier.name}</h2>
+                                        <p className="text-white/80 text-sm">{selectedSupplier.category}</p>
                                     </div>
                                 </div>
-                            )}
-
-                            {!selectedSupplier.photo_url && (
-                                <DialogHeader className="p-6 pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <Badge variant="outline" className="mb-2">
-                                                {selectedSupplier.category}
-                                            </Badge>
-                                            <DialogTitle className="text-xl font-bold">
-                                                {selectedSupplier.name}
-                                            </DialogTitle>
+                            ) : (
+                                <DrawerHeader className="text-left border-b pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-xl bg-stone-100">
+                                            <Store className="h-6 w-6 text-stone-600" />
                                         </div>
-                                        <DialogClose asChild>
-                                            <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </DialogClose>
-                                    </div>
-                                </DialogHeader>
-                            )}
-
-                            <div className="p-6 space-y-6">
-                                {/* Status & Financials */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <span className="text-xs text-stone-500 uppercase font-medium">Status</span>
                                         <div>
-                                            <Badge variant="outline" className="capitalize">
-                                                {selectedSupplier.status}
-                                            </Badge>
+                                            <DrawerTitle className="text-xl">{selectedSupplier.name}</DrawerTitle>
+                                            <DrawerDescription className="flex items-center gap-2 mt-1">
+                                                <Badge className={`${getStatusColor(selectedSupplier.status)} border-0 text-xs`}>
+                                                    {selectedSupplier.status}
+                                                </Badge>
+                                                <span>{selectedSupplier.category}</span>
+                                            </DrawerDescription>
                                         </div>
                                     </div>
-                                    {(selectedSupplier.price || selectedSupplier.total_paid) && (
-                                        <div className="space-y-1">
-                                            <span className="text-xs text-stone-500 uppercase font-medium">Financeiro</span>
-                                            <div className="text-sm">
-                                                {selectedSupplier.price && (
-                                                    <div className="flex justify-between gap-2">
-                                                        <span className="text-stone-500">Total:</span>
-                                                        <span className="font-medium">
-                                                            {Number(selectedSupplier.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {selectedSupplier.total_paid ? (
-                                                    <div className="flex justify-between gap-2 text-emerald-600">
-                                                        <span>Pago:</span>
-                                                        <span className="font-medium">
-                                                            {Number(selectedSupplier.total_paid).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                        </span>
-                                                    </div>
-                                                ) : null}
+                                </DrawerHeader>
+                            )}
+
+                            <div className="p-4 space-y-4 overflow-y-auto">
+                                {/* Financeiro */}
+                                {(selectedSupplier.price || selectedSupplier.total_paid) && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {selectedSupplier.price && (
+                                            <div className="bg-stone-50 rounded-xl p-4">
+                                                <div className="flex items-center gap-2 text-xs text-stone-500 mb-1">
+                                                    <DollarSign className="h-3 w-3" />
+                                                    Valor Total
+                                                </div>
+                                                <p className="font-semibold text-stone-800">
+                                                    {Number(selectedSupplier.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </p>
                                             </div>
+                                        )}
+                                        <div className="bg-green-50 rounded-xl p-4">
+                                            <div className="flex items-center gap-2 text-xs text-green-600 mb-1">
+                                                <CheckCircle2 className="h-3 w-3" />
+                                                Valor Pago
+                                            </div>
+                                            <p className="font-semibold text-green-700">
+                                                {Number(selectedSupplier.total_paid || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
-                                {/* Contact */}
+                                {/* Contato */}
                                 {selectedSupplier.contact_info && (
                                     <div className="space-y-2">
-                                        <span className="text-xs text-stone-500 uppercase font-medium">Contato</span>
-                                        <div className="flex items-center justify-between bg-stone-50 p-3 rounded-lg border border-stone-100">
+                                        <label className="text-xs text-stone-500 font-medium">Contato</label>
+                                        <div className="flex items-center justify-between bg-stone-50 p-3 rounded-xl">
                                             <div className="flex items-center gap-3 text-stone-700">
                                                 <Phone className="h-4 w-4 text-stone-400" />
                                                 <span className="text-sm">{selectedSupplier.contact_info}</span>
                                             </div>
                                             {getWhatsAppLink(selectedSupplier.contact_info) && (
-                                                <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50" asChild>
+                                                <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-full" asChild>
                                                     <a href={getWhatsAppLink(selectedSupplier.contact_info)!} target="_blank" rel="noopener noreferrer">
                                                         <MessageCircle className="h-5 w-5" />
                                                     </a>
@@ -247,17 +275,17 @@ export default function Suppliers() {
                                     </div>
                                 )}
 
-                                {/* Notes */}
+                                {/* Notas */}
                                 {selectedSupplier.notes && (
                                     <div className="space-y-2">
-                                        <span className="text-xs text-stone-500 uppercase font-medium">Notas</span>
-                                        <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-100/50 text-sm text-stone-600 italic">
-                                            "{selectedSupplier.notes}"
+                                        <label className="text-xs text-stone-500 font-medium">Notas</label>
+                                        <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-sm text-stone-600">
+                                            {selectedSupplier.notes}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Contract */}
+                                {/* Contrato */}
                                 {selectedSupplier.contract_url && (
                                     <Button variant="outline" className="w-full" asChild>
                                         <a href={selectedSupplier.contract_url} target="_blank" rel="noopener noreferrer">
@@ -265,22 +293,36 @@ export default function Suppliers() {
                                         </a>
                                     </Button>
                                 )}
+
+                                {/* Data de criação */}
+                                {selectedSupplier.created_at && (
+                                    <p className="text-xs text-stone-400 pt-2 border-t">
+                                        Adicionado em {new Date(selectedSupplier.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                    </p>
+                                )}
                             </div>
 
-                            <DialogFooter className="p-4 bg-stone-50 border-t border-stone-100 flex-row gap-2 justify-end">
-                                <Button variant="outline" onClick={() => setSelectedSupplier(null)}>
-                                    Fechar
+                            <DrawerFooter className="flex-row gap-2 border-t pt-4">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                                    onClick={() => selectedSupplier.id && handleDelete(selectedSupplier.id)}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir
                                 </Button>
-                                <Button asChild className="bg-stone-900 text-white hover:bg-stone-800">
+                                <Button asChild className="flex-1 bg-stone-900 hover:bg-stone-800">
                                     <Link to={`/suppliers/${selectedSupplier.id}`}>
-                                        <Pencil className="h-4 w-4 mr-2" /> Editar
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Editar
                                     </Link>
                                 </Button>
-                            </DialogFooter>
+                            </DrawerFooter>
                         </>
                     )}
-                </DialogContent>
-            </Dialog>
+                </DrawerContent>
+            </Drawer>
         </div>
     );
 }
+
