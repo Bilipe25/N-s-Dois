@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Loader2, Gift as GiftIcon, User, Clock, Tag, Store, DollarSign } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Route } from "./+types/bridal-shower";
@@ -76,6 +77,7 @@ export default function BridalShower() {
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
     const [editCategory, setEditCategory] = useState<GiftCategory | "">("");
+    const [selectedGiftDetails, setSelectedGiftDetails] = useState<Gift | null>(null);
 
     // Import Text State
     const [importGiftsText, setImportGiftsText] = useState("");
@@ -229,8 +231,12 @@ export default function BridalShower() {
                             </p>
                         ) : (
                             filteredGifts.map((gift) => (
-                                <div key={gift.id} className={`p-3 border rounded-lg flex gap-3 items-start ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm'}`}>
-                                    <div className="pt-1">
+                                <div
+                                    key={gift.id}
+                                    className={`p-3 border rounded-lg flex gap-3 items-start cursor-pointer transition-all hover:shadow-md active:scale-[0.99] ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm hover:border-stone-300'}`}
+                                    onClick={() => setSelectedGiftDetails(gift)}
+                                >
+                                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                                         <Checkbox
                                             checked={selectedGifts.includes(gift.id)}
                                             onCheckedChange={(checked) => handleSelectGift(gift.id, checked as boolean)}
@@ -254,39 +260,41 @@ export default function BridalShower() {
                                                 )}
                                             </div>
 
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => handleEditGift(gift)}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Editar
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <button
-                                                        onClick={() => toggleGiftStatus.mutate({ id: gift.id, currentStatus: gift.status })}
-                                                        className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                                    >
-                                                        {gift.status === 'comprado' ? (
-                                                            <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
-                                                        ) : (
-                                                            <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteGift.mutate(gift.id)}
-                                                        className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer"
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                                                    </button>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                                        <DropdownMenuItem onClick={() => handleEditGift(gift)}>
+                                                            <Edit className="mr-2 h-4 w-4" /> Editar
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <button
+                                                            onClick={() => toggleGiftStatus.mutate({ id: gift.id, currentStatus: gift.status })}
+                                                            className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                                        >
+                                                            {gift.status === 'comprado' ? (
+                                                                <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
+                                                            ) : (
+                                                                <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
+                                                            )}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteGift.mutate(gift.id)}
+                                                            className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer"
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                        </button>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
                                         </div>
                                         {gift.link && (
-                                            <a href={gift.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1">
+                                            <a href={gift.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
                                                 <ExternalLink className="h-3 w-3" /> Link
                                             </a>
                                         )}
@@ -295,6 +303,160 @@ export default function BridalShower() {
                             ))
                         )}
                     </div>
+
+                    {/* Gift Details Drawer */}
+                    <Drawer open={!!selectedGiftDetails} onOpenChange={(open) => !open && setSelectedGiftDetails(null)}>
+                        <DrawerContent className="max-h-[90vh]">
+                            {selectedGiftDetails && (
+                                <>
+                                    <DrawerHeader className="text-left border-b pb-4">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-3 rounded-xl ${selectedGiftDetails.status === 'comprado' ? 'bg-green-100' : 'bg-stone-100'}`}>
+                                                    <GiftIcon className={`h-6 w-6 ${selectedGiftDetails.status === 'comprado' ? 'text-green-600' : 'text-stone-600'}`} />
+                                                </div>
+                                                <div>
+                                                    <DrawerTitle className="text-xl">{selectedGiftDetails.item_name}</DrawerTitle>
+                                                    <Badge
+                                                        variant={selectedGiftDetails.status === 'comprado' ? 'default' : 'secondary'}
+                                                        className={selectedGiftDetails.status === 'comprado' ? 'bg-green-500 mt-1' : 'mt-1'}
+                                                    >
+                                                        {selectedGiftDetails.status === 'comprado' ? '✓ Reservado' : 'Disponível'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </DrawerHeader>
+
+                                    <div className="px-4 py-4 space-y-4 overflow-y-auto">
+                                        {/* Imagem */}
+                                        {selectedGiftDetails.image_url && (
+                                            <div className="rounded-xl overflow-hidden border bg-stone-50">
+                                                <img
+                                                    src={selectedGiftDetails.image_url}
+                                                    alt={selectedGiftDetails.item_name}
+                                                    className="w-full h-48 object-contain"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Informações */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {selectedGiftDetails.category && (
+                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
+                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                                        <Tag className="h-4 w-4 text-stone-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Categoria</p>
+                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.category}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedGiftDetails.price_range && (
+                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
+                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                                        <DollarSign className="h-4 w-4 text-stone-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Faixa de Preço</p>
+                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.price_range}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedGiftDetails.suggested_store && (
+                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
+                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                                        <Store className="h-4 w-4 text-stone-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Loja Sugerida</p>
+                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.suggested_store}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedGiftDetails.reserved_by && (
+                                                <div className="bg-green-50 rounded-xl p-3 flex items-center gap-3">
+                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                                        <User className="h-4 w-4 text-green-500" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-green-600 uppercase tracking-wide">Reservado por</p>
+                                                        <p className="text-sm font-medium text-green-700">{selectedGiftDetails.reserved_by}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {selectedGiftDetails.reserved_at && (
+                                            <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
+                                                <div className="bg-white p-2 rounded-lg shadow-sm">
+                                                    <Clock className="h-4 w-4 text-stone-500" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-stone-400 uppercase tracking-wide">Data da Reserva</p>
+                                                    <p className="text-sm font-medium text-stone-700">
+                                                        {new Date(selectedGiftDetails.reserved_at).toLocaleString('pt-BR', {
+                                                            dateStyle: 'long',
+                                                            timeStyle: 'short'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Link */}
+                                        {selectedGiftDetails.link && (
+                                            <a
+                                                href={selectedGiftDetails.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors"
+                                            >
+                                                <div className="bg-blue-500 p-2 rounded-lg">
+                                                    <ExternalLink className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-blue-700">Ver na Loja</p>
+                                                    <p className="text-xs text-blue-500 truncate">{selectedGiftDetails.link}</p>
+                                                </div>
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    <DrawerFooter className="border-t pt-4 flex-row gap-2">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                handleEditGift(selectedGiftDetails);
+                                                setSelectedGiftDetails(null);
+                                            }}
+                                        >
+                                            <Edit className="h-4 w-4 mr-2" /> Editar
+                                        </Button>
+                                        <Button
+                                            variant={selectedGiftDetails.status === 'comprado' ? 'outline' : 'default'}
+                                            className={`flex-1 ${selectedGiftDetails.status !== 'comprado' ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                                            onClick={() => {
+                                                toggleGiftStatus.mutate({ id: selectedGiftDetails.id, currentStatus: selectedGiftDetails.status });
+                                                setSelectedGiftDetails(null);
+                                            }}
+                                        >
+                                            {selectedGiftDetails.status === 'comprado' ? (
+                                                <><X className="h-4 w-4 mr-2" /> Disponível</>
+                                            ) : (
+                                                <><Check className="h-4 w-4 mr-2" /> Reservado</>
+                                            )}
+                                        </Button>
+                                    </DrawerFooter>
+                                </>
+                            )}
+                        </DrawerContent>
+                    </Drawer>
 
                     <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
                         <Button
