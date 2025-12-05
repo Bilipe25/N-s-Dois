@@ -64,21 +64,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 }
             }
 
-            const input = {
+            // Montar objeto apenas com campos básicos
+            const insertData: Record<string, any> = {
                 name: formData.get("name") as string,
-                category: formData.get("category") as string,
+                category: formData.get("category") as string || "Outros",
                 value: parseFloat(formData.get("value") as string) || 0,
-                notes: formData.get("notes") as string || null,
-                photo_url,
-                source: formData.get("source") as string || "manual",
-                bridal_gift_id: formData.get("bridal_gift_id") as string || null
             };
 
-            const validated = CreateAssetSchema.parse(input);
+            // Adicionar campos opcionais se existirem
+            const notes = formData.get("notes") as string;
+            if (notes) insertData.notes = notes;
+            if (photo_url) insertData.photo_url = photo_url;
 
             const { data: asset, error } = await supabase
                 .from("assets")
-                .insert(validated)
+                .insert(insertData)
                 .select()
                 .single();
 
