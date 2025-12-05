@@ -112,21 +112,17 @@ export default function PublicBridalShower() {
 
     // Função para compartilhar
     const handleShare = useCallback(async () => {
-        const shareData = {
-            title: 'Chá de Casa Nova - Gabriel & Raabe',
-            text: 'Estamos montando nosso lar! Venha celebrar conosco 💕',
-            url: window.location.href
-        };
+        const url = window.location.href;
 
         if (navigator.share) {
             try {
-                await navigator.share(shareData);
+                await navigator.share({ url });
             } catch (err) {
                 // User cancelled or error
             }
         } else {
             // Fallback: copiar link
-            await navigator.clipboard.writeText(window.location.href);
+            await navigator.clipboard.writeText(url);
             alert('Link copiado!');
         }
     }, []);
@@ -569,7 +565,8 @@ export default function PublicBridalShower() {
                         <DrawerHeader className="text-left">
                             <DrawerTitle>Confirmar Presente</DrawerTitle>
                             <DrawerDescription>
-                                Você escolheu: <strong>{selectedGift?.item_name}</strong>
+                                Que legal! Você escolheu presentear com: <strong>{selectedGift?.item_name}</strong>.
+                                Por favor, informe seu nome para marcarmos como reservado.
                             </DrawerDescription>
                         </DrawerHeader>
                         <form onSubmit={handleReserve} className="px-4">
