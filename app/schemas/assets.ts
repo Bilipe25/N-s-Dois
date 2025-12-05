@@ -21,12 +21,12 @@ export type AssetCategory = typeof ASSET_CATEGORIES[number];
 export const AssetSchema = z.object({
     id: z.string().uuid(),
     name: z.string().min(1, "Nome é obrigatório"),
-    category: z.enum(ASSET_CATEGORIES),
-    value: z.number().min(0, "Valor deve ser positivo").default(0),
+    category: z.string(),
+    value: z.number().min(0, "Valor deve ser positivo").nullable().optional(),
     notes: z.string().nullable().optional(),
-    photo_url: z.string().url().nullable().optional(),
-    source: z.enum(["manual", "bridal_shower"]).default("manual"),
-    bridal_gift_id: z.string().uuid().nullable().optional(),
+    photo_url: z.string().nullable().optional(),
+    source: z.string().nullable().optional(),
+    bridal_gift_id: z.string().nullable().optional(),
     created_at: z.string()
 });
 
@@ -35,12 +35,12 @@ export type Asset = z.infer<typeof AssetSchema>;
 // Schema para criar Asset
 export const CreateAssetSchema = z.object({
     name: z.string().min(1, "Nome é obrigatório"),
-    category: z.enum(ASSET_CATEGORIES).default("Outros"),
+    category: z.string().default("Outros"),
     value: z.number().min(0, "Valor deve ser positivo").optional().default(0),
-    notes: z.string().optional(),
-    photo_url: z.string().url().optional().or(z.literal("")),
-    source: z.enum(["manual", "bridal_shower"]).optional().default("manual"),
-    bridal_gift_id: z.string().uuid().optional()
+    notes: z.string().nullable().optional(),
+    photo_url: z.string().nullable().optional(),
+    source: z.string().optional(),
+    bridal_gift_id: z.string().nullable().optional()
 });
 
 export type CreateAssetInput = z.infer<typeof CreateAssetSchema>;
