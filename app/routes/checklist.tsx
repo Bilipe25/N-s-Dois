@@ -527,7 +527,7 @@ export default function Checklist() {
 
             {/* FAB para Adicionar Tarefa */}
             {!showAddTask && !selectedTask && (
-                <div className="fixed bottom-24 right-6 z-40">
+                <div className="fixed bottom-safe-24 right-6 z-40">
                     <Button
                         onClick={() => setShowAddTask(true)}
                         size="icon"

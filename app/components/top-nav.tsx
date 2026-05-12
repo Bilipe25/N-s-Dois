@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, Settings, Bell } from "lucide-react";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
-export function TopNav({ action }: { action?: React.ReactNode }) {
+export function TopNav({ unreadCount: initialUnreadCount = 0, action }: { unreadCount?: number; action?: React.ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const unreadCount = useUnreadNotificationsCount();
+    const liveUnreadCount = useUnreadNotificationsCount();
+    const unreadCount = liveUnreadCount || initialUnreadCount;
 
     // Mapa de títulos baseado na rota
     const getTitle = (pathname: string) => {
@@ -37,8 +38,8 @@ export function TopNav({ action }: { action?: React.ReactNode }) {
     const isHome = location.pathname === "/";
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 h-14 flex items-center px-4 shadow-sm transition-all duration-300 justify-between">
-            <div className="flex items-center gap-3">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background/85 backdrop-blur-md border-b border-border/40 h-14 pt-safe flex items-center px-4 shadow-sm transition-all duration-300 justify-between">
+            <div className="flex min-w-0 items-center gap-3">
                 {!isHome ? (
                     <Button
                         variant="ghost"
@@ -54,12 +55,12 @@ export function TopNav({ action }: { action?: React.ReactNode }) {
                     </div>
                 )}
 
-                <h1 className={`font-serif text-lg font-medium text-foreground tracking-wide ${isHome ? 'text-xl' : ''}`}>
+                <h1 className={`truncate font-serif text-lg font-medium text-foreground tracking-wide ${isHome ? 'text-xl' : ''}`}>
                     {title}
                 </h1>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
                 {action}
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary relative" asChild>
                     <Link to="/notifications">

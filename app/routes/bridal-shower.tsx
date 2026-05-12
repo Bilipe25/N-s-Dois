@@ -501,7 +501,7 @@ export default function BridalShower() {
                     </Drawer>
 
                     {!selectedGiftDetails && (
-                        <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-3">
+                        <div className="fixed bottom-safe-24 right-6 z-40 flex flex-col gap-3">
                             <Button
                                 onClick={() => setShowImport(true)}
                                 size="icon"
@@ -568,7 +568,7 @@ export default function BridalShower() {
                         )}
                     </div>
 
-                    <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
+                    <div className="fixed bottom-safe-24 right-6 z-50 flex flex-col gap-3">
                         <Button
                             onClick={() => setShowImportFromMain(true)}
                             size="icon"

@@ -18,7 +18,7 @@ export function VideoHero({ videoUrl, posterUrl, children }: VideoHeroProps) {
     }, []);
 
     return (
-        <section className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black">
+        <section className="relative min-h-[100svh] w-full overflow-hidden flex items-center justify-center bg-black">
             {/* Video Background */}
             <div className="absolute inset-0 z-0">
                 <video
@@ -26,29 +26,25 @@ export function VideoHero({ videoUrl, posterUrl, children }: VideoHeroProps) {
                     autoPlay
                     muted
                     playsInline
-                    preload="auto"
+                    preload="metadata"
                     className={`w-full h-full object-cover transition-all duration-[2000ms] ease-out ${isEnded ? "blur-md scale-105 opacity-60" : "opacity-100 scale-100"}`}
                     poster={posterUrl}
                     onEnded={() => setIsEnded(true)}
                 >
                     <source src={videoUrl} type="video/mp4" />
                 </video>
-                {/* Overlay for better text contrast after video ends */}
-                <div className={`absolute inset-0 bg-black/40 transition-opacity duration-[2000ms] ${isEnded ? "opacity-100" : "opacity-0"}`} />
+                <div className={`absolute inset-0 bg-black transition-opacity duration-[1200ms] ${isEnded ? "opacity-55" : "opacity-45"}`} />
             </div>
 
-            {/* Content - Revealed after video ends */}
-            <div className={`relative z-10 w-full h-full flex flex-col items-center justify-center`}>
-                {isEnded && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 1.5 }}
-                        className="w-full h-full flex flex-col items-center justify-center"
-                    >
-                        {children}
-                    </motion.div>
-                )}
+            <div className="relative z-10 flex min-h-[100svh] w-full flex-col items-center justify-center py-16">
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 1 }}
+                    className="flex min-h-[100svh] w-full flex-col items-center justify-center py-16"
+                >
+                    {children}
+                </motion.div>
             </div>
         </section>
     );

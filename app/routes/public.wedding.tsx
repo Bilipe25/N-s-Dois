@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Form, useLoaderData, useActionData, useNavigation, Link, useFetcher } from "react-router";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, EffectFade, Navigation, Pagination } from "swiper/modules";
-import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User, CalendarPlus, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User, CalendarPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,11 +13,6 @@ import { VideoHero } from "@/components/VideoHero";
 import type { Route } from "./+types/public.wedding";
 
 // Import Swiper styles
-import "swiper/css";
-import "swiper/css/effect-fade";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
-
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Gabriel & Raabe - Nosso Casamento" }];
 };
@@ -153,10 +146,10 @@ const Countdown = ({ targetDate }: { targetDate: string }) => {
 
         return (
             <div key={interval} className="flex flex-col items-center mx-2 md:mx-4">
-                <span className="text-2xl md:text-4xl font-serif font-bold text-white drop-shadow-md">
+                <span className="text-xl sm:text-2xl md:text-4xl font-serif font-bold text-white drop-shadow-md">
                     {timeLeft[interval]}
                 </span>
-                <span className="text-xs md:text-sm uppercase tracking-widest text-white/80">
+                <span className="text-[10px] md:text-sm uppercase tracking-widest text-white/80">
                     {interval}
                 </span>
             </div>
@@ -164,7 +157,7 @@ const Countdown = ({ targetDate }: { targetDate: string }) => {
     });
 
     return (
-        <div className="flex justify-center items-center mt-8 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+        <div className="flex flex-wrap justify-center items-center gap-y-3 mt-8 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
             {timerComponents.length ? timerComponents : <span className="text-2xl text-white">Chegou o grande dia! ❤️</span>}
         </div>
     );
@@ -184,11 +177,6 @@ export default function PublicWedding() {
     const fetcher = useFetcher<typeof action>();
     const isSearching = fetcher.state === "submitting";
     const searchResults = fetcher.data?.searchResults || [];
-
-    // Parallax Effect
-    const { scrollY } = useScroll();
-    const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-    const y2 = useTransform(scrollY, [0, 500], [0, -150]);
 
     useEffect(() => {
         if (actionData?.success) {
@@ -259,11 +247,11 @@ export default function PublicWedding() {
                         transition={{ duration: 1.2, ease: "easeOut" }}
                         className="space-y-6"
                     >
-                        <p className="text-sm md:text-lg tracking-[0.3em] uppercase text-white/90 font-light">Vamos nos casar</p>
-                        <h1 className="text-6xl md:text-8xl lg:text-9xl font-serif leading-tight drop-shadow-lg">
+                        <p className="text-xs sm:text-sm md:text-lg tracking-[0.22em] sm:tracking-[0.3em] uppercase text-white/90 font-light">Vamos nos casar</p>
+                        <h1 className="text-[clamp(3rem,15vw,8rem)] font-serif leading-[0.95] drop-shadow-lg">
                             Gabriel <span className="text-rose-200">&</span> Raabe
                         </h1>
-                        <div className="flex items-center justify-center gap-4 text-xl md:text-2xl font-light text-white/90">
+                        <div className="flex items-center justify-center gap-3 text-base sm:text-xl md:text-2xl font-light text-white/90">
                             <Calendar className="w-5 h-5 md:w-6 md:h-6" />
                             <p>
                                 {new Date(weddingDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -459,9 +447,6 @@ export default function PublicWedding() {
 
             {/* Photo Slider Section */}
             <section className="py-24 bg-[#FDFCF8] relative overflow-hidden">
-                <motion.div style={{ y: y1 }} className="absolute top-0 left-0 w-64 h-64 bg-rose-100 rounded-full blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2" />
-                <motion.div style={{ y: y2 }} className="absolute bottom-0 right-0 w-96 h-96 bg-amber-100 rounded-full blur-3xl opacity-30 translate-x-1/3 translate-y-1/3" />
-
                 <div className="max-w-6xl mx-auto px-4 relative z-10">
                     <div className="text-center mb-16">
                         <span className="text-rose-400 uppercase tracking-widest text-sm font-medium">Momentos Especiais</span>
@@ -469,25 +454,14 @@ export default function PublicWedding() {
                         <div className="w-24 h-1 bg-gradient-to-r from-rose-200 to-amber-200 mx-auto rounded-full" />
                     </div>
 
-                    <Swiper
-                        modules={[Autoplay, EffectFade, Navigation, Pagination]}
-                        effect="fade"
-                        spaceBetween={30}
-                        slidesPerView={1}
-                        navigation
-                        pagination={{ clickable: true }}
-                        autoplay={{ delay: 5000, disableOnInteraction: false }}
-                        className="w-full h-[400px] md:h-[600px] rounded-2xl shadow-2xl"
-                    >
+                    <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto rounded-2xl pb-3 shadow-2xl scrollbar-hide">
                         {photos.map((photo, index) => (
-                            <SwiperSlide key={index}>
-                                <div className="w-full h-full relative group">
-                                    <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                </div>
-                            </SwiperSlide>
+                            <div key={photo} className="relative h-[400px] w-full min-w-full snap-center overflow-hidden md:h-[600px]">
+                                <img src={photo} alt={`Foto ${index + 1}`} className="h-full w-full object-cover transition-transform duration-700 hover:scale-105" loading={index === 0 ? "eager" : "lazy"} />
+                                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+                            </div>
                         ))}
-                    </Swiper>
+                    </div>
                 </div>
             </section>
 

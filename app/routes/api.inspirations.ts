@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { sendPushToUser } from "@/services/push.server";
+import { requireUserSession } from "@/sessions";
 import { z } from "zod";
 
 const ActionSchema = z.discriminatedUnion("intent", [
@@ -27,6 +28,8 @@ const ActionSchema = z.discriminatedUnion("intent", [
 ]);
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    await requireUserSession(request);
+
     if (request.method !== "POST") {
         return Response.json({ error: "Method not allowed" }, { status: 405 });
     }

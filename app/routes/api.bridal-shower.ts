@@ -1,5 +1,6 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { getSession, requireUserSession } from "@/sessions";
 import {
     CreateGiftSchema,
     UpdateGiftSchema,
@@ -10,11 +11,36 @@ import {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     const supabase = createClient(request);
+    const session = await getSession(request.headers.get("Cookie"));
+    const isAdmin = Boolean(session.get("user"));
+    const giftFields = isAdmin
+        ? "*"
+        : "id, item_name, category, status, suggested_store, link, price_range, image_url, reserved_by, reserved_at, created_at";
+    const guestFields = isAdmin
+        ? "*"
+        : "id, name, confirmed, confirmed_location, created_at";
+    const configFields = isAdmin
+        ? "*"
+        : [
+            "id",
+            "bridal_shower_date",
+            "bridal_shower_location",
+            "bridal_shower_address_1",
+            "bridal_shower_map_link_1",
+            "bridal_shower_date_2",
+            "bridal_shower_location_2",
+            "bridal_shower_address_2",
+            "bridal_shower_map_link_2",
+            "bridal_shower_hero_url",
+            "pix_key",
+            "contact_phone_gabriel",
+            "contact_phone_raabe"
+        ].join(", ");
 
     // Fetch Gifts
     const { data: gifts, error: giftsError } = await supabase
         .from("bridal_shower_gifts")
-        .select("*")
+        .select(giftFields)
         .order("item_name");
 
     if (giftsError) throw data({ error: giftsError.message }, { status: 500 });
@@ -22,7 +48,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // Fetch Guests
     const { data: guests, error: guestsError } = await supabase
         .from("bridal_shower_guests")
-        .select("*")
+        .select(guestFields)
         .order("name");
 
     if (guestsError) throw data({ error: guestsError.message }, { status: 500 });
@@ -30,7 +56,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // Fetch Config
     const { data: config, error: configError } = await supabase
         .from("app_config")
-        .select("*")
+        .select(configFields)
         .single();
 
     if (configError) throw data({ error: configError.message }, { status: 500 });
@@ -39,6 +65,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    await requireUserSession(request);
     const supabase = createClient(request);
     const method = request.method;
     const url = new URL(request.url);

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart } from "lucide-react";
-import { commitSession, getSession } from "@/sessions";
+import { commitSession, getAppLoginPassword, getSession } from "@/sessions";
 import { createClient } from "@/lib/supabase";
 import type { Route } from "./+types/login";
 
@@ -22,11 +22,11 @@ export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const name = formData.get("name") as string;
     const password = formData.get("password") as string;
+    const expectedPassword = getAppLoginPassword();
 
-    // Validação simples e hardcoded conforme solicitado
     if (
-        (name.toLowerCase() === "gabriel" && password === "2708") ||
-        (name.toLowerCase() === "raabe" && password === "2708")
+        (name.toLowerCase() === "gabriel" && password === expectedPassword) ||
+        (name.toLowerCase() === "raabe" && password === expectedPassword)
     ) {
         const session = await getSession(request.headers.get("Cookie"));
         session.set("user", name);

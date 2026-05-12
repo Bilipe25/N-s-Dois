@@ -1,13 +1,11 @@
-const CACHE_NAME = "nos-dois-v1";
-const ASSETS_CACHE = "nos-dois-assets-v1";
-const IMAGES_CACHE = "nos-dois-images-v1";
+const CACHE_NAME = "nos-dois-v3";
+const ASSETS_CACHE = "nos-dois-assets-v3";
+const IMAGES_CACHE = "nos-dois-images-v3";
 
 const STATIC_ASSETS = [
-    "/",
     "/manifest.json",
     "/favicon.ico",
-    "/logo192.png",
-    "/logo512.png"
+    "/icon.svg"
 ];
 
 self.addEventListener("install", (event) => {
@@ -49,7 +47,9 @@ self.addEventListener("fetch", (event) => {
                 return cache.match(event.request).then((cachedResponse) => {
                     if (cachedResponse) return cachedResponse;
                     return fetch(event.request).then((networkResponse) => {
-                        cache.put(event.request, networkResponse.clone());
+                        if (networkResponse.ok || networkResponse.type === "opaque") {
+                            cache.put(event.request, networkResponse.clone()).catch(() => undefined);
+                        }
                         return networkResponse;
                     });
                 });
@@ -58,13 +58,28 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // Estratégia Stale-While-Revalidate para CSS, JS e Documentos
-    if (event.request.destination === "style" || event.request.destination === "script" || event.request.destination === "document") {
+    if (event.request.mode === "navigate") {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    const copy = networkResponse.clone();
+                    caches.open(ASSETS_CACHE).then((cache) => cache.put(event.request, copy));
+                    return networkResponse;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Estratégia Stale-While-Revalidate para CSS e JS versionados pelo build.
+    if (event.request.destination === "style" || event.request.destination === "script") {
         event.respondWith(
             caches.open(ASSETS_CACHE).then((cache) => {
                 return cache.match(event.request).then((cachedResponse) => {
                     const fetchPromise = fetch(event.request).then((networkResponse) => {
-                        cache.put(event.request, networkResponse.clone());
+                        if (networkResponse.ok) {
+                            cache.put(event.request, networkResponse.clone());
+                        }
                         return networkResponse;
                     });
                     return cachedResponse || fetchPromise;
@@ -111,7 +126,7 @@ self.addEventListener("notificationclick", (event) => {
         clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
             for (const client of clientList) {
                 if ("focus" in client) {
-                    if (client.url === event.notification.data.url) {
+                    if (new URL(client.url).pathname === event.notification.data.url) {
                         return client.focus();
                     }
                     return client.navigate(event.notification.data.url).then(c => c.focus());

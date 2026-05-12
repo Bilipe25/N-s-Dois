@@ -1,8 +1,10 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
+import { requireUserSession } from "@/sessions";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+    await requireUserSession(request);
     const supabase = createClient(request);
 
     let { data: config, error } = await supabase
@@ -32,6 +34,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    await requireUserSession(request);
     const method = request.method;
 
     if (method === "POST") {

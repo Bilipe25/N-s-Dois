@@ -1,4 +1,5 @@
-import { Supplier, SUPPLIER_STATUSES } from "./types";
+import { SUPPLIER_STATUSES } from "./types";
+import type { Supplier } from "./types";
 import { SupplierCard } from "./supplier-card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
@@ -15,7 +16,7 @@ export function SupplierKanban({ suppliers }: SupplierKanbanProps) {
     }));
 
     return (
-        <div className="h-[calc(100vh-200px)] w-full overflow-x-auto pb-4">
+        <div className="h-[calc(100svh-220px)] w-full overflow-x-auto pb-4">
             <div className="flex gap-4 h-full min-w-[1000px] px-2">
                 {columns.map(col => (
                     <div key={col.id} className="flex-1 min-w-[280px] flex flex-col bg-stone-50/50 rounded-xl border border-stone-100 h-full">

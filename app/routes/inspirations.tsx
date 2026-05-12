@@ -294,7 +294,7 @@ export default function Inspirations() {
 
             {/* FAB */}
             {!showAddInspiration && !selectedImage && (
-                <div className="fixed bottom-24 right-6 z-40">
+                <div className="fixed bottom-safe-24 right-6 z-40">
                     <Button
                         onClick={() => setShowAddInspiration(true)}
                         size="icon"
