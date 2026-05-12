@@ -6,7 +6,7 @@ import { TopNav } from "@/components/top-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Route } from "./+types/protected";
 
-import { createClient } from "@/lib/supabase";
+import { createClient, hasSupabaseEnv } from "@/lib/supabase";
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const session = await getSession(request.headers.get("Cookie"));
@@ -16,18 +16,27 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         throw redirect("/login");
     }
 
-    const supabase = createClient(request);
-    const { count: pendingTasksCount } = await supabase
-        .from("checklist_items")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pendente");
+    if (!hasSupabaseEnv()) {
+        return { user, pendingTasksCount: 0, unreadNotificationsCount: 0 };
+    }
 
-    const { count: unreadNotificationsCount } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("read", false);
+    try {
+        const supabase = createClient(request);
+        const { count: pendingTasksCount } = await supabase
+            .from("checklist_items")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "pendente");
 
-    return { user, pendingTasksCount: pendingTasksCount || 0, unreadNotificationsCount: unreadNotificationsCount || 0 };
+        const { count: unreadNotificationsCount } = await supabase
+            .from("notifications")
+            .select("*", { count: "exact", head: true })
+            .eq("read", false);
+
+        return { user, pendingTasksCount: pendingTasksCount || 0, unreadNotificationsCount: unreadNotificationsCount || 0 };
+    } catch (error) {
+        console.error("Erro ao carregar contadores da área privada:", error);
+        return { user, pendingTasksCount: 0, unreadNotificationsCount: 0 };
+    }
 };
 
 function PageSkeleton() {

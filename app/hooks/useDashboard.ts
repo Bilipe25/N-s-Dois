@@ -2,12 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase";
 import type { DashboardData } from "@/schemas/dashboard";
 
-const supabase = createClient();
+const getSupabase = () => createClient();
 
 export const useDashboard = () => {
     return useQuery({
         queryKey: ["dashboard"],
         queryFn: async (): Promise<DashboardData> => {
+            const supabase = getSupabase();
             const [
                 configResponse,
                 pendingTasksResponse,

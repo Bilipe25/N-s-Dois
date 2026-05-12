@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase";
 import type { Guest, AddGuestInput, UpdateGuestInput, UpdateRSVPInput, BulkActionInput } from "@/schemas/guest";
 import { toast } from "sonner";
 
-// Initialize client safely (using the fix in lib/supabase.ts)
-const supabase = createClient();
+const getSupabase = () => createClient();
 
 // --- QUERIES ---
 
@@ -12,6 +11,7 @@ export const useGuests = () => {
     return useQuery({
         queryKey: ["guests"],
         queryFn: async () => {
+            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from("guests")
                 .select("*")
@@ -27,6 +27,7 @@ export const useGuest = (id: string) => {
     return useQuery({
         queryKey: ["guests", id],
         queryFn: async () => {
+            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from("guests")
                 .select("*")
@@ -44,6 +45,7 @@ export const useAppConfig = () => {
     return useQuery({
         queryKey: ["app_config"],
         queryFn: async () => {
+            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from("app_config")
                 .select("*")
@@ -61,6 +63,7 @@ export const useAddGuest = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: AddGuestInput) => {
+            const supabase = getSupabase();
             const names = input.name.split('\n').filter(n => n.trim().length > 0);
             const guestsToAdd = names.map(n => ({
                 name: n.trim(),
@@ -99,6 +102,7 @@ export const useUpdateGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: UpdateGuestInput) => {
+            const supabase = getSupabase();
             const { error } = await supabase
                 .from("guests")
                 .update({
@@ -123,6 +127,7 @@ export const useUpdateRSVP = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, status }: UpdateRSVPInput) => {
+            const supabase = getSupabase();
             const { error } = await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
             if (error) throw error;
 
@@ -165,6 +170,7 @@ export const useDeleteGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
+            const supabase = getSupabase();
             const { error } = await supabase.from("guests").delete().eq("id", id);
             if (error) throw error;
         },
@@ -180,6 +186,7 @@ export const useBulkConfirm = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ ids }: BulkActionInput) => {
+            const supabase = getSupabase();
             const { error } = await supabase
                 .from("guests")
                 .update({ rsvp_status: "confirmado" })
@@ -198,6 +205,7 @@ export const useBulkDelete = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ ids }: BulkActionInput) => {
+            const supabase = getSupabase();
             const { error } = await supabase.from("guests").delete().in("id", ids);
             if (error) throw error;
         },

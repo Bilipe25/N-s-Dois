@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Form, useLoaderData, useActionData, useNavigation, Link, useFetcher } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Gift, Info, Calendar, Music, Heart, MessageCircle, ExternalLink, PartyPopper, Loader2, Check, Search, UserPlus, User, CalendarPlus } from "lucide-react";
-import { createClient } from "@/lib/supabase";
+import { createClient, hasSupabaseEnv } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,19 +18,38 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
-    const { data: config } = await supabase
-        .from("app_config")
-        .select("wedding_address, wedding_date")
-        .single();
+    if (!hasSupabaseEnv()) {
+        return {
+            weddingAddress: "Local a definir",
+            weddingDate: "2025-09-20 16:00:00-03"
+        };
+    }
 
-    return {
-        weddingAddress: config?.wedding_address || "Local a definir",
-        weddingDate: config?.wedding_date || "2025-09-20 16:00:00-03"
-    };
+    try {
+        const supabase = createClient(request);
+        const { data: config } = await supabase
+            .from("app_config")
+            .select("wedding_address, wedding_date")
+            .single();
+
+        return {
+            weddingAddress: config?.wedding_address || "Local a definir",
+            weddingDate: config?.wedding_date || "2025-09-20 16:00:00-03"
+        };
+    } catch (error) {
+        console.error("Erro ao buscar config do convite:", error);
+        return {
+            weddingAddress: "Local a definir",
+            weddingDate: "2025-09-20 16:00:00-03"
+        };
+    }
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
+    if (!hasSupabaseEnv()) {
+        return { error: "Configuração do servidor indisponível. Tente novamente mais tarde." };
+    }
+
     const formData = await request.formData();
     const intent = formData.get("intent");
     const supabase = createClient(request);

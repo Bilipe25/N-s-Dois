@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase";
 import type { Groomsman, CreateGroomsmanInput, UpdateGroomsmanInput } from "@/schemas/groomsmen";
 import { toast } from "sonner";
 
-const supabase = createClient(null as any);
+const getSupabase = () => createClient();
 
 // --- QUERIES ---
 
@@ -30,6 +30,7 @@ export const useCreateGroomsman = (user: string) => {
 
             // Handle Photo Upload if present
             if (input.photo && input.photo instanceof File) {
+                const supabase = getSupabase();
                 const fileExt = input.photo.name.split('.').pop();
                 const fileName = `groomsman_${Date.now()}.${fileExt}`;
 
@@ -85,6 +86,7 @@ export const useUpdateGroomsman = () => {
 
             // Handle Photo Upload if present
             if (input.photo && input.photo instanceof File) {
+                const supabase = getSupabase();
                 const fileExt = input.photo.name.split('.').pop();
                 const fileName = `groomsman_${Date.now()}.${fileExt}`;
 
