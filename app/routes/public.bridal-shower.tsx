@@ -15,21 +15,31 @@ import type { Gift } from "@/schemas/bridal-shower";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 
-import { createClient } from "@/lib/supabase";
+import { createClient, hasSupabaseEnv } from "@/lib/supabase";
 import type { LoaderFunctionArgs } from "react-router";
 
 const BRIDAL_HERO_FALLBACK = "https://images.unsplash.com/photo-1522673607200-1645062cd4d1?q=80&w=2070&auto=format&fit=crop";
 
 // Loader para buscar config (necessário para meta tags OG)
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-    const supabase = createClient(request);
-    const { data: config } = await supabase
-        .from("app_config")
-        .select("bridal_shower_hero_url")
-        .single();
+    let heroUrl: string | null | undefined = null;
+
+    if (hasSupabaseEnv()) {
+        try {
+            const supabase = createClient(request);
+            const { data: config } = await supabase
+                .from("app_config")
+                .select("bridal_shower_hero_url")
+                .single();
+
+            heroUrl = config?.bridal_shower_hero_url;
+        } catch (error) {
+            console.error("Erro ao buscar hero do chá:", error);
+        }
+    }
 
     return {
-        heroUrl: config?.bridal_shower_hero_url,
+        heroUrl,
         publicSiteUrl: process.env.PUBLIC_SITE_URL || new URL(request.url).origin
     };
 };

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase";
 import type { Inspiration, AddInspirationInput, EditInspirationInput, AddCommentInput, ToggleLikeInput } from "@/schemas/inspiration";
 import { toast } from "sonner";
 
-const supabase = createClient(null as any);
+const getSupabase = () => createClient();
 
 // --- QUERIES ---
 
@@ -11,6 +11,7 @@ export const useInspirations = () => {
     return useQuery({
         queryKey: ["inspirations"],
         queryFn: async () => {
+            const supabase = getSupabase();
             const { data, error } = await supabase
                 .from("inspirations")
                 .select(`
@@ -46,6 +47,7 @@ export const useAddInspiration = (user: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: AddInspirationInput) => {
+            const supabase = getSupabase();
             // 1. Upload Photo
             const fileExt = input.photo.name.split('.').pop();
             const fileName = `inspiration_${Date.now()}.${fileExt}`;
@@ -108,6 +110,7 @@ export const useDeleteInspiration = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
+            const supabase = getSupabase();
             const { error } = await supabase.from("inspirations").delete().eq("id", id);
             if (error) throw error;
         },
@@ -123,6 +126,7 @@ export const useEditInspiration = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: EditInspirationInput) => {
+            const supabase = getSupabase();
             const { error } = await supabase
                 .from("inspirations")
                 .update({ title: input.title, notes: input.notes, category: input.category })

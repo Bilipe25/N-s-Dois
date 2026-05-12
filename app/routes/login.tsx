@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart } from "lucide-react";
 import { commitSession, getAppLoginPassword, getSession } from "@/sessions";
-import { createClient } from "@/lib/supabase";
+import { createClient, hasSupabaseEnv } from "@/lib/supabase";
 import type { Route } from "./+types/login";
 
 export const meta: Route.MetaFunction = () => {
@@ -13,9 +13,18 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
-    const { data: config } = await supabase.from("app_config").select("login_photo_url").single();
-    return { config };
+    if (!hasSupabaseEnv()) {
+        return { config: null };
+    }
+
+    try {
+        const supabase = createClient(request);
+        const { data: config } = await supabase.from("app_config").select("login_photo_url").single();
+        return { config };
+    } catch (error) {
+        console.error("Erro ao buscar config do login:", error);
+        return { config: null };
+    }
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
