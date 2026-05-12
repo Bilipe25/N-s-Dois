@@ -8,6 +8,11 @@ type SessionFlashData = {
     error: string;
 };
 
+const FALLBACK_SESSION_SECRET = "s3cr3t-k3y-nos-dois";
+const FALLBACK_LOGIN_PASSWORD = "2708";
+let warnedMissingSessionSecret = false;
+let warnedMissingLoginPassword = false;
+
 export const { getSession, commitSession, destroySession } =
     createCookieSessionStorage<SessionData, SessionFlashData>({
         cookie: {
@@ -24,21 +29,23 @@ export const { getSession, commitSession, destroySession } =
 function getSessionSecret() {
     const secret = process.env.SESSION_SECRET;
 
-    if (!secret && process.env.NODE_ENV === "production") {
-        throw new Error("SESSION_SECRET precisa estar configurado em produção.");
+    if (!secret && process.env.NODE_ENV === "production" && !warnedMissingSessionSecret) {
+        warnedMissingSessionSecret = true;
+        console.warn("SESSION_SECRET não configurado. Usando fallback legado; configure essa env no Vercel.");
     }
 
-    return secret || "dev-only-session-secret-change-me";
+    return secret || FALLBACK_SESSION_SECRET;
 }
 
 export function getAppLoginPassword() {
     const password = process.env.APP_LOGIN_PASSWORD;
 
-    if (!password && process.env.NODE_ENV === "production") {
-        throw new Error("APP_LOGIN_PASSWORD precisa estar configurado em produção.");
+    if (!password && process.env.NODE_ENV === "production" && !warnedMissingLoginPassword) {
+        warnedMissingLoginPassword = true;
+        console.warn("APP_LOGIN_PASSWORD não configurado. Usando senha legada; configure essa env no Vercel.");
     }
 
-    return password || "2708";
+    return password || FALLBACK_LOGIN_PASSWORD;
 }
 
 export async function requireUserSession(request: Request) {
