@@ -13,8 +13,6 @@ import {
 } from "@/components/ui/drawer";
 import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil } from "lucide-react";
 import type { Route } from "./+types/guests";
-import pdfMake from "pdfmake/build/pdfmake";
-import pdfFonts from "pdfmake/build/vfs_fonts";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router";
@@ -36,10 +34,6 @@ import {
     useAppConfig
 } from "@/hooks/useGuests";
 import type { Guest } from "@/schemas/guest";
-
-// Registrar fontes (necessário para pdfmake no client-side)
-// @ts-ignore
-pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Convidados - Nós Dois" }];
@@ -151,6 +145,13 @@ export default function Guests() {
     const handleExportPdf = useCallback(async () => {
         setIsExporting(true);
         try {
+            const [{ default: pdfMake }, pdfFontsModule] = await Promise.all([
+                import("pdfmake/build/pdfmake"),
+                import("pdfmake/build/vfs_fonts")
+            ]);
+            const pdfFonts = (pdfFontsModule as any).default || pdfFontsModule;
+            (pdfMake as any).vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts.vfs;
+
             let logoBase64 = null;
             if (config?.logo_url) {
                 try {
@@ -288,7 +289,7 @@ export default function Guests() {
                 }
             };
 
-            pdfMake.createPdf(docDefinition).download('lista_convidados_casamento.pdf');
+            (pdfMake as any).createPdf(docDefinition).download('lista_convidados_casamento.pdf');
 
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
@@ -365,7 +366,7 @@ export default function Guests() {
 
             {/* FAB para Adicionar Convidado */}
             {!showAddGuest && !selectedGuest && (
-                <div className="fixed bottom-24 right-6 z-40">
+                <div className="fixed bottom-safe-24 right-6 z-40">
                     <Button
                         onClick={() => setShowAddGuest(true)}
                         size="icon"
@@ -541,7 +542,7 @@ export default function Guests() {
 
                                 {/* Link para WhatsApp */}
                                 <a
-                                    href={`https://wa.me/?text=Olá ${selectedGuest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
+                                    href={`https://wa.me/?text=${encodeURIComponent(`Olá ${selectedGuest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: ${typeof window !== "undefined" ? `${((window as any).ENV?.PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")}/public/wedding` : "/public/wedding"}`)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-center gap-2 w-full h-12 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-colors"

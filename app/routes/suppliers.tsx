@@ -116,20 +116,20 @@ export default function Suppliers() {
                 </div>
 
                 <Tabs defaultValue="list" className="w-full" onValueChange={(v) => setView(v as "list" | "kanban")}>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         {/* View Switcher */}
-                        <TabsList className="grid w-[180px] grid-cols-2 bg-stone-100">
+                        <TabsList className="grid w-full grid-cols-1 bg-stone-100 sm:w-[180px] sm:grid-cols-2">
                             <TabsTrigger value="list" className="data-[state=active]:bg-white">
                                 <ListIcon className="h-4 w-4 mr-2" /> Lista
                             </TabsTrigger>
-                            <TabsTrigger value="kanban" className="data-[state=active]:bg-white">
+                            <TabsTrigger value="kanban" className="hidden data-[state=active]:bg-white sm:inline-flex">
                                 <LayoutGrid className="h-4 w-4 mr-2" /> Quadro
                             </TabsTrigger>
                         </TabsList>
 
                         {/* Filter (Only for List view usually, but keeping for both) */}
                         {view === "list" && (
-                            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                            <div className="flex w-full gap-2 overflow-x-auto scrollbar-hide sm:w-auto">
                                 {[
                                     { id: "todos", label: "Todos" },
                                     { id: "contratado", label: "Contratados" },
@@ -172,7 +172,12 @@ export default function Suppliers() {
                     </TabsContent>
 
                     <TabsContent value="kanban" className="mt-0">
-                        <SupplierKanban suppliers={suppliers} />
+                        <div className="hidden sm:block">
+                            <SupplierKanban suppliers={suppliers} />
+                        </div>
+                        <div className="rounded-xl border border-dashed border-stone-200 bg-white p-6 text-center text-sm text-stone-500 sm:hidden">
+                            O quadro Kanban fica disponível em telas maiores. No celular, use a lista filtrada para navegar com mais conforto.
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>
@@ -181,7 +186,7 @@ export default function Suppliers() {
             {!selectedSupplier && (
                 <Link
                     to="/suppliers/new"
-                    className="fixed bottom-24 right-6 h-14 w-14 bg-stone-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-stone-800 transition-transform hover:scale-105 active:scale-95 z-40"
+                    className="fixed bottom-safe-24 right-6 h-14 w-14 bg-stone-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-stone-800 transition-transform hover:scale-105 active:scale-95 z-40"
                 >
                     <Plus className="h-6 w-6" />
                 </Link>

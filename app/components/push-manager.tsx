@@ -33,6 +33,13 @@ export function PushManager() {
         setIsLoading(true);
         try {
             const registration = await navigator.serviceWorker.ready;
+            const vapidPublicKey = (window as any).ENV?.VAPID_PUBLIC_KEY;
+
+            if (!vapidPublicKey) {
+                toast.error("Chave pública de notificações não configurada.");
+                setIsLoading(false);
+                return;
+            }
 
             // Verificar permissão
             if (Notification.permission === 'default') {
@@ -50,12 +57,9 @@ export function PushManager() {
                 return;
             }
 
-            // Obter chave pública do ambiente
-            const vapidPublicKey = (window as any).ENV.VAPID_PUBLIC_KEY;
-
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: vapidPublicKey
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
             });
 
             // Enviar para o backend
@@ -138,4 +142,17 @@ export function PushManager() {
             </div>
         </div>
     );
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; i++) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+
+    return outputArray;
 }

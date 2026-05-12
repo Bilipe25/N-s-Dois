@@ -18,7 +18,7 @@ export function BottomNav({ pendingTasksCount = 0 }: BottomNavProps) {
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border/40 pb-safe pt-2 px-4 shadow-lg z-[100]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-background/95 border-t border-border/40 pb-safe pt-2 px-3 shadow-lg backdrop-blur-md z-[100]">
             <div className="flex justify-between items-center max-w-md mx-auto h-full">
                 {navItems.map((item) => {
                     return (
@@ -28,7 +28,7 @@ export function BottomNav({ pendingTasksCount = 0 }: BottomNavProps) {
                             prefetch="none"
                             end={item.href === "/"}
                             className={({ isActive }) => cn(
-                                "flex flex-col items-center justify-center p-2 rounded-lg transition-colors min-w-[64px] relative cursor-pointer touch-manipulation",
+                                "flex min-h-12 min-w-[60px] flex-col items-center justify-center rounded-lg p-2 transition-colors relative cursor-pointer touch-manipulation sm:min-w-[64px]",
                                 isActive ? "text-primary" : "text-muted-foreground hover:text-primary/70"
                             )}
                         >
@@ -42,7 +42,7 @@ export function BottomNav({ pendingTasksCount = 0 }: BottomNavProps) {
                                             </span>
                                         ) : null}
                                     </div>
-                                    <span className="text-[10px] font-medium">{item.label}</span>
+                                    <span className="max-w-[64px] truncate text-[10px] font-medium">{item.label}</span>
                                 </>
                             )}
                         </NavLink>

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpRight, ArrowDownRight, Wallet } from "lucide-react";
+import { ArrowUpRight, Wallet } from "lucide-react";
 
 interface BudgetSummaryProps {
     totalEstimated: number;

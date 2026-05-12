@@ -8,7 +8,7 @@ import {
   useLoaderData,
 } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -29,7 +29,7 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export const headers: Route.HeadersFunction = () => ({
-  "Cache-Control": "public, max-age=3600, s-maxage=86400", // Cache de 1 hora no browser, 1 dia na CDN
+  "Cache-Control": "private, max-age=0, must-revalidate",
 });
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -63,36 +63,38 @@ export async function loader({ request }: Route.LoaderArgs) {
     }
   }
 
-  const vapidPublicKey = "BDjSK0SYyg0Xbsm03PlBGc8jawmjKeEYVVUn8ZB54Okdq3uUlec5RZGYjRMimMfEtvGg4IMitpYBvWIrC1WMuCw";
-
   return {
     logoUrl,
     ENV: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-      VAPID_PUBLIC_KEY: vapidPublicKey,
+      VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || "",
+      PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || new URL(request.url).origin,
     },
   };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const data = useLoaderData<typeof loader>();
+  const clientEnv = JSON.stringify(data?.ENV ?? {}).replace(/</g, "\\u003c");
+
   return (
     <html lang="pt-BR">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#C39DA3" />
         <Meta />
         <Links />
         <link rel="icon" href={data?.logoUrl || "/favicon.ico"} />
-        <link rel="apple-touch-icon" href={data?.logoUrl || "/logo192.png"} />
+        <link rel="apple-touch-icon" href={data?.logoUrl || "/icon.svg"} />
       </head>
       <body>
         {children}
         <ScrollRestoration />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.ENV = ${JSON.stringify(data?.ENV)}`,
+            __html: `window.ENV = ${clientEnv}`,
           }}
         />
         <Scripts />
@@ -103,7 +105,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const data = useLoaderData<typeof loader>();
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -112,39 +113,23 @@ export default function App() {
     },
   }));
 
-  // Lógica de Subscrição Push
-  if (typeof window !== "undefined" && 'serviceWorker' in navigator && 'PushManager' in window) {
-    window.addEventListener('load', async () => {
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        console.log('Service Worker registrado:', registration);
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
 
-        // Verificar permissão
-        if (Notification.permission === 'default') {
-          await Notification.requestPermission();
-        }
+    const registerServiceWorker = () => {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.error("Erro ao registrar Service Worker:", error);
+      });
+    };
 
-        if (Notification.permission === 'granted') {
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: data.ENV.VAPID_PUBLIC_KEY
-          });
+    if (document.readyState === "complete") {
+      registerServiceWorker();
+      return;
+    }
 
-          // Enviar para o backend
-          await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ subscription }),
-          });
-          console.log('Push inscrito com sucesso!');
-        }
-      } catch (error) {
-        console.error('Erro no registro do SW ou Push:', error);
-      }
-    });
-  }
+    window.addEventListener("load", registerServiceWorker, { once: true });
+    return () => window.removeEventListener("load", registerServiceWorker);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

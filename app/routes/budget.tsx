@@ -160,7 +160,7 @@ export default function Budget() {
 
             {/* FAB */}
             {!isAddOpen && (
-                <div className="fixed bottom-24 right-6 z-40 md:right-[calc(50%-20rem)]">
+                <div className="fixed bottom-safe-24 right-6 z-40 md:right-[calc(50%-20rem)]">
                     <Button
                         onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
                         size="icon"

@@ -16,6 +16,8 @@ A modern, production-ready template for building full-stack React applications u
 
 ## Getting Started
 
+Copy `.env.example` to `.env.local` and fill the Supabase, session, login and push notification values before running the app.
+
 ### Installation
 
 Install the dependencies:

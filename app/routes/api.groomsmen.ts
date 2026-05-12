@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { createClient } from "@/lib/supabase";
 import { z } from "zod";
 import { sendPushToUser } from "@/services/push.server";
+import { requireUserSession } from "@/sessions";
 
 const ActionSchema = z.discriminatedUnion("intent", [
     z.object({
@@ -27,6 +28,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
 ]);
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+    await requireUserSession(request);
     const supabase = createClient(request);
     const { data, error } = await supabase
         .from("groomsmen")
@@ -41,6 +43,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    await requireUserSession(request);
+
     if (request.method !== "POST" && request.method !== "DELETE" && request.method !== "PUT") {
         return Response.json({ error: "Method not allowed" }, { status: 405 });
     }

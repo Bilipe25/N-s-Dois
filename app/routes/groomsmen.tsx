@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
-import { Plus, User, Trash2, Pencil, Users, Phone, Mail, Heart, UploadCloud, Loader2 } from "lucide-react";
+import { Plus, User, Trash2, Pencil, Users, Phone, Heart, UploadCloud, Loader2 } from "lucide-react";
 import type { Route } from "./+types/groomsmen";
 import { useGroomsmen, useDeleteGroomsman, useCreateGroomsman } from "@/hooks/useGroomsmen";
 import { useForm } from "react-hook-form";
@@ -213,7 +213,7 @@ export default function Groomsmen() {
 
             {/* FAB */}
             {!showAddDrawer && !selectedPerson && (
-                <div className="fixed bottom-24 right-6 z-40">
+                <div className="fixed bottom-safe-24 right-6 z-40">
                     <Button
                         onClick={() => setShowAddDrawer(true)}
                         size="icon"

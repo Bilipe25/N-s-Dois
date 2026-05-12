@@ -1,7 +1,9 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
 import { createClient } from "@/lib/supabase";
+import { requireUserSession } from "@/sessions";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+    await requireUserSession(request);
     const supabase = createClient(request);
 
     const { data: notifications, error } = await supabase
@@ -17,6 +19,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    await requireUserSession(request);
     const supabase = createClient(request);
     const method = request.method;
 

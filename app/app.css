@@ -137,6 +137,42 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    min-height: 100svh;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .bottom-safe-6 {
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .bottom-safe-24 {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  .no-scrollbar,
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar,
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-linear-fade {
+    mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
   }
 }

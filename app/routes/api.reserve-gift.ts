@@ -29,18 +29,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             return Response.json({ error: "Este presente já foi reservado por outra pessoa." }, { status: 400 });
         }
 
-        // Update gift status
-        const { error: updateError } = await supabase
+        // Update gift status only if it is still available, avoiding double reservations.
+        const { data: reservedGift, error: updateError } = await supabase
             .from("bridal_shower_gifts")
             .update({
                 status: "comprado",
                 reserved_by: name,
                 reserved_at: new Date().toISOString()
             })
-            .eq("id", id);
+            .eq("id", id)
+            .neq("status", "comprado")
+            .select("item_name")
+            .maybeSingle();
 
         if (updateError) {
             throw updateError;
+        }
+
+        if (!reservedGift) {
+            return Response.json({ error: "Este presente acabou de ser reservado por outra pessoa." }, { status: 409 });
         }
 
         // Upsert Guest (Confirm Presence logic)

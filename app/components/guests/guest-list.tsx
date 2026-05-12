@@ -85,6 +85,10 @@ function GuestItem({
         recusado: "bg-red-100 text-red-700 border-red-200",
         pendente: "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
+    const weddingUrl = typeof window !== "undefined"
+        ? `${((window as any).ENV?.PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")}/public/wedding`
+        : "/public/wedding";
+    const inviteText = encodeURIComponent(`Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: ${weddingUrl}`);
 
     return (
         <motion.div
@@ -140,7 +144,7 @@ function GuestItem({
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                             <a
-                                href={`https://wa.me/?text=Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: https://nosdois-mu.vercel.app/public/wedding`}
+                                href={`https://wa.me/?text=${inviteText}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="cursor-pointer flex items-center text-green-600"
