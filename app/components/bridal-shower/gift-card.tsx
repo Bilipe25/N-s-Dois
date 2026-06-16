@@ -7,9 +7,10 @@ import type { Gift as GiftType } from "./types";
 interface GiftCardProps {
     gift: GiftType;
     onSelect: (gift: GiftType) => void;
+    showLinks?: boolean;
 }
 
-export function GiftCard({ gift, onSelect }: GiftCardProps) {
+export function GiftCard({ gift, onSelect, showLinks = true }: GiftCardProps) {
     const isReserved = gift.status === 'comprado';
 
     return (
@@ -61,7 +62,7 @@ export function GiftCard({ gift, onSelect }: GiftCardProps) {
                     )}
                 </div>
 
-                {gift.link && (
+                {showLinks && gift.link && (
                     <a
                         href={gift.link}
                         target="_blank"

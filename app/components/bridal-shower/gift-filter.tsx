@@ -9,33 +9,68 @@ interface GiftFilterProps {
     onSearchChange: (value: string) => void;
     selectedCategory: string | null;
     onCategorySelect: (category: string | null) => void;
+    selectedStatus?: "all" | "disponivel" | "comprado";
+    onStatusSelect?: (status: "all" | "disponivel" | "comprado") => void;
 }
 
 export function GiftFilter({
     searchTerm,
     onSearchChange,
     selectedCategory,
-    onCategorySelect
+    onCategorySelect,
+    selectedStatus,
+    onStatusSelect
 }: GiftFilterProps) {
     return (
         <div className="space-y-4">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar presente..."
-                    value={searchTerm}
-                    onChange={(e) => onSearchChange(e.target.value)}
-                    className="pl-9 bg-white"
-                />
-                {searchTerm && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                        onClick={() => onSearchChange("")}
-                    >
-                        <X className="h-3 w-3" />
-                    </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar presente..."
+                        value={searchTerm}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="pl-9 bg-white h-10"
+                    />
+                    {searchTerm && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            onClick={() => onSearchChange("")}
+                        >
+                            <X className="h-3 w-3" />
+                        </Button>
+                    )}
+                </div>
+
+                {onStatusSelect && (
+                    <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200">
+                        <Button
+                            variant={selectedStatus === "all" ? "default" : "ghost"}
+                            size="sm"
+                            className={`flex-1 sm:flex-none ${selectedStatus === "all" ? "shadow-sm" : ""}`}
+                            onClick={() => onStatusSelect("all")}
+                        >
+                            Todos
+                        </Button>
+                        <Button
+                            variant={selectedStatus === "disponivel" ? "default" : "ghost"}
+                            size="sm"
+                            className={`flex-1 sm:flex-none ${selectedStatus === "disponivel" ? "bg-green-600 text-white shadow-sm hover:bg-green-700" : "hover:text-green-600"}`}
+                            onClick={() => onStatusSelect("disponivel")}
+                        >
+                            Disponíveis
+                        </Button>
+                        <Button
+                            variant={selectedStatus === "comprado" ? "default" : "ghost"}
+                            size="sm"
+                            className={`flex-1 sm:flex-none ${selectedStatus === "comprado" ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600" : "hover:text-rose-500"}`}
+                            onClick={() => onStatusSelect("comprado")}
+                        >
+                            Reservados
+                        </Button>
+                    </div>
                 )}
             </div>
 
@@ -47,7 +82,7 @@ export function GiftFilter({
                         onClick={() => onCategorySelect(null)}
                         className="rounded-full"
                     >
-                        Todos
+                        Todas Categorias
                     </Button>
                     {GIFT_CATEGORIES.map((category) => (
                         <Button
@@ -55,7 +90,7 @@ export function GiftFilter({
                             variant={selectedCategory === category ? "default" : "outline"}
                             size="sm"
                             onClick={() => onCategorySelect(category)}
-                            className="rounded-full"
+                            className="rounded-full bg-white"
                         >
                             {category}
                         </Button>

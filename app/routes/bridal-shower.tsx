@@ -1,20 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, MapPin, Calendar, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Loader2, Gift as GiftIcon, User, Clock, Tag, Store, DollarSign, Users, Search } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Route } from "./+types/bridal-shower";
 import { StatsDashboard } from "@/components/bridal-shower/stats-dashboard";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
-import { GIFT_CATEGORIES, type GiftCategory, type Gift, type CreateGiftInput, CreateGiftSchema, type UpdateGiftInput, UpdateGiftSchema, type CreateGuestInput, CreateGuestSchema, type UpdateConfigInput, UpdateConfigSchema } from "@/schemas/bridal-shower";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GIFT_CATEGORIES, type GiftCategory, type Gift } from "@/schemas/bridal-shower";
+import { toast } from "sonner";
+
 import {
     useGifts,
     useGuests,
@@ -33,11 +34,14 @@ import {
     useMainGuests,
     useImportGuestsFromMain
 } from "@/hooks/useBridalShower";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import type { Guest as MainGuest } from "@/schemas/guest";
 
+// Extracted Components
+import { AdminConfigForm } from "@/components/bridal-shower/admin-config-form";
+import { AdminAddGiftDrawer } from "@/components/bridal-shower/admin-add-gift-drawer";
+import { AdminEditGiftDrawer } from "@/components/bridal-shower/admin-edit-gift-drawer";
+import { AdminGiftDetailsDrawer } from "@/components/bridal-shower/admin-gift-details-drawer";
+import { AdminAddGuestDrawer } from "@/components/bridal-shower/admin-add-guest-drawer";
+import { AdminImportFromMainDrawer } from "@/components/bridal-shower/admin-import-from-main-drawer";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Chá de Casa Nova - Admin" }];
@@ -63,10 +67,6 @@ export default function BridalShower() {
     const importGuests = useImportGuests();
     const importGuestsFromMain = useImportGuestsFromMain();
 
-    const defaultDate = config?.bridal_shower_date
-        ? new Date(config.bridal_shower_date).toISOString().slice(0, 16)
-        : "";
-
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
@@ -79,16 +79,12 @@ export default function BridalShower() {
     // Filters & Selection
     const [giftSearch, setGiftSearch] = useState("");
     const [giftCategory, setGiftCategory] = useState<GiftCategory | null>(null);
+    const [giftStatus, setGiftStatus] = useState<"all" | "disponivel" | "comprado">("all");
     const [guestSearch, setGuestSearch] = useState("");
     const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
-    const [editCategory, setEditCategory] = useState<GiftCategory | "">("");
     const [selectedGiftDetails, setSelectedGiftDetails] = useState<Gift | null>(null);
-
-    // Import from main guests
-    const [selectedMainGuests, setSelectedMainGuests] = useState<string[]>([]);
-    const [mainGuestSearch, setMainGuestSearch] = useState("");
 
     // Import Text State
     const [importGiftsText, setImportGiftsText] = useState("");
@@ -98,15 +94,15 @@ export default function BridalShower() {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(publicUrl);
-        alert("Link copiado!");
+        toast.success("Link público copiado para a área de transferência!");
     };
-
 
     const filteredGifts = gifts.filter((g) => {
         const matchesSearch = g.item_name.toLowerCase().includes(giftSearch.toLowerCase()) ||
             (g.suggested_store && g.suggested_store.toLowerCase().includes(giftSearch.toLowerCase()));
         const matchesCategory = giftCategory ? g.category === giftCategory : true;
-        return matchesSearch && matchesCategory;
+        const matchesStatus = giftStatus === "all" ? true : g.status === giftStatus;
+        return matchesSearch && matchesCategory && matchesStatus;
     });
 
     const filteredGuests = guests.filter((g) =>
@@ -123,7 +119,6 @@ export default function BridalShower() {
 
     const handleEditGift = (gift: Gift) => {
         setEditingGift(gift);
-        setEditCategory(gift.category || "");
         setShowEditGift(true);
     };
 
@@ -134,6 +129,7 @@ export default function BridalShower() {
             onSuccess: () => {
                 setShowBulkCategory(false);
                 setSelectedGifts([]);
+                toast.success("Categorias atualizadas com sucesso!");
             }
         });
     };
@@ -145,6 +141,7 @@ export default function BridalShower() {
             onSuccess: () => {
                 setShowImport(false);
                 setImportGiftsText("");
+                toast.success("Presentes importados com sucesso!");
             }
         });
     };
@@ -156,39 +153,10 @@ export default function BridalShower() {
             onSuccess: () => {
                 setShowImportGuests(false);
                 setImportGuestsText("");
+                toast.success("Convidados importados com sucesso!");
             }
         });
     };
-
-    // Handler for importing selected guests from main guest list
-    const handleSelectMainGuest = (id: string, checked: boolean) => {
-        if (checked) {
-            setSelectedMainGuests(prev => [...prev, id]);
-        } else {
-            setSelectedMainGuests(prev => prev.filter(gId => gId !== id));
-        }
-    };
-
-    const handleImportFromMainSubmit = () => {
-        if (selectedMainGuests.length === 0) return;
-        const guestsToImport = mainGuests.filter(g => selectedMainGuests.includes(g.id));
-        importGuestsFromMain.mutate(guestsToImport, {
-            onSuccess: () => {
-                setShowImportFromMain(false);
-                setSelectedMainGuests([]);
-                setMainGuestSearch("");
-            }
-        });
-    };
-
-    // Filter main guests for import drawer
-    const filteredMainGuests = mainGuests.filter(g =>
-        g.name.toLowerCase().includes(mainGuestSearch.toLowerCase())
-    );
-
-    // Get already imported guest names to filter them out
-    const importedGuestNames = new Set(guests.map(g => g.name.toLowerCase()));
-    const availableMainGuests = filteredMainGuests.filter(g => !importedGuestNames.has(g.name.toLowerCase()));
 
     return (
         <div className="space-y-6 relative min-h-screen pb-24">
@@ -234,7 +202,7 @@ export default function BridalShower() {
             )}
 
             {/* Configuração Rápida */}
-            <ConfigForm config={config} updateConfig={updateConfig} />
+            <AdminConfigForm config={config} updateConfig={updateConfig} />
 
             <Tabs defaultValue="gifts" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -249,6 +217,8 @@ export default function BridalShower() {
                         onSearchChange={setGiftSearch}
                         selectedCategory={giftCategory}
                         onCategorySelect={setGiftCategory as any}
+                        selectedStatus={giftStatus}
+                        onStatusSelect={setGiftStatus}
                     />
 
                     {/* Bulk Actions Bar */}
@@ -345,160 +315,6 @@ export default function BridalShower() {
                             ))
                         )}
                     </div>
-
-                    {/* Gift Details Drawer */}
-                    <Drawer open={!!selectedGiftDetails} onOpenChange={(open) => !open && setSelectedGiftDetails(null)}>
-                        <DrawerContent className="max-h-[90vh]">
-                            {selectedGiftDetails && (
-                                <>
-                                    <DrawerHeader className="text-left border-b pb-4">
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-3 rounded-xl ${selectedGiftDetails.status === 'comprado' ? 'bg-green-100' : 'bg-stone-100'}`}>
-                                                    <GiftIcon className={`h-6 w-6 ${selectedGiftDetails.status === 'comprado' ? 'text-green-600' : 'text-stone-600'}`} />
-                                                </div>
-                                                <div>
-                                                    <DrawerTitle className="text-xl">{selectedGiftDetails.item_name}</DrawerTitle>
-                                                    <Badge
-                                                        variant={selectedGiftDetails.status === 'comprado' ? 'default' : 'secondary'}
-                                                        className={selectedGiftDetails.status === 'comprado' ? 'bg-green-500 mt-1' : 'mt-1'}
-                                                    >
-                                                        {selectedGiftDetails.status === 'comprado' ? '✓ Reservado' : 'Disponível'}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </DrawerHeader>
-
-                                    <div className="px-4 py-4 space-y-4 overflow-y-auto">
-                                        {/* Imagem */}
-                                        {selectedGiftDetails.image_url && (
-                                            <div className="rounded-xl overflow-hidden border bg-stone-50">
-                                                <img
-                                                    src={selectedGiftDetails.image_url}
-                                                    alt={selectedGiftDetails.item_name}
-                                                    className="w-full h-48 object-contain"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Informações */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {selectedGiftDetails.category && (
-                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
-                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                        <Tag className="h-4 w-4 text-stone-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Categoria</p>
-                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.category}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {selectedGiftDetails.price_range && (
-                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
-                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                        <DollarSign className="h-4 w-4 text-stone-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Faixa de Preço</p>
-                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.price_range}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {selectedGiftDetails.suggested_store && (
-                                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
-                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                        <Store className="h-4 w-4 text-stone-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Loja Sugerida</p>
-                                                        <p className="text-sm font-medium text-stone-700">{selectedGiftDetails.suggested_store}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {selectedGiftDetails.reserved_by && (
-                                                <div className="bg-green-50 rounded-xl p-3 flex items-center gap-3">
-                                                    <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                        <User className="h-4 w-4 text-green-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] text-green-600 uppercase tracking-wide">Reservado por</p>
-                                                        <p className="text-sm font-medium text-green-700">{selectedGiftDetails.reserved_by}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {selectedGiftDetails.reserved_at && (
-                                            <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
-                                                <div className="bg-white p-2 rounded-lg shadow-sm">
-                                                    <Clock className="h-4 w-4 text-stone-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-stone-400 uppercase tracking-wide">Data da Reserva</p>
-                                                    <p className="text-sm font-medium text-stone-700">
-                                                        {new Date(selectedGiftDetails.reserved_at).toLocaleString('pt-BR', {
-                                                            dateStyle: 'long',
-                                                            timeStyle: 'short'
-                                                        })}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Link */}
-                                        {selectedGiftDetails.link && (
-                                            <a
-                                                href={selectedGiftDetails.link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors"
-                                            >
-                                                <div className="bg-blue-500 p-2 rounded-lg">
-                                                    <ExternalLink className="h-5 w-5 text-white" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-blue-700">Ver na Loja</p>
-                                                    <p className="text-xs text-blue-500 truncate">{selectedGiftDetails.link}</p>
-                                                </div>
-                                            </a>
-                                        )}
-                                    </div>
-
-                                    <DrawerFooter className="border-t pt-4 flex-row gap-2">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            onClick={() => {
-                                                handleEditGift(selectedGiftDetails);
-                                                setSelectedGiftDetails(null);
-                                            }}
-                                        >
-                                            <Edit className="h-4 w-4 mr-2" /> Editar
-                                        </Button>
-                                        <Button
-                                            variant={selectedGiftDetails.status === 'comprado' ? 'outline' : 'default'}
-                                            className={`flex-1 ${selectedGiftDetails.status !== 'comprado' ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                                            onClick={() => {
-                                                toggleGiftStatus.mutate({ id: selectedGiftDetails.id, currentStatus: selectedGiftDetails.status });
-                                                setSelectedGiftDetails(null);
-                                            }}
-                                        >
-                                            {selectedGiftDetails.status === 'comprado' ? (
-                                                <><X className="h-4 w-4 mr-2" /> Disponível</>
-                                            ) : (
-                                                <><Check className="h-4 w-4 mr-2" /> Reservado</>
-                                            )}
-                                        </Button>
-                                    </DrawerFooter>
-                                </>
-                            )}
-                        </DrawerContent>
-                    </Drawer>
 
                     {!selectedGiftDetails && (
                         <div className="fixed bottom-safe-24 right-6 z-40 flex flex-col gap-3">
@@ -598,177 +414,45 @@ export default function BridalShower() {
                 </TabsContent>
             </Tabs>
 
-            {/* Modals */}
-            <AddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
-            <EditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
-            <AddGuestDrawer open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
-
-            {/* Drawer de Importação da Lista Principal */}
-            <Drawer open={showImportFromMain} onOpenChange={setShowImportFromMain}>
-                <DrawerContent className="max-h-[85vh]">
-                    <DrawerHeader className="border-b pb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 rounded-xl bg-rose-100">
-                                <Users className="h-6 w-6 text-rose-600" />
-                            </div>
-                            <div>
-                                <DrawerTitle>Importar Convidados</DrawerTitle>
-                                <DrawerDescription>
-                                    Selecione os convidados da lista principal
-                                </DrawerDescription>
-                            </div>
-                        </div>
-                    </DrawerHeader>
-
-                    <div className="p-4 space-y-4 overflow-y-auto max-h-[50vh]">
-                        {/* Search */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-                            <Input
-                                placeholder="Buscar convidado..."
-                                value={mainGuestSearch}
-                                onChange={(e) => setMainGuestSearch(e.target.value)}
-                                className="pl-10 h-11"
-                            />
-                        </div>
-
-                        {/* Selection info */}
-                        {selectedMainGuests.length > 0 && (
-                            <div className="flex items-center justify-between bg-rose-50 p-3 rounded-lg">
-                                <span className="text-sm font-medium text-rose-700">
-                                    {selectedMainGuests.length} selecionado(s)
-                                </span>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-rose-600 hover:text-rose-700"
-                                    onClick={() => setSelectedMainGuests([])}
-                                >
-                                    Limpar
-                                </Button>
-                            </div>
-                        )}
-
-                        {/* List */}
-                        {isLoadingMainGuests ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin text-stone-400" />
-                            </div>
-                        ) : availableMainGuests.length === 0 ? (
-                            <div className="text-center py-8 text-stone-500">
-                                <Users className="h-12 w-12 mx-auto mb-3 text-stone-300" />
-                                <p className="text-sm">
-                                    {mainGuests.length === 0
-                                        ? "Nenhum convidado na lista principal"
-                                        : filteredMainGuests.length === 0
-                                            ? "Nenhum resultado encontrado"
-                                            : "Todos os convidados já foram importados"}
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {/* Select all */}
-                                <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg border border-stone-200">
-                                    <Checkbox
-                                        checked={availableMainGuests.length > 0 && selectedMainGuests.length === availableMainGuests.length}
-                                        onCheckedChange={(checked) => {
-                                            if (checked) {
-                                                setSelectedMainGuests(availableMainGuests.map(g => g.id));
-                                            } else {
-                                                setSelectedMainGuests([]);
-                                            }
-                                        }}
-                                    />
-                                    <span className="text-sm font-medium text-stone-600">
-                                        Selecionar todos ({availableMainGuests.length})
-                                    </span>
-                                </div>
-
-                                {/* Guest list */}
-                                {availableMainGuests.map((guest) => (
-                                    <div
-                                        key={guest.id}
-                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${selectedMainGuests.includes(guest.id)
-                                                ? 'bg-rose-50 border-rose-200'
-                                                : 'bg-white border-stone-200 hover:bg-stone-50'
-                                            }`}
-                                        onClick={() => handleSelectMainGuest(guest.id, !selectedMainGuests.includes(guest.id))}
-                                    >
-                                        <Checkbox
-                                            checked={selectedMainGuests.includes(guest.id)}
-                                            onCheckedChange={(checked) => handleSelectMainGuest(guest.id, checked as boolean)}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm truncate">{guest.name}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                {guest.group_name && (
-                                                    <span className="text-xs text-stone-500">{guest.group_name}</span>
-                                                )}
-                                                {guest.rsvp_status === 'confirmado' && (
-                                                    <Badge className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0">
-                                                        Confirmado
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <DrawerFooter className="border-t pt-4 flex-row gap-2">
-                        <Button
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                                setShowImportFromMain(false);
-                                setSelectedMainGuests([]);
-                                setMainGuestSearch("");
-                            }}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            disabled={selectedMainGuests.length === 0 || importGuestsFromMain.isPending}
-                            className="flex-1 bg-rose-500 hover:bg-rose-600"
-                            onClick={handleImportFromMainSubmit}
-                        >
-                            {importGuestsFromMain.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <>Importar {selectedMainGuests.length > 0 && `(${selectedMainGuests.length})`}</>
-                            )}
-                        </Button>
-                    </DrawerFooter>
-                </DrawerContent>
-            </Drawer>
+            {/* Modals & Drawers */}
+            <AdminAddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
+            <AdminEditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
+            <AdminAddGuestDrawer open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
+            <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={() => setSelectedGiftDetails(null)} onEdit={handleEditGift} toggleStatus={toggleGiftStatus} />
+            
+            <AdminImportFromMainDrawer
+                open={showImportFromMain}
+                onOpenChange={setShowImportFromMain}
+                mainGuests={mainGuests}
+                currentGuests={guests}
+                isLoadingMainGuests={isLoadingMainGuests}
+                importGuestsFromMain={importGuestsFromMain}
+            />
 
             {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Importar Presentes em Massa</DialogTitle>
+                        <DialogTitle>Importar Presentes</DialogTitle>
                         <DialogDescription>
-                            Cole sua lista abaixo. Cada linha será um presente.<br />
-                            Formato: <code>Nome | Loja | Preço</code>
+                            Cole uma lista de presentes (um por linha). Se incluir preço ou loja, use vírgula. Ex: <br />
+                            Liquidificador, 150, Polishop<br />
+                            Faqueiro, Tramontina
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleImportGiftsSubmit}>
                         <div className="py-4">
                             <textarea
+                                className="w-full min-h-[150px] p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-stone-900"
+                                placeholder="Liquidificador&#10;Jogo de pratos, 200&#10;Faqueiro, Tramontina"
                                 value={importGiftsText}
                                 onChange={(e) => setImportGiftsText(e.target.value)}
-                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
-                                placeholder="Exemplo:&#10;Liquidificador | Magalu | 150&#10;Jogo de Panelas | Tramontina&#10;Toalha de Banho"
-                                required
                             />
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
                             <Button type="submit" disabled={importGifts.isPending}>
-                                {importGifts.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                                {importGifts.isPending ? "Importando..." : "Importar Lista"}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -779,26 +463,26 @@ export default function BridalShower() {
             <Dialog open={showImportGuests} onOpenChange={setShowImportGuests}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Importar Convidados em Massa</DialogTitle>
+                        <DialogTitle>Importar Convidados</DialogTitle>
                         <DialogDescription>
-                            Cole sua lista de nomes abaixo. Cada linha será um convidado.<br />
-                            Opcional: <code>Nome | Telefone</code>
+                            Cole uma lista de nomes (um por linha). Ex: <br />
+                            João Silva<br />
+                            Maria Costa, 11999999999
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleImportGuestsSubmit}>
                         <div className="py-4">
                             <textarea
+                                className="w-full min-h-[150px] p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                placeholder="João Silva&#10;Maria Costa, 11999999999"
                                 value={importGuestsText}
                                 onChange={(e) => setImportGuestsText(e.target.value)}
-                                className="w-full h-48 p-3 text-sm border rounded-md font-mono"
-                                placeholder="Exemplo:&#10;João Silva&#10;Maria Souza | 11999999999&#10;Pedro"
-                                required
                             />
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={importGuests.isPending}>
-                                {importGuests.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Importar Lista"}
+                            <Button type="submit" disabled={importGuests.isPending} className="bg-rose-500 hover:bg-rose-600">
+                                {importGuests.isPending ? "Importando..." : "Importar Lista"}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -835,620 +519,5 @@ export default function BridalShower() {
                 </DialogContent>
             </Dialog>
         </div>
-    );
-}
-
-// --- SUB-COMPONENTS ---
-
-function ConfigForm({ config, updateConfig }: { config: any, updateConfig: any }) {
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return "";
-        return new Date(dateString).toISOString().slice(0, 16);
-    };
-
-    const form = useForm<UpdateConfigInput>({
-        resolver: zodResolver(UpdateConfigSchema),
-        defaultValues: {
-            date: formatDate(config?.bridal_shower_date),
-            location: config?.bridal_shower_location || "",
-            address_1: config?.bridal_shower_address_1 || "",
-            map_link_1: config?.bridal_shower_map_link_1 || "",
-            date_2: formatDate(config?.bridal_shower_date_2),
-            location_2: config?.bridal_shower_location_2 || "",
-            address_2: config?.bridal_shower_address_2 || "",
-            map_link_2: config?.bridal_shower_map_link_2 || "",
-            hero_url: config?.bridal_shower_hero_url || "",
-            pix_key: config?.pix_key || "",
-            contact_phone_gabriel: config?.contact_phone_gabriel || "",
-            contact_phone_raabe: config?.contact_phone_raabe || ""
-        }
-    });
-
-    // Sincronizar formulário quando config for recarregado
-    useEffect(() => {
-        if (config) {
-            form.reset({
-                date: formatDate(config.bridal_shower_date),
-                location: config.bridal_shower_location || "",
-                address_1: config.bridal_shower_address_1 || "",
-                map_link_1: config.bridal_shower_map_link_1 || "",
-                date_2: formatDate(config.bridal_shower_date_2),
-                location_2: config.bridal_shower_location_2 || "",
-                address_2: config.bridal_shower_address_2 || "",
-                map_link_2: config.bridal_shower_map_link_2 || "",
-                hero_url: config.bridal_shower_hero_url || "",
-                pix_key: config.pix_key || "",
-                contact_phone_gabriel: config.contact_phone_gabriel || "",
-                contact_phone_raabe: config.contact_phone_raabe || ""
-            });
-        }
-    }, [config, form]);
-
-    const onSubmit = (data: UpdateConfigInput) => {
-        if (!config) return;
-        updateConfig.mutate({ id: config.id, updates: data });
-    };
-
-    return (
-        <Card className="bg-stone-50 border-stone-200">
-            <CardContent className="p-4">
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <Tabs defaultValue="local1" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="local1">Local 1</TabsTrigger>
-                                <TabsTrigger value="local2">Local 2</TabsTrigger>
-                                <TabsTrigger value="contato">Contato</TabsTrigger>
-                                <TabsTrigger value="geral">Geral</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="local1" className="space-y-3 mt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="date"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>Data e Hora (Local 1)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="datetime-local" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="location"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>Nome do Local 1</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Ex: Salão de Festas A" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="address_1"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem className="col-span-full">
-                                                <FormLabel>Endereço Completo (Local 1)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Rua, Número, Bairro, Cidade" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="map_link_1"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem className="col-span-full">
-                                                <FormLabel>Link do Google Maps (Local 1)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="https://maps.google.com/..." className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="local2" className="space-y-3 mt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="date_2"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>Data e Hora (Local 2)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="datetime-local" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="location_2"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>Nome do Local 2</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Ex: Casa da Mãe" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="address_2"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem className="col-span-full">
-                                                <FormLabel>Endereço Completo (Local 2)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Rua, Número, Bairro, Cidade" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="map_link_2"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem className="col-span-full">
-                                                <FormLabel>Link do Google Maps (Local 2)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="https://maps.google.com/..." className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="contato" className="space-y-3 mt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="contact_phone_gabriel"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>WhatsApp Gabriel</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="5511999999999" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="contact_phone_raabe"
-                                        render={({ field }: { field: any }) => (
-                                            <FormItem>
-                                                <FormLabel>WhatsApp Raabe</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="5511999999999" className="bg-white" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="geral" className="space-y-3 mt-4">
-                                <FormField
-                                    control={form.control}
-                                    name="hero_url"
-                                    render={({ field }: { field: any }) => (
-                                        <FormItem>
-                                            <FormLabel>URL da Imagem de Fundo (Hero)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="https://..." className="bg-white" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="pix_key"
-                                    render={({ field }: { field: any }) => (
-                                        <FormItem>
-                                            <FormLabel>Chave Pix</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="CPF, Email ou Aleatória" className="bg-white" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </TabsContent>
-                        </Tabs>
-
-                        <Button type="submit" size="sm" className="w-full mt-4 bg-stone-900 hover:bg-stone-800" disabled={updateConfig.isPending}>
-                            {updateConfig.isPending ? "Salvando..." : "Salvar Configurações"}
-                        </Button>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
-    );
-}
-
-function AddGiftDrawer({ open, onOpenChange, createGift }: { open: boolean, onOpenChange: (open: boolean) => void, createGift: any }) {
-    const form = useForm<CreateGiftInput>({
-        resolver: zodResolver(CreateGiftSchema),
-        defaultValues: {
-            item_name: "",
-            category: "Outros",
-            suggested_store: "",
-            price_range: "",
-            link: "",
-            image_url: ""
-        }
-    });
-
-    const onSubmit = (data: CreateGiftInput) => {
-        createGift.mutate(data, {
-            onSuccess: () => {
-                onOpenChange(false);
-                form.reset();
-            }
-        });
-    };
-
-    return (
-        <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent className="max-h-[90vh]">
-                <DrawerHeader className="text-left border-b pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-xl bg-stone-100">
-                            <GiftIcon className="h-6 w-6 text-stone-600" />
-                        </div>
-                        <div>
-                            <DrawerTitle className="text-xl">Adicionar Presente</DrawerTitle>
-                            <DrawerDescription>Adicione um novo item à lista</DrawerDescription>
-                        </div>
-                    </div>
-                </DrawerHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4 overflow-y-auto">
-                        <FormField
-                            control={form.control}
-                            name="item_name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Nome do Item</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Ex: Liquidificador" className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Categoria</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue placeholder="Selecione" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {GIFT_CATEGORIES.map(cat => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField
-                                control={form.control}
-                                name="suggested_store"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <FormLabel>Loja</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Opcional" className="h-11" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="price_range"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <FormLabel>Preço</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Ex: R$ 100" className="h-11" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <FormField
-                            control={form.control}
-                            name="link"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Link do Produto</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="https://..." className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="image_url"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>URL da Imagem</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Opcional" className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
-                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={createGift.isPending} className="flex-1 bg-stone-900 hover:bg-stone-800">
-                                {createGift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
-                            </Button>
-                        </DrawerFooter>
-                    </form>
-                </Form>
-            </DrawerContent>
-        </Drawer>
-    );
-}
-
-function EditGiftDrawer({ open, onOpenChange, gift, updateGift }: { open: boolean, onOpenChange: (open: boolean) => void, gift: Gift | null, updateGift: any }) {
-    const form = useForm<UpdateGiftInput>({
-        resolver: zodResolver(UpdateGiftSchema),
-        defaultValues: {
-            id: gift?.id || "",
-            item_name: gift?.item_name || "",
-            category: (gift?.category as any) || "Outros",
-            suggested_store: gift?.suggested_store || "",
-            price_range: gift?.price_range || "",
-            link: gift?.link || "",
-            image_url: gift?.image_url || ""
-        }
-    });
-
-    // Update form values when gift changes
-    if (gift && form.getValues("id") !== gift.id) {
-        form.reset({
-            id: gift.id,
-            item_name: gift.item_name,
-            category: (gift.category as any) || "Outros",
-            suggested_store: gift.suggested_store || "",
-            price_range: gift.price_range || "",
-            link: gift.link || "",
-            image_url: gift.image_url || ""
-        });
-    }
-
-    const onSubmit = (data: UpdateGiftInput) => {
-        updateGift.mutate(data, {
-            onSuccess: () => {
-                onOpenChange(false);
-            }
-        });
-    };
-
-    return (
-        <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent className="max-h-[90vh]">
-                <DrawerHeader className="text-left border-b pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-xl bg-blue-100">
-                            <Edit className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                            <DrawerTitle className="text-xl">Editar Presente</DrawerTitle>
-                            <DrawerDescription>{gift?.item_name}</DrawerDescription>
-                        </div>
-                    </div>
-                </DrawerHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4 overflow-y-auto">
-                        <FormField
-                            control={form.control}
-                            name="item_name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Nome do Item</FormLabel>
-                                    <FormControl>
-                                        <Input className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Categoria</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {GIFT_CATEGORIES.map(cat => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid grid-cols-2 gap-3">
-                            <FormField
-                                control={form.control}
-                                name="suggested_store"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <FormLabel>Loja</FormLabel>
-                                        <FormControl>
-                                            <Input className="h-11" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="price_range"
-                                render={({ field }: { field: any }) => (
-                                    <FormItem>
-                                        <FormLabel>Preço</FormLabel>
-                                        <FormControl>
-                                            <Input className="h-11" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <FormField
-                            control={form.control}
-                            name="link"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Link do Produto</FormLabel>
-                                    <FormControl>
-                                        <Input className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="image_url"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>URL da Imagem</FormLabel>
-                                    <FormControl>
-                                        <Input className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
-                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={updateGift.isPending} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                                {updateGift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
-                            </Button>
-                        </DrawerFooter>
-                    </form>
-                </Form>
-            </DrawerContent>
-        </Drawer>
-    );
-}
-
-function AddGuestDrawer({ open, onOpenChange, createGuest }: { open: boolean, onOpenChange: (open: boolean) => void, createGuest: any }) {
-    const form = useForm<CreateGuestInput>({
-        resolver: zodResolver(CreateGuestSchema),
-        defaultValues: {
-            name: "",
-            phone: ""
-        }
-    });
-
-    const onSubmit = (data: CreateGuestInput) => {
-        createGuest.mutate(data, {
-            onSuccess: () => {
-                onOpenChange(false);
-                form.reset();
-            }
-        });
-    };
-
-    return (
-        <Drawer open={open} onOpenChange={onOpenChange}>
-            <DrawerContent>
-                <DrawerHeader className="text-left border-b pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-xl bg-rose-100">
-                            <User className="h-6 w-6 text-rose-600" />
-                        </div>
-                        <div>
-                            <DrawerTitle className="text-xl">Adicionar Convidado</DrawerTitle>
-                            <DrawerDescription>Adicione um novo convidado à lista</DrawerDescription>
-                        </div>
-                    </div>
-                </DrawerHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="px-4 py-4 space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Nome</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Nome completo" className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="phone"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Telefone</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Opcional" className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
-                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={createGuest.isPending} className="flex-1 bg-rose-500 hover:bg-rose-600">
-                                {createGuest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
-                            </Button>
-                        </DrawerFooter>
-                    </form>
-                </Form>
-            </DrawerContent>
-        </Drawer>
     );
 }
