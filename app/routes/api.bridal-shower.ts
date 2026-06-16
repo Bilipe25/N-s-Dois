@@ -77,6 +77,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     try {
         if (method === "POST") {
+            // Se for upload de imagem, tratamos como formData
+            if (intent === "upload_gift_image") {
+                const formData = await request.formData();
+                const photo = formData.get("photo") as File | null;
+
+                if (!photo || photo.size === 0 || photo.name === "undefined") {
+                    throw new Error("Nenhum arquivo enviado");
+                }
+
+                const fileExt = photo.name.split('.').pop();
+                const fileName = `gift_${Date.now()}.${fileExt}`;
+
+                const arrayBuffer = await photo.arrayBuffer();
+                const fileBuffer = Buffer.from(arrayBuffer);
+
+                const { error: uploadError } = await supabase.storage
+                    .from("images")
+                    .upload(fileName, fileBuffer, {
+                        contentType: photo.type,
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data } = supabase.storage.from("images").getPublicUrl(fileName);
+                return { success: true, photo_url: data.publicUrl };
+            }
+
             const jsonData = await request.json();
 
             if (intent === "create_gift") {
