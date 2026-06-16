@@ -5,7 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
+  useRouteLoaderData,
 } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -13,6 +13,33 @@ import { useEffect, useState } from "react";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { Toaster } from "@/components/ui/sonner";
+
+function getTrustedLogoUrl(value: unknown, supabaseUrl?: string) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  if (value.startsWith("/")) {
+    return value;
+  }
+
+  try {
+    const logoUrl = new URL(value);
+    const configuredSupabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : null;
+
+    if (
+      configuredSupabaseOrigin &&
+      logoUrl.hostname.endsWith(".supabase.co") &&
+      logoUrl.origin !== configuredSupabaseOrigin
+    ) {
+      return null;
+    }
+
+    return logoUrl.href;
+  } catch {
+    return null;
+  }
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -55,7 +82,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0 && data[0].logo_url) {
-          logoUrl = data[0].logo_url;
+          logoUrl = getTrustedLogoUrl(data[0].logo_url, supabaseUrl) || logoUrl;
         }
       }
     } catch (e) {
@@ -75,7 +102,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const data = useLoaderData<typeof loader>();
+  // useRouteLoaderData retorna undefined (em vez de lançar erro) quando os dados
+  // do loader não estão disponíveis — ex: quando o Layout envolve o ErrorBoundary.
+  const data = useRouteLoaderData("root") as
+    | { logoUrl: string; ENV: Record<string, string | undefined> }
+    | undefined;
   const clientEnv = JSON.stringify(data?.ENV ?? {}).replace(/</g, "\\u003c");
 
   return (

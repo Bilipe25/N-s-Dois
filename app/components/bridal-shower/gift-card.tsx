@@ -13,12 +13,14 @@ export function GiftCard({ gift, onSelect }: GiftCardProps) {
     const isReserved = gift.status === 'comprado';
 
     return (
-        <Card className={`overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-md border-stone-200 ${isReserved ? 'opacity-75 grayscale-[0.5]' : 'bg-white'}`}>
+        <Card className={`overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-[0.98] border-stone-200 ${isReserved ? 'opacity-75 grayscale-[0.5]' : 'bg-white'}`}>
             {gift.image_url && (
                 <div className="h-48 w-full overflow-hidden bg-stone-100 relative">
                     <img
                         src={gift.image_url}
                         alt={gift.item_name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     />
                     {isReserved && (
@@ -64,7 +66,7 @@ export function GiftCard({ gift, onSelect }: GiftCardProps) {
                         href={gift.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mb-3 transition-colors"
+                        className="text-xs text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 mb-3 transition-colors"
                     >
                         <ExternalLink className="h-3 w-3" /> Ver sugestão na loja
                     </a>
