@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Link as LinkIcon, ExternalLink, X, Upload, MoreVertical, Edit, Check, Users } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, ExternalLink, X, Upload, Download, MoreVertical, Edit, Check, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -156,6 +156,49 @@ export default function BridalShower() {
                 toast.success("Convidados importados com sucesso!");
             }
         });
+    };
+
+    const exportGiftsToCSV = () => {
+        const headers = ["Nome", "Categoria", "Faixa de Preço", "Status", "Reservado Por", "Data da Reserva"];
+        const rows = gifts.map(g => [
+            `"${g.item_name.replace(/"/g, '""')}"`,
+            `"${g.category || ''}"`,
+            `"${g.price_range || ''}"`,
+            `"${g.status}"`,
+            `"${g.reserved_by || ''}"`,
+            `"${g.reserved_at ? new Date(g.reserved_at).toLocaleDateString('pt-BR') : ''}"`
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
+            [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "presentes-cha-casa-nova.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportGuestsToCSV = () => {
+        const headers = ["Nome", "Telefone", "Confirmado"];
+        const rows = guests.map(g => [
+            `"${g.name.replace(/"/g, '""')}"`,
+            `"${g.phone || ''}"`,
+            `"${g.confirmed ? 'Sim' : 'Não'}"`
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
+            [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "convidados-cha-casa-nova.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -319,6 +362,15 @@ export default function BridalShower() {
                     {!selectedGiftDetails && (
                         <div className="fixed bottom-safe-24 right-6 z-40 flex flex-col gap-3">
                             <Button
+                                onClick={exportGiftsToCSV}
+                                size="icon"
+                                variant="secondary"
+                                className="h-10 w-10 rounded-full shadow-md"
+                                title="Exportar Relatório CSV"
+                            >
+                                <Download className="h-5 w-5" />
+                            </Button>
+                            <Button
                                 onClick={() => setShowImport(true)}
                                 size="icon"
                                 variant="secondary"
@@ -393,6 +445,15 @@ export default function BridalShower() {
                             title="Importar da Lista Principal"
                         >
                             <Users className="h-5 w-5" />
+                        </Button>
+                        <Button
+                            onClick={exportGuestsToCSV}
+                            size="icon"
+                            variant="secondary"
+                            className="h-10 w-10 rounded-full shadow-md"
+                            title="Exportar Relatório CSV"
+                        >
+                            <Download className="h-5 w-5" />
                         </Button>
                         <Button
                             onClick={() => setShowImportGuests(true)}

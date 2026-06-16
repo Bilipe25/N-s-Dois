@@ -6,8 +6,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
 import { Loader2, Edit } from "lucide-react";
+import { useState, useEffect } from "react";
 import { UpdateGiftSchema, type UpdateGiftInput, GIFT_CATEGORIES, type Gift } from "@/schemas/bridal-shower";
-import { useEffect } from "react";
 
 interface AdminEditGiftDrawerProps {
     open: boolean;
@@ -17,6 +17,8 @@ interface AdminEditGiftDrawerProps {
 }
 
 export function AdminEditGiftDrawer({ open, onOpenChange, gift, updateGift }: AdminEditGiftDrawerProps) {
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const form = useForm<UpdateGiftInput>({
         resolver: zodResolver(UpdateGiftSchema),
         defaultValues: {
@@ -44,12 +46,42 @@ export function AdminEditGiftDrawer({ open, onOpenChange, gift, updateGift }: Ad
         }
     }, [gift, form]);
 
-    const onSubmit = (data: UpdateGiftInput) => {
-        updateGift.mutate(data, {
-            onSuccess: () => {
-                onOpenChange(false);
+    const onSubmit = async (data: UpdateGiftInput) => {
+        let finalImageUrl = data.image_url;
+
+        if (selectedFile) {
+            setIsUploading(true);
+            try {
+                const formData = new FormData();
+                formData.append("photo", selectedFile);
+                
+                const response = await fetch("/api/bridal-shower?intent=upload_gift_image", {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.photo_url) {
+                        finalImageUrl = result.photo_url;
+                    }
+                }
+            } catch (error) {
+                console.error("Erro no upload", error);
+            } finally {
+                setIsUploading(false);
             }
-        });
+        }
+
+        updateGift.mutate(
+            { ...data, image_url: finalImageUrl },
+            {
+                onSuccess: () => {
+                    onOpenChange(false);
+                    setSelectedFile(null);
+                }
+            }
+        );
     };
 
     return (
@@ -144,23 +176,46 @@ export function AdminEditGiftDrawer({ open, onOpenChange, gift, updateGift }: Ad
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="image_url"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>URL da Imagem</FormLabel>
-                                    <FormControl>
-                                        <Input className="h-11" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <div className="space-y-2">
+                            <FormLabel>Imagem do Presente (Upload ou URL)</FormLabel>
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="h-11 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setSelectedFile(e.target.files[0]);
+                                            form.setValue("image_url", ""); // Limpa a URL manual se escolher arquivo
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name="image_url"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input 
+                                                placeholder="Ou cole uma URL (http://...)" 
+                                                className="h-11" 
+                                                {...field} 
+                                                onChange={(e) => {
+                                                    field.onChange(e);
+                                                    if (e.target.value) setSelectedFile(null); // Limpa arquivo se digitar URL
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                         <DrawerFooter className="flex-row gap-2 px-0 pt-4 border-t">
-                            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={updateGift.isPending} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                                {updateGift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
+                            <Button type="button" variant="outline" className="flex-1" onClick={() => { onOpenChange(false); setSelectedFile(null); }}>Cancelar</Button>
+                            <Button type="submit" disabled={updateGift.isPending || isUploading} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                {updateGift.isPending || isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar"}
                             </Button>
                         </DrawerFooter>
                     </form>
