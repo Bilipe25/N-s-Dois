@@ -55,6 +55,22 @@ export const useMainGuests = () => {
     });
 };
 
+// Server-side guest search for autocomplete (privacy-safe)
+export const useSearchBridalGuests = (query: string) => {
+    return useQuery({
+        queryKey: ["bridal_guests_search", query],
+        queryFn: async () => {
+            if (query.length < 2) return [];
+            const response = await fetch(`/api/bridal-shower-search-guests?q=${encodeURIComponent(query)}`);
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.guests as { id: string; name: string; confirmed: boolean }[];
+        },
+        enabled: query.length >= 2,
+        staleTime: 30 * 1000,
+    });
+};
+
 // --- MUTATIONS (PUBLIC) ---
 
 export const useReserveGift = () => {

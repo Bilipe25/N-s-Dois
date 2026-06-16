@@ -61,7 +61,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (configError) throw data({ error: configError.message }, { status: 500 });
 
-    return { gifts, guests, config };
+    // Non-admin users get empty guests for privacy.
+    // The public page uses /api/bridal-shower-search-guests for autocomplete.
+    return { gifts, guests: isAdmin ? guests : [], config };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
