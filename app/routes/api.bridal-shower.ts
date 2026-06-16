@@ -35,7 +35,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             "pix_key",
             "contact_phone_gabriel",
             "contact_phone_raabe",
-            "bridal_shower_show_links"
+            "bridal_shower_show_links",
+            "bridal_shower_show_prices"
         ].join(", ");
 
     // Fetch Gifts
@@ -171,7 +172,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                     pix_key: parsedData.pix_key,
                     contact_phone_gabriel: parsedData.contact_phone_gabriel,
                     contact_phone_raabe: parsedData.contact_phone_raabe,
-                    bridal_shower_show_links: parsedData.show_links
+                    bridal_shower_show_links: parsedData.show_links,
+                    bridal_shower_show_prices: parsedData.show_prices
                 }).eq("id", id);
                 if (error) throw error;
                 return { success: true };

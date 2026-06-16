@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, X } from "lucide-react";
 import { GIFT_CATEGORIES } from "@/schemas/bridal-shower";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GiftFilterProps {
     searchTerm: string;
@@ -11,6 +12,8 @@ interface GiftFilterProps {
     onCategorySelect: (category: string | null) => void;
     selectedStatus?: "all" | "disponivel" | "comprado";
     onStatusSelect?: (status: "all" | "disponivel" | "comprado") => void;
+    selectedPriceRange?: string;
+    onPriceRangeSelect?: (range: string) => void;
 }
 
 export function GiftFilter({
@@ -19,7 +22,9 @@ export function GiftFilter({
     selectedCategory,
     onCategorySelect,
     selectedStatus,
-    onStatusSelect
+    onStatusSelect,
+    selectedPriceRange,
+    onPriceRangeSelect
 }: GiftFilterProps) {
     return (
         <div className="space-y-2">
@@ -43,6 +48,22 @@ export function GiftFilter({
                         </Button>
                     )}
                 </div>
+
+                {onPriceRangeSelect && (
+                    <div className="w-full sm:w-[180px]">
+                        <Select value={selectedPriceRange || "all"} onValueChange={(val) => onPriceRangeSelect(val === "all" ? "" : val)}>
+                            <SelectTrigger className="h-10 bg-white">
+                                <SelectValue placeholder="Faixa de Preço" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos os Preços</SelectItem>
+                                <SelectItem value="0-100">Até R$ 100</SelectItem>
+                                <SelectItem value="100-300">R$ 100 a R$ 300</SelectItem>
+                                <SelectItem value="300-999999">Acima de R$ 300</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
 
                 {onStatusSelect && (
                     <div className="flex bg-stone-100/50 p-1 rounded-lg border border-stone-200">
