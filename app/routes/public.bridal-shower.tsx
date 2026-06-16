@@ -9,7 +9,6 @@ import { HeroSection } from "@/components/bridal-shower/hero-section";
 import { LocationsSection } from "@/components/bridal-shower/locations-section";
 import { ColorPaletteSection } from "@/components/bridal-shower/color-palette-section";
 import { ContactSection } from "@/components/bridal-shower/contact-section";
-import { ReservedGiftsSection } from "@/components/bridal-shower/reserved-gifts-section";
 import { ConfirmPresenceModal } from "@/components/bridal-shower/confirm-presence-modal";
 import { ReserveGiftModal } from "@/components/bridal-shower/reserve-gift-modal";
 import { GiftProgressBar } from "@/components/bridal-shower/gift-progress-bar";
@@ -175,9 +174,8 @@ export default function PublicBridalShower() {
     };
 
     // Gift filtering
-    const availableGifts = gifts.filter((g) => g.status !== 'comprado');
     const reservedGifts = gifts.filter((g) => g.status === 'comprado');
-    const filteredGifts = availableGifts.filter((g) => {
+    const filteredGifts = gifts.filter((g) => {
         const matchesSearch = g.item_name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory ? g.category === selectedCategory : true;
         
@@ -317,7 +315,6 @@ export default function PublicBridalShower() {
                 </section>
 
                 <ContactSection config={config} />
-                <ReservedGiftsSection gifts={reservedGifts} />
             </main>
 
             {/* Footer */}

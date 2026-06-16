@@ -90,7 +90,7 @@ export function GiftCard({ gift, onSelect, showLinks = true, showPrices = true }
                         variant={isReserved ? "ghost" : "secondary"}
                     >
                         {isReserved ? (
-                            <span className="truncate">Por {gift.reserved_by?.split(' ')[0]}</span>
+                            <span className="truncate">Reservado</span>
                         ) : (
                             <span className="flex items-center gap-1.5">
                                 <Gift className="h-3.5 w-3.5" /> Presentear
