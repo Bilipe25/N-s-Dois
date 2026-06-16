@@ -273,6 +273,7 @@ export default function PublicBridalShower() {
                                         <GiftCard
                                             gift={gift}
                                             onSelect={setSelectedGift}
+                                            showLinks={config?.bridal_shower_show_links ?? true}
                                         />
                                     </motion.div>
                                 ))}

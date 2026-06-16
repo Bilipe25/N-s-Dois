@@ -50,7 +50,8 @@ export const ConfigSchema = z.object({
     bridal_shower_hero_url: z.string().nullable().optional(),
     pix_key: z.string().nullable().optional(),
     contact_phone_gabriel: z.string().nullable().optional(),
-    contact_phone_raabe: z.string().nullable().optional()
+    contact_phone_raabe: z.string().nullable().optional(),
+    bridal_shower_show_links: z.boolean().nullable().optional()
 });
 
 // --- INPUT SCHEMAS (MUTATIONS) ---
@@ -97,7 +98,8 @@ export const UpdateConfigSchema = z.object({
     hero_url: z.string().optional(),
     pix_key: z.string().optional(),
     contact_phone_gabriel: z.string().optional(),
-    contact_phone_raabe: z.string().optional()
+    contact_phone_raabe: z.string().optional(),
+    show_links: z.boolean().optional()
 });
 
 export const BulkUpdateCategorySchema = z.object({
