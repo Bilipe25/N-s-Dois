@@ -225,7 +225,7 @@ export default function PublicBridalShower() {
             />
 
             {/* Main Content */}
-            <main className="max-w-5xl mx-auto p-4 space-y-16 -mt-10 relative z-10">
+            <main className="max-w-5xl mx-auto p-4 space-y-16 -mt-10 relative z-10 pb-32">
                 <Countdown targetDate={config?.bridal_shower_date} />
                 <LocationsSection config={config} />
                 <ColorPaletteSection />
@@ -239,7 +239,7 @@ export default function PublicBridalShower() {
 
                     <GiftProgressBar total={gifts.length} reserved={reservedGifts.length} />
 
-                    <div className="sticky top-0 z-40 bg-stone-50/95 backdrop-blur-sm py-4 -mx-4 px-4 border-b border-stone-100/50">
+                    <div className="sticky top-0 z-40 bg-stone-50/85 backdrop-blur-md py-2 -mx-4 px-4 border-b border-stone-200/50">
                         <GiftFilter
                             searchTerm={searchTerm}
                             onSearchChange={setSearchTerm}
@@ -248,7 +248,7 @@ export default function PublicBridalShower() {
                         />
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                         {filteredGifts.length === 0 ? (
                             <div className="col-span-full text-center py-16 px-4">
                                 <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-sm">

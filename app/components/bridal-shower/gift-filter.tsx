@@ -22,8 +22,8 @@ export function GiftFilter({
     onStatusSelect
 }: GiftFilterProps) {
     return (
-        <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
+        <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -80,7 +80,7 @@ export function GiftFilter({
                         variant={selectedCategory === null ? "default" : "outline"}
                         size="sm"
                         onClick={() => onCategorySelect(null)}
-                        className="rounded-full"
+                        className={`rounded-full ${selectedCategory === null ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
                     >
                         Todas Categorias
                     </Button>
@@ -90,7 +90,7 @@ export function GiftFilter({
                             variant={selectedCategory === category ? "default" : "outline"}
                             size="sm"
                             onClick={() => onCategorySelect(category)}
-                            className="rounded-full bg-white"
+                            className={`rounded-full ${selectedCategory === category ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
                         >
                             {category}
                         </Button>
