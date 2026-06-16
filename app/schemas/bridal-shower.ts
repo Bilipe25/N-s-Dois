@@ -51,7 +51,8 @@ export const ConfigSchema = z.object({
     pix_key: z.string().nullable().optional(),
     contact_phone_gabriel: z.string().nullable().optional(),
     contact_phone_raabe: z.string().nullable().optional(),
-    bridal_shower_show_links: z.boolean().nullable().optional()
+    bridal_shower_show_links: z.boolean().nullable().optional(),
+    bridal_shower_show_prices: z.boolean().nullable().optional()
 });
 
 // --- INPUT SCHEMAS (MUTATIONS) ---
@@ -99,7 +100,8 @@ export const UpdateConfigSchema = z.object({
     pix_key: z.string().optional(),
     contact_phone_gabriel: z.string().optional(),
     contact_phone_raabe: z.string().optional(),
-    show_links: z.boolean().optional()
+    show_links: z.boolean().optional(),
+    show_prices: z.boolean().optional()
 });
 
 export const BulkUpdateCategorySchema = z.object({

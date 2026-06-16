@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, Search } from "lucide-react";
+import { ChevronUp, PackageSearch } from "lucide-react";
 import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
@@ -96,25 +96,18 @@ function LoadingSkeleton() {
             </div>
             {/* Skeleton Content */}
             <div className="max-w-5xl mx-auto p-4 space-y-8 -mt-10">
-                <div className="grid gap-6 md:grid-cols-2">
-                    <div className="bg-white rounded-3xl p-8 h-64 animate-pulse">
-                        <div className="h-12 w-12 bg-stone-200 rounded-2xl mx-auto mb-4" />
-                        <div className="h-6 w-32 bg-stone-200 rounded mx-auto mb-2" />
-                        <div className="h-4 w-48 bg-stone-200 rounded mx-auto" />
-                    </div>
-                    <div className="bg-white rounded-3xl p-8 h-64 animate-pulse">
-                        <div className="h-12 w-12 bg-stone-200 rounded-2xl mx-auto mb-4" />
-                        <div className="h-6 w-32 bg-stone-200 rounded mx-auto mb-2" />
-                        <div className="h-4 w-48 bg-stone-200 rounded mx-auto" />
-                    </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="h-6 w-48 bg-stone-200 rounded mx-auto mb-8 animate-pulse" />
+                <div className="h-10 w-full bg-stone-200 rounded animate-pulse" />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                     {[1, 2, 3, 4, 5, 6].map(i => (
-                        <div key={i} className="bg-white rounded-2xl h-80 animate-pulse">
-                            <div className="h-48 bg-stone-200 rounded-t-2xl" />
-                            <div className="p-4 space-y-2">
-                                <div className="h-4 w-24 bg-stone-200 rounded" />
-                                <div className="h-6 w-full bg-stone-200 rounded" />
+                        <div key={i} className="bg-white rounded-xl h-28 animate-pulse border border-stone-100 flex items-stretch overflow-hidden">
+                            <div className="w-28 shrink-0 bg-stone-100" />
+                            <div className="p-3 flex flex-col justify-between flex-1">
+                                <div>
+                                    <div className="h-2 w-16 bg-stone-200 rounded mb-2" />
+                                    <div className="h-4 w-3/4 bg-stone-200 rounded" />
+                                </div>
+                                <div className="h-8 w-24 bg-stone-200 rounded-full mt-2" />
                             </div>
                         </div>
                     ))}
@@ -135,6 +128,7 @@ export default function PublicBridalShower() {
     const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [priceRange, setPriceRange] = useState<string>("");
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showPixModal, setShowPixModal] = useState(false);
     const [showScrollTop, setShowScrollTop] = useState(false);
@@ -186,7 +180,28 @@ export default function PublicBridalShower() {
     const filteredGifts = availableGifts.filter((g) => {
         const matchesSearch = g.item_name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = selectedCategory ? g.category === selectedCategory : true;
-        return matchesSearch && matchesCategory;
+        
+        let matchesPrice = true;
+        if (priceRange) {
+            const [minStr, maxStr] = priceRange.split("-");
+            const min = parseInt(minStr);
+            const max = parseInt(maxStr);
+            
+            if (!g.price_range) {
+                matchesPrice = false;
+            } else {
+                const numbers = g.price_range.match(/\d+/g);
+                if (numbers && numbers.length > 0) {
+                    const maxPriceStr = numbers[numbers.length - 1];
+                    const priceVal = parseInt(maxPriceStr, 10);
+                    matchesPrice = priceVal >= min && priceVal <= max;
+                } else {
+                    matchesPrice = false;
+                }
+            }
+        }
+
+        return matchesSearch && matchesCategory && matchesPrice;
     });
 
     if (isLoading) return <LoadingSkeleton />;
@@ -245,19 +260,37 @@ export default function PublicBridalShower() {
                             onSearchChange={setSearchTerm}
                             selectedCategory={selectedCategory}
                             onCategorySelect={setSelectedCategory}
+                            selectedPriceRange={(config?.bridal_shower_show_prices ?? true) ? priceRange : undefined}
+                            onPriceRangeSelect={(config?.bridal_shower_show_prices ?? true) ? setPriceRange : undefined}
                         />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                         {filteredGifts.length === 0 ? (
-                            <div className="col-span-full text-center py-16 px-4">
-                                <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-sm">
-                                    <Search className="h-10 w-10 text-stone-300" />
+                            <div className="col-span-full text-center py-16 px-4 bg-white rounded-2xl border border-stone-100 shadow-sm mt-4">
+                                <div className="bg-rose-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                    <PackageSearch className="h-10 w-10 text-rose-300" />
                                 </div>
-                                <h3 className="text-stone-900 font-medium text-lg mb-2">Nenhum presente encontrado</h3>
-                                <p className="text-stone-500">
-                                    {searchTerm ? "Tente buscar por outro termo." : "A lista de presentes está sendo preparada."}
+                                <h3 className="text-stone-900 font-medium text-lg mb-2">Poxa, não encontramos esse presente!</h3>
+                                <p className="text-stone-500 mb-6 max-w-md mx-auto">
+                                    {searchTerm || priceRange || selectedCategory ? "Tente buscar por outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}
                                 </p>
+                                <div className="flex flex-col sm:flex-row justify-center gap-3">
+                                    {(searchTerm || selectedCategory || priceRange) && (
+                                        <Button variant="outline" onClick={() => {
+                                            setSearchTerm("");
+                                            setSelectedCategory(null);
+                                            setPriceRange("");
+                                        }}>
+                                            Limpar Filtros
+                                        </Button>
+                                    )}
+                                    {(config?.contact_phone_gabriel || config?.contact_phone_raabe) && (
+                                        <Button onClick={() => window.open(`https://wa.me/55${config.contact_phone_gabriel?.replace(/\D/g, '') || config.contact_phone_raabe?.replace(/\D/g, '') || ''}`, '_blank')} className="bg-green-500 hover:bg-green-600">
+                                            Sugerir no WhatsApp
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         ) : (
                             <AnimatePresence mode="popLayout">
@@ -274,6 +307,7 @@ export default function PublicBridalShower() {
                                             gift={gift}
                                             onSelect={setSelectedGift}
                                             showLinks={config?.bridal_shower_show_links ?? true}
+                                            showPrices={config?.bridal_shower_show_prices ?? true}
                                         />
                                     </motion.div>
                                 ))}

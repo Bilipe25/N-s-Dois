@@ -45,7 +45,8 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
             pix_key: config?.pix_key || "",
             contact_phone_gabriel: config?.contact_phone_gabriel || "",
             contact_phone_raabe: config?.contact_phone_raabe || "",
-            show_links: config?.bridal_shower_show_links ?? true
+            show_links: config?.bridal_shower_show_links ?? true,
+            show_prices: config?.bridal_shower_show_prices ?? true
         }
     });
 
@@ -65,7 +66,8 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
                 pix_key: config.pix_key || "",
                 contact_phone_gabriel: config.contact_phone_gabriel || "",
                 contact_phone_raabe: config.contact_phone_raabe || "",
-                show_links: config.bridal_shower_show_links ?? true
+                show_links: config.bridal_shower_show_links ?? true,
+                show_prices: config.bridal_shower_show_prices ?? true
             });
         }
     }, [config, form]);
@@ -269,6 +271,26 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
                                                 <FormLabel className="text-base">Exibir Links dos Presentes</FormLabel>
                                                 <div className="text-sm text-stone-500">
                                                     Permite que os convidados cliquem nos links externos para comprar os presentes.
+                                                </div>
+                                            </div>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="show_prices"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-white mt-4">
+                                            <div className="space-y-0.5">
+                                                <FormLabel className="text-base">Exibir Preços dos Presentes</FormLabel>
+                                                <div className="text-sm text-stone-500">
+                                                    Mostra a faixa de preço cadastrada na lista pública. Se desativado, o filtro de preços também será escondido.
                                                 </div>
                                             </div>
                                             <FormControl>

@@ -8,9 +8,10 @@ interface GiftCardProps {
     gift: GiftType;
     onSelect: (gift: GiftType) => void;
     showLinks?: boolean;
+    showPrices?: boolean;
 }
 
-export function GiftCard({ gift, onSelect, showLinks = true }: GiftCardProps) {
+export function GiftCard({ gift, onSelect, showLinks = true, showPrices = true }: GiftCardProps) {
     const isReserved = gift.status === 'comprado';
 
     return (
@@ -60,7 +61,7 @@ export function GiftCard({ gift, onSelect, showLinks = true }: GiftCardProps) {
                                 <ShoppingBag className="h-2.5 w-2.5 mr-1" /> {gift.suggested_store}
                             </Badge>
                         )}
-                        {gift.price_range && (
+                        {showPrices && gift.price_range && (
                             <Badge variant="outline" className="text-[10px] sm:text-xs font-normal border-stone-200 text-stone-600 px-1.5 py-0">
                                 {gift.price_range}
                             </Badge>
