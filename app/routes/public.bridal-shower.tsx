@@ -50,9 +50,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const meta: Route.MetaFunction = ({ data }) => {
     const title = "Chá de Casa Nova | Gabriel & Raabe 💍";
     const description = "Estamos montando nosso lar com muito amor! Venha celebrar conosco e, se desejar, escolha um presente para nos ajudar nessa nova jornada. ❤️";
-    const defaultImage = "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=1200&h=630&auto=format&fit=crop";
-    const ogImage = (data as { heroUrl?: string })?.heroUrl || defaultImage;
     const publicSiteUrl = ((data as { publicSiteUrl?: string })?.publicSiteUrl || "https://nosdois.vercel.app").replace(/\/$/, "");
+    const ogImage = `${publicSiteUrl}/bridal-shower-og.png`;
     const siteUrl = `${publicSiteUrl}/public/bridal-shower`;
 
     return [
@@ -77,7 +76,7 @@ export const meta: Route.MetaFunction = ({ data }) => {
         { name: "twitter:description", content: description },
         { name: "twitter:image", content: ogImage },
         // WhatsApp specific
-        { property: "og:image:type", content: "image/jpeg" },
+        { property: "og:image:type", content: "image/png" },
     ];
 };
 
