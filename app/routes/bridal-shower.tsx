@@ -42,6 +42,8 @@ import { AdminEditGiftDrawer } from "@/components/bridal-shower/admin-edit-gift-
 import { AdminGiftDetailsDrawer } from "@/components/bridal-shower/admin-gift-details-drawer";
 import { AdminAddGuestDrawer } from "@/components/bridal-shower/admin-add-guest-drawer";
 import { AdminImportFromMainDrawer } from "@/components/bridal-shower/admin-import-from-main-drawer";
+import { MessageWallSection } from "@/components/bridal-shower/message-wall-section";
+import { PixConfirmationsList } from "@/components/bridal-shower/pix-confirmations-list";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Chá de Casa Nova - Admin" }];
@@ -248,9 +250,11 @@ export default function BridalShower() {
             <AdminConfigForm config={config} updateConfig={updateConfig} />
 
             <Tabs defaultValue="gifts" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="gifts">Presentes</TabsTrigger>
                     <TabsTrigger value="guests">Convidados</TabsTrigger>
+                    <TabsTrigger value="messages">Mural</TabsTrigger>
+                    <TabsTrigger value="pix">PIX</TabsTrigger>
                 </TabsList>
 
                 {/* Aba de Presentes */}
@@ -472,6 +476,22 @@ export default function BridalShower() {
                             <Plus className="h-6 w-6" />
                         </Button>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="messages" className="space-y-4 mt-4">
+                    <Card className="border-stone-200">
+                        <CardContent className="p-4">
+                            <MessageWallSection isAdmin={true} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="pix" className="space-y-4 mt-4">
+                    <Card className="border-stone-200">
+                        <CardContent className="p-4">
+                            <PixConfirmationsList />
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
 

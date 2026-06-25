@@ -49,6 +49,8 @@ export const ConfigSchema = z.object({
     bridal_shower_map_link_2: z.string().nullable().optional(),
     bridal_shower_hero_url: z.string().nullable().optional(),
     pix_key: z.string().nullable().optional(),
+    pix_recipient_name: z.string().nullable().optional(),
+    pix_city: z.string().nullable().optional(),
     contact_phone_gabriel: z.string().nullable().optional(),
     contact_phone_raabe: z.string().nullable().optional(),
     bridal_shower_show_links: z.boolean().nullable().optional(),
@@ -98,6 +100,8 @@ export const UpdateConfigSchema = z.object({
     map_link_2: z.string().optional(),
     hero_url: z.string().optional(),
     pix_key: z.string().optional(),
+    pix_recipient_name: z.string().optional(),
+    pix_city: z.string().optional(),
     contact_phone_gabriel: z.string().optional(),
     contact_phone_raabe: z.string().optional(),
     show_links: z.boolean().optional(),
@@ -109,11 +113,30 @@ export const BulkUpdateCategorySchema = z.object({
     category: z.enum(GIFT_CATEGORIES)
 });
 
+export const PixConfirmationSchema = z.object({
+    id: z.string().uuid().optional(),
+    sender_name: z.string().min(1, "Nome é obrigatório"),
+    message: z.string().optional(),
+    amount: z.number().positive("Valor deve ser maior que zero"),
+    gift_id: z.string().uuid().nullable().optional(),
+    gift_name: z.string().nullable().optional(),
+    created_at: z.string().optional()
+});
+
+export const MessageWallSchema = z.object({
+    id: z.string().uuid().optional(),
+    author_name: z.string().min(1, "Nome é obrigatório"),
+    message: z.string().min(1, "Mensagem é obrigatória"),
+    created_at: z.string().optional()
+});
+
 // --- TYPES ---
 
 export type Gift = z.infer<typeof GiftSchema>;
 export type Guest = z.infer<typeof GuestSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
+export type PixConfirmation = z.infer<typeof PixConfirmationSchema>;
+export type MessageWall = z.infer<typeof MessageWallSchema>;
 
 export type ReserveGiftInput = z.input<typeof ReserveGiftSchema>;
 

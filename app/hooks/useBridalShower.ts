@@ -9,7 +9,9 @@ import type {
     CreateGuestInput,
     UpdateConfigInput,
     BulkUpdateCategoryInput,
-    ConfirmPresenceInput
+    ConfirmPresenceInput,
+    PixConfirmation,
+    MessageWall
 } from "@/schemas/bridal-shower";
 import { toast } from "sonner";
 import type { Guest as MainGuest } from "@/schemas/guest";
@@ -420,4 +422,88 @@ export const useImportGuestsFromMain = () => {
         onError: (error: any) => toast.error(error.message)
     });
 };
+
+export const useConfirmPix = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (input: Omit<PixConfirmation, "id" | "created_at">) => {
+            const response = await fetch("/api/pix-confirmation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erro ao confirmar PIX");
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
+        },
+        onError: (error: any) => toast.error(error.message)
+    });
+};
+
+export const useMessageWall = () => {
+    return useQuery({
+        queryKey: ["message_wall"],
+        queryFn: async () => {
+            const response = await fetch("/api/message-wall");
+            if (!response.ok) throw new Error("Erro ao carregar mensagens");
+            const data = await response.json();
+            return data.messages as MessageWall[];
+        }
+    });
+};
+
+export const useCreateMessage = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (input: Omit<MessageWall, "id" | "created_at">) => {
+            const response = await fetch("/api/message-wall", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(input)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erro ao enviar mensagem");
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["message_wall"] });
+        },
+        onError: (error: any) => toast.error(error.message)
+    });
+};
+
+export const useDeleteMessage = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const response = await fetch(`/api/message-wall?id=${id}`, {
+                method: "DELETE"
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Erro ao remover mensagem");
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["message_wall"] });
+            toast.success("Mensagem removida!");
+        },
+        onError: (error: any) => toast.error(error.message)
+    });
+};
+
+export const usePixConfirmations = () => {
+    return useQuery({
+        queryKey: ["pix_confirmations"],
+        queryFn: async () => {
+            const response = await fetch("/api/pix-confirmation");
+            if (!response.ok) throw new Error("Erro ao carregar confirmações de PIX");
+            const data = await response.json();
+            return data.confirmations as PixConfirmation[];
+        }
+    });
+};
+
 

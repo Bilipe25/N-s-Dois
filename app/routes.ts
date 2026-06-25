@@ -40,4 +40,6 @@ export default [
     route("api/bridal-shower-search-guests", "routes/api.bridal-shower-search-guests.ts"),
     route("api/confirm-presence", "routes/api.confirm-presence.ts"),
     route("api/assets", "routes/api.assets.ts"),
+    route("api/pix-confirmation", "routes/api.pix-confirmation.ts"),
+    route("api/message-wall", "routes/api.message-wall.ts"),
 ] satisfies RouteConfig;

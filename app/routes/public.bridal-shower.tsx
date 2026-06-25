@@ -9,12 +9,14 @@ import { HeroSection } from "@/components/bridal-shower/hero-section";
 import { LocationsSection } from "@/components/bridal-shower/locations-section";
 import { ColorPaletteSection } from "@/components/bridal-shower/color-palette-section";
 import { ContactSection } from "@/components/bridal-shower/contact-section";
+import { MessageWallSection } from "@/components/bridal-shower/message-wall-section";
 import { ConfirmPresenceModal } from "@/components/bridal-shower/confirm-presence-modal";
 import { ReserveGiftModal } from "@/components/bridal-shower/reserve-gift-modal";
 import { GiftProgressBar } from "@/components/bridal-shower/gift-progress-bar";
 import { Countdown } from "@/components/bridal-shower/countdown";
 import { useBridalData } from "@/hooks/useBridalShower";
 import type { Gift } from "@/schemas/bridal-shower";
+import { extractPriceFromRange } from "@/lib/pix";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -130,6 +132,11 @@ export default function PublicBridalShower() {
     const [priceRange, setPriceRange] = useState<string>("");
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showPixModal, setShowPixModal] = useState(false);
+    const [pixGift, setPixGift] = useState<{ id: string | null; name: string | null; suggestedValue: number | null }>({
+        id: null,
+        name: null,
+        suggestedValue: null
+    });
     const [showScrollTop, setShowScrollTop] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
@@ -304,6 +311,11 @@ export default function PublicBridalShower() {
                                         <GiftCard
                                             gift={gift}
                                             onSelect={setSelectedGift}
+                                            onPixSelect={(g) => {
+                                                const val = extractPriceFromRange(g.price_range);
+                                                setPixGift({ id: g.id, name: g.item_name, suggestedValue: val || null });
+                                                setShowPixModal(true);
+                                            }}
                                             showLinks={config?.bridal_shower_show_links ?? true}
                                             showPrices={config?.bridal_shower_show_prices ?? true}
                                         />
@@ -314,6 +326,7 @@ export default function PublicBridalShower() {
                     </div>
                 </section>
 
+                <MessageWallSection isAdmin={false} />
                 <ContactSection config={config} />
             </main>
 
@@ -336,8 +349,18 @@ export default function PublicBridalShower() {
             />
             <PixModal
                 open={showPixModal}
-                onOpenChange={setShowPixModal}
+                onOpenChange={(open) => {
+                    setShowPixModal(open);
+                    if (!open) {
+                        setPixGift({ id: null, name: null, suggestedValue: null });
+                    }
+                }}
                 pixKey={config?.pix_key}
+                pixRecipientName={config?.pix_recipient_name}
+                pixCity={config?.pix_city}
+                giftId={pixGift.id}
+                giftName={pixGift.name}
+                suggestedValue={pixGift.suggestedValue}
                 isMobile={isMobile}
             />
         </div>
