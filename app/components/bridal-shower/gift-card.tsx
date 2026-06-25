@@ -82,10 +82,10 @@ export function GiftCard({ gift, onSelect, onPixSelect, showLinks = true, showPr
                 </div>
 
                 {/* Botões de Ação */}
-                <div className="mt-auto pt-2 flex flex-col sm:flex-row gap-2">
+                <div className="mt-auto pt-2 flex flex-row gap-1.5 w-full">
                     <Button
                         size="sm"
-                        className={`flex-1 h-8 text-xs font-medium rounded-full ${isReserved ? 'bg-stone-100 text-stone-400 hover:bg-stone-100 cursor-not-allowed shadow-none' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 shadow-sm'}`}
+                        className={`flex-1 h-8 text-[11px] sm:text-xs font-semibold rounded-full px-2.5 transition-all active:scale-[0.98] ${isReserved ? 'bg-stone-100 text-stone-400 hover:bg-stone-100 cursor-not-allowed shadow-none' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 shadow-sm border border-rose-100/50'}`}
                         onClick={() => !isReserved && onSelect(gift)}
                         disabled={isReserved}
                         variant={isReserved ? "ghost" : "secondary"}
@@ -93,19 +93,19 @@ export function GiftCard({ gift, onSelect, onPixSelect, showLinks = true, showPr
                         {isReserved ? (
                             <span className="truncate">Reservado</span>
                         ) : (
-                            <span className="flex items-center gap-1.5 justify-center">
-                                <Gift className="h-3.5 w-3.5" /> Presentear
+                            <span className="flex items-center gap-1 justify-center truncate">
+                                <Gift className="h-3 w-3 shrink-0" /> Presentear
                             </span>
                         )}
                     </Button>
                     {!isReserved && onPixSelect && (
                         <Button
                             size="sm"
-                            className="flex-1 h-8 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 shadow-sm border border-emerald-100/50"
+                            className="flex-1 h-8 text-[11px] sm:text-xs font-semibold rounded-full px-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 shadow-sm border border-emerald-100/50 transition-all active:scale-[0.98]"
                             onClick={() => onPixSelect(gift)}
                         >
-                            <span className="flex items-center gap-1.5 justify-center">
-                                💰 Enviar PIX
+                            <span className="flex items-center gap-1 justify-center truncate">
+                                💰 Pix
                             </span>
                         </Button>
                     )}

@@ -13,6 +13,30 @@ import {
 import { MessageSquare, Send, Trash2, Heart, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
+const getMessageStyle = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+        hash = id.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const rotations = [
+        "-rotate-1 hover:rotate-0",
+        "rotate-1 hover:rotate-0",
+        "-rotate-2 hover:rotate-0",
+        "rotate-2 hover:rotate-0",
+        "rotate-0 hover:scale-[1.02]"
+    ];
+    const rotation = rotations[Math.abs(hash) % rotations.length];
+    const gradients = [
+        "from-amber-50 to-amber-100/40 dark:from-amber-950/15 dark:to-amber-900/5 border-amber-200/60 dark:border-amber-900/30",
+        "from-rose-50 to-rose-100/40 dark:from-rose-950/15 dark:to-rose-900/5 border-rose-200/60 dark:border-rose-900/30",
+        "from-pink-50 to-pink-100/40 dark:from-pink-950/15 dark:to-pink-900/5 border-pink-200/60 dark:border-pink-900/30",
+        "from-orange-50 to-orange-100/40 dark:from-orange-950/15 dark:to-orange-900/5 border-orange-200/60 dark:border-orange-900/30",
+        "from-emerald-50 to-emerald-100/40 dark:from-emerald-950/15 dark:to-emerald-900/5 border-emerald-200/60 dark:border-emerald-900/30"
+    ];
+    const gradient = gradients[Math.abs(hash) % gradients.length];
+    return { rotation, gradient };
+};
+
 interface MessageWallSectionProps {
     isAdmin?: boolean;
 }
@@ -190,24 +214,26 @@ export function MessageWallSection({ isAdmin = false }: MessageWallSectionProps)
                             className="grid gap-4 sm:grid-cols-2"
                         >
                             <AnimatePresence mode="popLayout">
-                                {messages.map((msg) => (
-                                    <motion.div
-                                        key={msg.id}
-                                        variants={itemVariants}
-                                        layout
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        className="group relative"
-                                    >
-                                        <Card className="h-full shadow-sm hover:shadow-md transition-shadow duration-300 border-rose-100 dark:border-rose-950/20 bg-gradient-to-br from-card to-pink-50/10 dark:to-pink-950/5 relative overflow-hidden">
-                                            {/* Decorative small heart */}
-                                            <div className="absolute -right-2 -bottom-2 opacity-5 group-hover:opacity-10 transition-opacity duration-300 text-pink-500 pointer-events-none">
-                                                <Heart className="h-16 w-16 fill-current" />
-                                            </div>
+                                {messages.map((msg) => {
+                                    const { rotation, gradient } = getMessageStyle(msg.id || "");
+                                    return (
+                                        <motion.div
+                                            key={msg.id}
+                                            variants={itemVariants}
+                                            layout
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            className={`group relative transition-all duration-300 transform ${rotation}`}
+                                        >
+                                            <Card className={`h-full shadow-sm hover:shadow-md transition-shadow duration-300 border bg-gradient-to-br ${gradient} relative overflow-hidden`}>
+                                                {/* Decorative small heart */}
+                                                <div className="absolute -right-2 -bottom-2 opacity-5 group-hover:opacity-10 transition-opacity duration-300 text-pink-500 pointer-events-none">
+                                                    <Heart className="h-16 w-16 fill-current" />
+                                                </div>
 
-                                            <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
-                                                <p className="text-sm text-foreground/80 font-serif leading-relaxed italic whitespace-pre-wrap">
-                                                    "{msg.message}"
-                                                </p>
+                                                <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
+                                                    <p className="text-sm text-foreground/80 font-serif leading-relaxed italic whitespace-pre-wrap">
+                                                        "{msg.message}"
+                                                    </p>
 
                                                 <div className="flex items-center justify-between text-xs border-t border-border/40 pt-3 mt-auto">
                                                     <div>
@@ -234,7 +260,8 @@ export function MessageWallSection({ isAdmin = false }: MessageWallSectionProps)
                                             </CardContent>
                                         </Card>
                                     </motion.div>
-                                ))}
+                                    );
+                                })}
                             </AnimatePresence>
                         </motion.div>
                     )}
