@@ -43,6 +43,8 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
             map_link_2: config?.bridal_shower_map_link_2 || "",
             hero_url: config?.bridal_shower_hero_url || "",
             pix_key: config?.pix_key || "",
+            pix_recipient_name: config?.pix_recipient_name || "",
+            pix_city: config?.pix_city || "",
             contact_phone_gabriel: config?.contact_phone_gabriel || "",
             contact_phone_raabe: config?.contact_phone_raabe || "",
             show_links: config?.bridal_shower_show_links ?? true,
@@ -64,6 +66,8 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
                 map_link_2: config.bridal_shower_map_link_2 || "",
                 hero_url: config.bridal_shower_hero_url || "",
                 pix_key: config.pix_key || "",
+                pix_recipient_name: config.pix_recipient_name || "",
+                pix_city: config.pix_city || "",
                 contact_phone_gabriel: config.contact_phone_gabriel || "",
                 contact_phone_raabe: config.contact_phone_raabe || "",
                 show_links: config.bridal_shower_show_links ?? true,
@@ -257,6 +261,32 @@ export function AdminConfigForm({ config, updateConfig }: AdminConfigFormProps) 
                                             <FormLabel>Chave Pix</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="CPF, Email ou Aleatória" className="bg-white" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="pix_recipient_name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Nome do Recebedor PIX</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Nome completo do recebedor" className="bg-white" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="pix_city"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Cidade do Recebedor PIX</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Cidade do recebedor" className="bg-white" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

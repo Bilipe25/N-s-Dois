@@ -7,11 +7,12 @@ import type { Gift as GiftType } from "./types";
 interface GiftCardProps {
     gift: GiftType;
     onSelect: (gift: GiftType) => void;
+    onPixSelect?: (gift: GiftType) => void;
     showLinks?: boolean;
     showPrices?: boolean;
 }
 
-export function GiftCard({ gift, onSelect, showLinks = true, showPrices = true }: GiftCardProps) {
+export function GiftCard({ gift, onSelect, onPixSelect, showLinks = true, showPrices = true }: GiftCardProps) {
     const isReserved = gift.status === 'comprado';
 
     return (
@@ -80,11 +81,11 @@ export function GiftCard({ gift, onSelect, showLinks = true, showPrices = true }
                     )}
                 </div>
 
-                {/* Botão de Ação */}
-                <div className="mt-auto pt-2">
+                {/* Botões de Ação */}
+                <div className="mt-auto pt-2 flex flex-col sm:flex-row gap-2">
                     <Button
                         size="sm"
-                        className={`w-full sm:w-auto h-8 text-xs font-medium rounded-full ${isReserved ? 'bg-stone-100 text-stone-400 hover:bg-stone-100 cursor-not-allowed shadow-none' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 shadow-sm'}`}
+                        className={`flex-1 h-8 text-xs font-medium rounded-full ${isReserved ? 'bg-stone-100 text-stone-400 hover:bg-stone-100 cursor-not-allowed shadow-none' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 shadow-sm'}`}
                         onClick={() => !isReserved && onSelect(gift)}
                         disabled={isReserved}
                         variant={isReserved ? "ghost" : "secondary"}
@@ -92,11 +93,22 @@ export function GiftCard({ gift, onSelect, showLinks = true, showPrices = true }
                         {isReserved ? (
                             <span className="truncate">Reservado</span>
                         ) : (
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5 justify-center">
                                 <Gift className="h-3.5 w-3.5" /> Presentear
                             </span>
                         )}
                     </Button>
+                    {!isReserved && onPixSelect && (
+                        <Button
+                            size="sm"
+                            className="flex-1 h-8 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 shadow-sm border border-emerald-100/50"
+                            onClick={() => onPixSelect(gift)}
+                        >
+                            <span className="flex items-center gap-1.5 justify-center">
+                                💰 Enviar PIX
+                            </span>
+                        </Button>
+                    )}
                 </div>
             </CardContent>
         </Card>
