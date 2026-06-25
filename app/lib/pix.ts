@@ -36,6 +36,66 @@ function sanitizeForPix(str: string, maxLen: number): string {
         .toUpperCase();
 }
 
+function isValidCpf(cpf: string): boolean {
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) sum += parseInt(cpf.charAt(i), 10) * (10 - i);
+    let rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(cpf.charAt(9), 10)) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) sum += parseInt(cpf.charAt(i), 10) * (11 - i);
+    rev = 11 - (sum % 11);
+    if (rev === 10 || rev === 11) rev = 0;
+    if (rev !== parseInt(cpf.charAt(10), 10)) return false;
+    return true;
+}
+
+export function formatPixKey(key: string): string {
+    const clean = key.replace(/\s+/g, '').trim();
+
+    if (clean.includes('@')) {
+        return clean;
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(clean)) {
+        return clean;
+    }
+
+    const digitsAndPlus = clean.replace(/[^0-9+]/g, '');
+
+    if (digitsAndPlus.startsWith('+55')) {
+        return digitsAndPlus;
+    }
+
+    if (digitsAndPlus.startsWith('55') && digitsAndPlus.length === 13) {
+        return `+${digitsAndPlus}`;
+    }
+
+    const digitsOnly = digitsAndPlus.replace(/\D/g, '');
+
+    if (digitsOnly.length === 14) {
+        return digitsOnly;
+    }
+
+    if (digitsOnly.length === 11) {
+        if (isValidCpf(digitsOnly)) {
+            return digitsOnly;
+        }
+
+        const ddd = parseInt(digitsOnly.substring(0, 2), 10);
+        const isDdd = ddd >= 11 && ddd <= 99;
+        const isMobile = digitsOnly.charAt(2) === '9';
+
+        if (isDdd && isMobile) {
+            return `+55${digitsOnly}`;
+        }
+    }
+
+    return digitsOnly;
+}
+
 export interface PixPayloadOptions {
     /** PIX key (CPF, email, phone, or random key) */
     pixKey: string;
@@ -57,12 +117,13 @@ export interface PixPayloadOptions {
 export function generatePixPayload(options: PixPayloadOptions): string {
     const { pixKey, recipientName, city, amount, txId = '***' } = options;
 
+    const formattedKey = formatPixKey(pixKey);
     const sanitizedName = sanitizeForPix(recipientName, 25);
     const sanitizedCity = sanitizeForPix(city, 15);
 
     // Merchant Account Information (ID 26)
     const gui = pad('00', 'br.gov.bcb.pix');
-    const key = pad('01', pixKey);
+    const key = pad('01', formattedKey);
     const merchantAccountInfo = pad('26', gui + key);
 
     // Build payload without CRC
