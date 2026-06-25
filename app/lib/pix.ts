@@ -29,7 +29,10 @@ function sanitizeForPix(str: string, maxLen: number): string {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '') // remove accents
         .replace(/[^a-zA-Z0-9 ]/g, '') // keep only alphanumeric + space
+        .replace(/\s+/g, ' ') // replace multiple spaces with single space
+        .trim()
         .substring(0, maxLen)
+        .trim() // trim again in case substring cut off on a space
         .toUpperCase();
 }
 

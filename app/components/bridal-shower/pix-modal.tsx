@@ -57,8 +57,7 @@ export function PixModal({
             pixKey,
             recipientName: recipient,
             city,
-            amount: !isNaN(parsedAmount) && parsedAmount > 0 ? parsedAmount : undefined,
-            txId: "CHADECASANOVA"
+            amount: !isNaN(parsedAmount) && parsedAmount > 0 ? parsedAmount : undefined
         })
         : "";
 
