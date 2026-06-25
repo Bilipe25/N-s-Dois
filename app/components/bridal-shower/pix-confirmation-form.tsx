@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useConfirmPix } from "@/hooks/useBridalShower";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import confetti from "canvas-confetti";
 
 interface PixConfirmationFormProps {
     giftId?: string | null;
@@ -48,6 +49,11 @@ export function PixConfirmationForm({
                 amount: numericAmount,
                 gift_id: giftId || null,
                 gift_name: giftName || null
+            });
+            confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 }
             });
             toast.success("Confirmação enviada com sucesso! Muito obrigado! ❤️");
             onSuccess();
