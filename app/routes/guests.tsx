@@ -11,7 +11,17 @@ import {
     DrawerDescription,
     DrawerFooter,
 } from "@/components/ui/drawer";
-import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil, Link2, Copy } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil, Link2, Copy, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Route } from "./+types/guests";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +105,7 @@ export default function Guests() {
     const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
     const [inviteLink, setInviteLink] = useState<{ guestId: string; url: string } | null>(null);
     const [isCreatingInvite, setIsCreatingInvite] = useState(false);
+    const [rotateInviteOpen, setRotateInviteOpen] = useState(false);
 
     // Derived Data
     const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
@@ -114,13 +125,15 @@ export default function Guests() {
         );
     };
 
-    const ensureInviteLink = async () => {
+    const generateInviteLink = async (mode: "create" | "rotate") => {
         if (!selectedGuest) return null;
-        if (inviteLink?.guestId === selectedGuest.id) return inviteLink.url;
         setIsCreatingInvite(true);
         try {
-            const { inviteUrl } = await createGuestInviteLink(selectedGuest.id);
+            const { inviteUrl, invite } = await createGuestInviteLink(selectedGuest.id, mode);
             setInviteLink({ guestId: selectedGuest.id, url: inviteUrl });
+            setSelectedGuest({ ...selectedGuest, invite });
+            setRotateInviteOpen(false);
+            toast.success(mode === "rotate" ? "Novo link criado. O anterior não funciona mais." : "Link de convite criado.");
             return inviteUrl;
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Não foi possível criar o convite.");
@@ -131,20 +144,19 @@ export default function Guests() {
     };
 
     const handleCopyInvite = async () => {
-        const url = await ensureInviteLink();
+        const currentLink = inviteLink;
+        const url = currentLink && currentLink.guestId === selectedGuest?.id ? currentLink.url : null;
         if (!url) return;
         await navigator.clipboard.writeText(url);
-        toast.success("Link pessoal copiado. Ele não será exibido novamente após fechar esta tela.");
+        toast.success("Link pessoal copiado.");
     };
 
     const handleShareInvite = async () => {
         if (!selectedGuest) return;
+        const currentLink = inviteLink;
+        const url = currentLink && currentLink.guestId === selectedGuest.id ? currentLink.url : null;
+        if (!url) return;
         const shareWindow = window.open("about:blank", "_blank");
-        const url = await ensureInviteLink();
-        if (!url) {
-            shareWindow?.close();
-            return;
-        }
         const message = `Olá ${selectedGuest.name.split(" ")[0]}, preparamos um convite pessoal para você celebrar conosco. Confirme sua presença por aqui: ${url}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
         if (shareWindow) shareWindow.location.href = whatsappUrl;
@@ -179,6 +191,8 @@ export default function Guests() {
     };
 
     const handleGuestClick = (guest: Guest) => {
+        setInviteLink(null);
+        setRotateInviteOpen(false);
         setSelectedGuest(guest);
     };
 
@@ -483,7 +497,13 @@ export default function Guests() {
             </Drawer>
 
             {/* Drawer de Detalhes do Convidado */}
-            <Drawer open={!!selectedGuest} onOpenChange={(open) => !open && setSelectedGuest(null)}>
+            <Drawer open={!!selectedGuest} onOpenChange={(open) => {
+                if (!open) {
+                    setSelectedGuest(null);
+                    setInviteLink(null);
+                    setRotateInviteOpen(false);
+                }
+            }}>
                 <DrawerContent className="max-h-[90vh]">
                     {selectedGuest && (
                         <>
@@ -580,30 +600,57 @@ export default function Guests() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
-                                    <div className="flex items-start gap-2 text-xs text-stone-600">
-                                        <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
-                                        <p>O link pessoal dá acesso ao RSVP e às reservas deste convite. Um novo link revoga o anterior.</p>
+                                <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                                    <div className="flex items-start gap-2 text-sm text-stone-700">
+                                        {selectedGuest.invite?.active ? <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" /> : <Link2 className="mt-0.5 h-4 w-4 shrink-0" />}
+                                        <div className="min-w-0 space-y-1">
+                                            <p className="font-medium text-stone-900">{selectedGuest.invite?.active ? "Convite ativo" : "Link individual"}</p>
+                                            {selectedGuest.invite?.active ? (
+                                                <>
+                                                    <p className="text-xs text-stone-600">Criado em {new Date(selectedGuest.invite.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</p>
+                                                    <p className="text-xs text-stone-600">{selectedGuest.invite.last_used_at ? `Último uso em ${new Date(selectedGuest.invite.last_used_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}` : "Ainda não utilizado"}</p>
+                                                </>
+                                            ) : <p className="text-xs text-stone-600">Crie um link pessoal para RSVP e reservas vinculadas a este convidado.</p>}
+                                        </div>
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="h-12 w-full"
-                                        disabled={isCreatingInvite}
-                                        onClick={handleCopyInvite}
-                                    >
-                                        {isCreatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
-                                        Gerar e copiar link pessoal
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        className="h-12 w-full bg-green-600 text-white hover:bg-green-700"
-                                        disabled={isCreatingInvite}
-                                        onClick={handleShareInvite}
-                                    >
-                                        <MessageCircle className="mr-2 h-5 w-5" />
-                                        Enviar convite pelo WhatsApp
-                                    </Button>
+
+                                    {inviteLink?.guestId === selectedGuest.id && (
+                                        <div className="space-y-2 rounded-lg bg-white p-3 shadow-sm" role="status">
+                                            <p className="text-xs font-medium text-stone-800">Novo link pronto — copie ou envie agora. Ele não poderá ser recuperado depois que esta tela for fechada.</p>
+                                            <p className="break-all rounded-md bg-stone-100 p-2 text-xs text-stone-700">{inviteLink.url}</p>
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <Button type="button" variant="outline" className="min-h-11" onClick={handleCopyInvite}>
+                                                    <Copy className="mr-2 h-4 w-4" />Copiar link
+                                                </Button>
+                                                <Button type="button" className="min-h-11 bg-green-600 text-white hover:bg-green-700" onClick={handleShareInvite}>
+                                                    <MessageCircle className="mr-2 h-4 w-4" />Enviar pelo WhatsApp
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!selectedGuest.invite?.active ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-12 w-full"
+                                            disabled={isCreatingInvite}
+                                            onClick={() => void generateInviteLink("create")}
+                                        >
+                                            {isCreatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+                                            Criar link de convite
+                                        </Button>
+                                    ) : inviteLink?.guestId !== selectedGuest.id && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="h-12 w-full"
+                                            disabled={isCreatingInvite}
+                                            onClick={() => setRotateInviteOpen(true)}
+                                        >
+                                            <RefreshCw className="mr-2 h-4 w-4" />Gerar novo link
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
 
@@ -636,6 +683,28 @@ export default function Guests() {
                     )}
                 </DrawerContent>
             </Drawer>
+
+            <AlertDialog open={rotateInviteOpen} onOpenChange={setRotateInviteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Gerar novo link?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Gerar um novo link fará o convite anterior parar de funcionar. Utilize esta opção somente se precisar substituir o link enviado anteriormente.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isCreatingInvite}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isCreatingInvite}
+                            onClick={() => void generateInviteLink("rotate")}
+                            className="bg-rose-600 text-white hover:bg-rose-700"
+                        >
+                            {isCreatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                            Gerar novo link
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

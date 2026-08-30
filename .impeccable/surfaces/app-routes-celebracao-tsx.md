@@ -27,6 +27,13 @@ related_targets: ["app/components/celebration","app/routes/api.public.celebratio
 - PIX vem do endpoint servidor e nunca afirma pagamento. Compartilhamento usa sempre `/celebracao`, sem token.
 - Filtros de presentes consultam o conjunto completo no servidor; PII e autores de reserva nunca são públicos.
 
+## Camada de convite
+
+- O CTA público permanece “Confirmar presença”; sem sessão, abre orientação acolhedora para usar o link pessoal, sem bloquear conteúdo.
+- Uma sessão válida acrescenta somente saudação discreta, estado “convite ativo”, RSVP, reservas pessoais e a ação de sair do convite.
+- O nome validado aparece apenas na UI privada, nunca em URL, metadata, armazenamento do browser ou compartilhamento público.
+- Reserva sem convite abre orientação e contatos; PIX e navegação dos presentes permanecem públicos.
+
 ## Qualidade
 
 - Mobile-first de 320 a 430 px, tablet 768 px e desktop 1440 px.

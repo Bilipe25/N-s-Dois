@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLoaderData, useSearchParams } from "react-router";
+import { Form, Link, useLoaderData, useSearchParams } from "react-router";
 import QRCode from "react-qr-code";
 import {
   CalendarDays, Check, ChevronUp, Copy, ExternalLink, Heart, Loader2,
   MapPin, Minus, Navigation, PackageSearch, PartyPopper, Plus, QrCode,
-  Share2, Sparkles,
+  LogOut, Share2, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Route } from "./+types/celebration";
@@ -80,14 +80,25 @@ function Counter({ value, min, max, onChange, label }: { value: number; min: num
 }
 
 type ResponseDraft = InvitationEvent & { message: string };
+type ContactAction = { name: "Gabriel" | "Raabe"; href: string };
 
-function RsvpContent({ events, responses, enabled, contactHref }: { events: CelebrationEvent[]; responses: InvitationEvent[]; enabled: boolean; contactHref?: string }) {
+function ContactActions({ contacts }: { contacts: ContactAction[] }) {
+  if (!contacts.length) return null;
+  return <div className="flex w-full flex-col gap-2 sm:flex-row">{contacts.map((contact) => (
+    <Button key={contact.name} asChild variant="outline" className="min-h-11 flex-1 rounded-full border-green-200 text-green-800 hover:bg-green-50">
+      <a href={contact.href} target="_blank" rel="noopener noreferrer">Falar com {contact.name}<ExternalLink className="ml-2 h-4 w-4" /></a>
+    </Button>
+  ))}</div>;
+}
+
+function RsvpContent({ events, responses, active, enabled, contacts }: { events: CelebrationEvent[]; responses: InvitationEvent[]; active: boolean; enabled: boolean; contacts: ContactAction[] }) {
   const [drafts, setDrafts] = useState<ResponseDraft[]>(() => responses.map((response) => ({ ...response, message: response.private_message || "" })));
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
   const eventById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
+  if (!active) return <div className="celebration-panel-empty"><ShieldCheck /><p>Para proteger os dados dos nossos convidados, cada confirmação utiliza um link pessoal. Abra o convite que enviamos para você pelo WhatsApp.</p><ContactActions contacts={contacts} /></div>;
   if (!enabled) return <div className="celebration-panel-empty"><Heart /><p>As confirmações ainda não estão abertas.</p></div>;
-  if (!responses.length) return <div className="celebration-panel-empty"><Heart /><p>Abra o link individual recebido pelo WhatsApp para responder. Não usamos pesquisa pública por nomes.</p>{contactHref && <a href={contactHref} target="_blank" rel="noopener noreferrer">Pedir meu link ao casal</a>}</div>;
+  if (!responses.length) return <div className="celebration-panel-empty"><Heart /><p>Não há eventos disponíveis para este convite agora.</p></div>;
 
   const update = (id: string, values: Partial<ResponseDraft>) => { setDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, ...values } : draft)); setState("idle"); };
   const submit = async () => {
@@ -116,9 +127,10 @@ function RsvpContent({ events, responses, enabled, contactHref }: { events: Cele
   </div>;
 }
 
-function RsvpPanel({ open, onOpenChange, children, isMobile }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode; isMobile: boolean }) {
-  const heading = <><DialogTitle className="font-serif text-2xl text-stone-800">Confirmar presença</DialogTitle><DialogDescription>Sua resposta é privada e pode ser alterada pelo mesmo convite.</DialogDescription></>;
-  if (isMobile) return <Drawer open={open} onOpenChange={onOpenChange}><DrawerContent className="max-h-[92vh]"><DrawerHeader className="text-left"><DrawerTitle className="font-serif text-2xl">Confirmar presença</DrawerTitle><DrawerDescription>Sua resposta é privada e pode ser alterada pelo mesmo convite.</DrawerDescription></DrawerHeader><div className="overflow-y-auto px-4 pb-8">{children}</div></DrawerContent></Drawer>;
+function RsvpPanel({ open, onOpenChange, children, isMobile, active }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode; isMobile: boolean; active: boolean }) {
+  const description = active ? "Sua resposta é privada e pode ser alterada pelo mesmo convite." : "Cada confirmação utiliza um link pessoal enviado pelo casal.";
+  const heading = <><DialogTitle className="font-serif text-2xl text-stone-800">Confirmação de presença</DialogTitle><DialogDescription>{description}</DialogDescription></>;
+  if (isMobile) return <Drawer open={open} onOpenChange={onOpenChange}><DrawerContent className="max-h-[92vh]"><DrawerHeader className="text-left"><DrawerTitle className="font-serif text-2xl">Confirmação de presença</DrawerTitle><DrawerDescription>{description}</DrawerDescription></DrawerHeader><div className="overflow-y-auto px-4 pb-8">{children}</div></DrawerContent></Drawer>;
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader>{heading}</DialogHeader>{children}</DialogContent></Dialog>;
 }
 
@@ -145,7 +157,7 @@ function PixPanel({ open, onOpenChange, gift, isMobile }: { open: boolean; onOpe
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="text-center font-serif text-2xl">Presente virtual por PIX</DialogTitle><DialogDescription className="text-center">Escaneie o QR Code ou copie o código com segurança.</DialogDescription></DialogHeader>{content}</DialogContent></Dialog>;
 }
 
-function GiftSection({ initialGifts, initialCursor, categories, stats, canReserve, pixEnabled, contactHref, onPix }: { initialGifts: PublicGift[]; initialCursor: string | null; categories: string[]; stats: { total: number; reserved: number }; canReserve: boolean; pixEnabled: boolean; contactHref?: string; onPix: (gift: PublicGift | null) => void }) {
+function GiftSection({ initialGifts, initialCursor, categories, stats, canReserve, invitationActive, pixEnabled, contacts, onPix }: { initialGifts: PublicGift[]; initialCursor: string | null; categories: string[]; stats: { total: number; reserved: number }; canReserve: boolean; invitationActive: boolean; pixEnabled: boolean; contacts: ContactAction[]; onPix: (gift: PublicGift | null) => void }) {
   const [gifts, setGifts] = useState(initialGifts); const [cursor, setCursor] = useState(initialCursor);
   const [query, setQuery] = useState(""); const [category, setCategory] = useState<string | null>(null); const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [busy, setBusy] = useState<string | null>(null);
@@ -182,7 +194,7 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
     }
     setBusy(null);
   };
-  const panel = <div className="space-y-5 py-2">{selected && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-center"><PartyPopper className="mx-auto mb-2 h-7 w-7 text-rose-500" /><p className="font-serif text-lg text-stone-800">{selected.item_name}</p></div>}{canReserve ? <><p className="text-sm leading-relaxed text-stone-600">{selected?.reservation_id ? "Você pode cancelar a sua própria reserva. O item voltará a ficar disponível." : "A reserva fica vinculada ao seu convite. Ela não confirma presença nem pagamento."}</p><Button onClick={applyReservation} disabled={busy === selected?.id} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? "Atualizando…" : selected?.reservation_id ? "Cancelar minha reserva" : "Confirmar reserva"}</Button></> : <><p className="text-sm leading-relaxed text-stone-600">Para reservar um presente, abra o seu link individual de convite. A lista continua disponível para você conhecer.</p>{contactHref && <Button asChild className="min-h-12 w-full rounded-full bg-green-600 text-white hover:bg-green-700"><a href={contactHref} target="_blank" rel="noopener noreferrer">Pedir meu link ao casal</a></Button>}</>}</div>;
+  const panel = <div className="space-y-5 py-2">{selected && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-center"><PartyPopper className="mx-auto mb-2 h-7 w-7 text-rose-500" /><p className="font-serif text-lg text-stone-800">{selected.item_name}</p></div>}{canReserve ? <><p className="text-sm leading-relaxed text-stone-600">{selected?.reservation_id ? "Você pode cancelar a sua própria reserva. O item voltará a ficar disponível." : "A reserva fica vinculada ao seu convite. Ela não confirma presença nem pagamento."}</p><Button onClick={applyReservation} disabled={busy === selected?.id} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? "Atualizando…" : selected?.reservation_id ? "Cancelar minha reserva" : "Confirmar reserva"}</Button></> : !invitationActive ? <><p className="text-sm leading-relaxed text-stone-600">Para manter sua escolha vinculada ao seu convite, abra o link pessoal que enviamos pelo WhatsApp.</p><ContactActions contacts={contacts} /></> : <p className="text-sm leading-relaxed text-stone-600">As reservas não estão disponíveis agora. A lista e o PIX continuam públicos quando habilitados.</p>}</div>;
 
   return <div className="space-y-7">
     <GiftProgressBar total={stats.total} reserved={reservedCount} />
@@ -190,7 +202,7 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
       <GiftFilter categories={categories} searchTerm={query} onSearchChange={setQuery} selectedCategory={category} onCategorySelect={setCategory} selectedPriceRange={price} onPriceRangeSelect={setPrice} />
     </div>
     {message && <p className="rounded-xl bg-white p-3 text-center text-sm text-stone-700 shadow-sm" role="status">{message}</p>}
-    {loading ? <div className="grid gap-3 sm:grid-cols-2"><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /></div> : gifts.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gifts.map((gift) => <PublicGiftCard key={gift.id} gift={gift} canReserve={canReserve} busy={busy === gift.id} onReserve={setSelected} onPix={pixEnabled ? onPix : undefined} />)}</div> : <div className="rounded-2xl border border-stone-100 bg-white px-4 py-14 text-center shadow-sm"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-rose-50"><PackageSearch className="h-10 w-10 text-rose-300" /></div><h3 className="font-serif text-xl text-stone-800">Nenhum presente encontrado</h3><p className="mx-auto mt-2 max-w-md text-sm text-stone-600">{query || category || price ? "Tente outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}</p>{(query || category || price) && <Button variant="outline" className="mt-5 min-h-11 rounded-full" onClick={() => { setQuery(""); setCategory(null); setPrice(""); }}>Limpar filtros</Button>}</div>}
+    {loading ? <div className="grid gap-3 sm:grid-cols-2"><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /></div> : gifts.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gifts.map((gift) => <PublicGiftCard key={gift.id} gift={gift} busy={busy === gift.id} onReserve={setSelected} onPix={pixEnabled ? onPix : undefined} />)}</div> : <div className="rounded-2xl border border-stone-100 bg-white px-4 py-14 text-center shadow-sm"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-rose-50"><PackageSearch className="h-10 w-10 text-rose-300" /></div><h3 className="font-serif text-xl text-stone-800">Nenhum presente encontrado</h3><p className="mx-auto mt-2 max-w-md text-sm text-stone-600">{query || category || price ? "Tente outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}</p>{(query || category || price) && <Button variant="outline" className="mt-5 min-h-11 rounded-full" onClick={() => { setQuery(""); setCategory(null); setPrice(""); }}>Limpar filtros</Button>}</div>}
     {cursor && <div className="text-center"><Button variant="outline" className="min-h-11 rounded-full bg-white" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Carregando…" : "Ver mais presentes"}</Button></div>}
     {isMobile ? <Drawer open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}><DrawerContent><DrawerHeader><DrawerTitle className="font-serif text-2xl">{selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DrawerTitle><DrawerDescription>Uma escolha feita com carinho.</DrawerDescription></DrawerHeader><div className="px-4 pb-8">{panel}</div></DrawerContent></Drawer> : <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="font-serif text-2xl">{selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DialogTitle><DialogDescription>Uma escolha feita com carinho.</DialogDescription></DialogHeader>{panel}</DialogContent></Dialog>}
   </div>;
@@ -201,7 +213,10 @@ export default function CelebrationPage() {
   const phase = getCelebrationPhase(data.events, data.renderedAt); const nextEvent = data.events.find((event) => event.starts_at && new Date(event.starts_at).getTime() >= data.renderedAt);
   const [rsvpOpen, setRsvpOpen] = useState(false); const [pixOpen, setPixOpen] = useState(false); const [pixGift, setPixGift] = useState<PublicGift | null>(null); const [showScrollTop, setShowScrollTop] = useState(false);
   const contactNumbers = [data.config.contactGabriel, data.config.contactRaabe].filter((value): value is string => Boolean(value));
-  const contactHref = contactNumbers[0] ? `https://wa.me/${contactNumbers[0].replace(/\D/g, "")}` : undefined;
+  const contactActions: ContactAction[] = [
+    data.config.contactGabriel ? { name: "Gabriel" as const, href: `https://wa.me/${data.config.contactGabriel.replace(/\D/g, "")}` } : null,
+    data.config.contactRaabe ? { name: "Raabe" as const, href: `https://wa.me/${data.config.contactRaabe.replace(/\D/g, "")}` } : null,
+  ].filter((value): value is ContactAction => Boolean(value));
   const guidance = data.events.filter((event) => event.dress_code || event.schedule_note);
 
   useEffect(() => { document.documentElement.dataset.celebration = "active"; const onScroll = () => setShowScrollTop(window.scrollY > 500); window.addEventListener("scroll", onScroll, { passive: true }); return () => { delete document.documentElement.dataset.celebration; window.removeEventListener("scroll", onScroll); }; }, []);
@@ -221,7 +236,8 @@ export default function CelebrationPage() {
         <h1 className="font-serif text-[clamp(3.25rem,15vw,7rem)] font-semibold leading-[0.92] tracking-[-0.03em] drop-shadow-xl">Gabriel <span className="font-normal text-rose-300">&amp;</span> Raabe</h1>
         <p className="max-w-2xl text-base leading-relaxed text-stone-100 drop-shadow sm:text-lg">{data.config.story || "Estamos construindo nosso lar com muito amor. Sua presença é o nosso maior presente."}</p>
         <div className="w-full max-w-2xl space-y-3 pt-2">
-          <Button onClick={() => setRsvpOpen(true)} className="min-h-14 w-full rounded-full bg-rose-500 px-8 text-base font-semibold text-white shadow-lg hover:-translate-y-0.5 hover:bg-rose-600"><Heart className="mr-2 h-5 w-5 fill-current" />{data.invitation.active ? "Confirmar presença" : "Abrir meu convite"}</Button>
+          {data.invitation.active && data.invitation.displayName && <div className="mx-auto flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm"><Heart className="h-4 w-4 shrink-0 fill-rose-300 text-rose-300" /><span className="max-w-full break-words font-medium">Olá, {data.invitation.displayName}</span><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1 text-stone-100"><ShieldCheck className="h-4 w-4" />Seu convite está ativo</span></div>}
+          <Button onClick={() => setRsvpOpen(true)} className="min-h-14 w-full rounded-full bg-rose-500 px-8 text-base font-semibold text-white shadow-lg hover:-translate-y-0.5 hover:bg-rose-600"><Heart className="mr-2 h-5 w-5 fill-current" />Confirmar presença</Button>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {data.config.pixEnabled && <Button variant="outline" onClick={() => openPix()} className="min-h-12 rounded-full border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"><QrCode className="mr-1.5 h-4 w-4" />PIX</Button>}
             <Button variant="outline" onClick={() => scrollTo("locais")} className="min-h-12 rounded-full border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"><MapPin className="mr-1.5 h-4 w-4" />Locais</Button>
@@ -245,9 +261,9 @@ export default function CelebrationPage() {
 
       {guidance.length > 0 && <section id="orientacoes" className="scroll-mt-24"><div className="mx-auto max-w-3xl rounded-2xl bg-white p-7 text-center shadow-sm"><h2 className="font-serif text-2xl text-stone-800">Detalhes preparados com carinho</h2><div className="mx-auto my-5 flex w-fit gap-4" aria-hidden="true"><span className="h-10 w-10 rounded-full bg-stone-900 ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full border border-stone-200 bg-white ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full bg-stone-400 ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full bg-[#d4c4b7] ring-4 ring-stone-50" /></div><div className="space-y-3 text-sm leading-relaxed text-stone-600">{guidance.map((event) => <div key={event.id}>{guidance.length > 1 && <h3 className="font-semibold text-stone-800">{event.title}</h3>}{event.dress_code && <p><strong>Orientção:</strong> {event.dress_code}</p>}{event.schedule_note && <p>{event.schedule_note}</p>}</div>)}</div></div></section>}
 
-      <section id="rsvp" className="rounded-3xl bg-rose-50 px-5 py-10 text-center sm:px-10"><Heart className="mx-auto h-8 w-8 fill-rose-400 text-rose-400" /><h2 className="mt-3 font-serif text-3xl text-stone-800">Sua presença é o nosso melhor presente</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{data.invitation.active ? "Seu convite pessoal está ativo. Responda agora ou volte pelo mesmo link para alterar depois." : "A confirmação é privada. Abra o link individual recebido por WhatsApp ou fale com o casal."}</p><Button onClick={() => setRsvpOpen(true)} className="mt-6 min-h-12 rounded-full bg-rose-500 px-8 text-white hover:bg-rose-600">{data.invitation.active ? "Responder ao convite" : "Como confirmar"}</Button></section>
+      <section id="rsvp" className="rounded-3xl bg-rose-50 px-5 py-10 text-center sm:px-10"><Heart className="mx-auto h-8 w-8 fill-rose-400 text-rose-400" /><h2 className="mt-3 font-serif text-3xl text-stone-800">Sua presença é o nosso melhor presente</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{data.invitation.active && data.invitation.displayName ? `Olá, ${data.invitation.displayName}. Seu convite pessoal está ativo; você pode responder agora ou voltar pelo mesmo link para alterar depois.` : "A confirmação é privada e utiliza o link pessoal enviado pelo casal."}</p><Button onClick={() => setRsvpOpen(true)} className="mt-6 min-h-12 rounded-full bg-rose-500 px-8 text-white hover:bg-rose-600">Confirmar presença</Button>{data.invitation.active && <Form method="post" action="/celebracao/sair" className="mt-4"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-stone-600 underline decoration-stone-300 underline-offset-4 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"><LogOut className="h-4 w-4" />Não é o seu convite? Sair deste convite</button></Form>}</section>
 
-      {data.config.giftsEnabled && <section id="lista-presentes" className="scroll-mt-24 space-y-8"><div className="text-center"><h2 className="font-serif text-3xl text-stone-800 sm:text-4xl">Lista de presentes</h2><p className="mt-2 text-stone-600">Escolha um item se quiser nos ajudar a construir esse novo lar.</p></div><GiftSection initialGifts={data.gifts} initialCursor={data.giftCursor} categories={data.categories} stats={data.giftStats} canReserve={data.invitation.active && data.config.reservationsEnabled && phase !== "past"} pixEnabled={data.config.pixEnabled} contactHref={contactHref} onPix={openPix} /></section>}
+      {data.config.giftsEnabled && <section id="lista-presentes" className="scroll-mt-24 space-y-8"><div className="text-center"><h2 className="font-serif text-3xl text-stone-800 sm:text-4xl">Lista de presentes</h2><p className="mt-2 text-stone-600">Escolha um item se quiser nos ajudar a construir esse novo lar.</p></div><GiftSection initialGifts={data.gifts} initialCursor={data.giftCursor} categories={data.categories} stats={data.giftStats} canReserve={data.invitation.active && data.config.reservationsEnabled && phase !== "past"} invitationActive={data.invitation.active} pixEnabled={data.config.pixEnabled} contacts={contactActions} onPix={openPix} /></section>}
 
       {data.config.pixEnabled && <section className="rounded-3xl bg-emerald-50 px-6 py-10 text-center"><QrCode className="mx-auto h-9 w-9 text-emerald-700" /><h2 className="mt-3 font-serif text-3xl text-stone-800">Uma contribuição livre</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-stone-600">Se fizer sentido para você, gere um PIX seguro. Ele é opcional e independente do RSVP.</p><Button onClick={() => openPix()} className="mt-6 min-h-12 rounded-full bg-emerald-700 px-8 text-white hover:bg-emerald-800">Abrir PIX</Button></section>}
 
@@ -255,7 +271,7 @@ export default function CelebrationPage() {
     </div>
 
     <footer className="border-t border-stone-200 py-8 text-center text-xs text-stone-500"><p>Feito com <Heart className="mx-1 inline h-3.5 w-3.5 fill-rose-400 text-rose-400" /> por Nós Dois</p></footer>
-    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile}><RsvpContent events={data.events} responses={data.invitation.responses} enabled={data.config.rsvpEnabled && phase !== "past"} contactHref={contactHref} /></RsvpPanel>
+    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile} active={data.invitation.active}><RsvpContent events={data.events} responses={data.invitation.responses} active={data.invitation.active} enabled={data.config.rsvpEnabled && phase !== "past"} contacts={contactActions} /></RsvpPanel>
     <PixPanel open={pixOpen} onOpenChange={(open) => { setPixOpen(open); if (!open) setPixGift(null); }} gift={pixGift} isMobile={isMobile} />
   </main>;
 }

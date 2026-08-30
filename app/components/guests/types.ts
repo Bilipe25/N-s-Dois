@@ -7,6 +7,11 @@ export interface Guest {
     rsvp_status: "pendente" | "confirmado" | "recusado";
     created_at: string;
     phone?: string | null;
+    invite?: {
+        active: true;
+        created_at: string;
+        last_used_at: string | null;
+    } | null;
 }
 
 export type GuestFilter = "todos" | "confirmado" | "pendente" | "recusado";

@@ -1,18 +1,18 @@
-import { createHash } from "node:crypto";
 import { redirect } from "react-router";
 import type { Route } from "./+types/celebration.invite.$token";
 import { createServerAdminClient } from "@/lib/supabase.server";
 import { createInviteSession } from "@/lib/celebration-session.server";
 import { consumeRateLimit, noStoreHeaders } from "@/lib/security.server";
+import { hashInviteToken, isValidInviteToken } from "@/lib/invite-token";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const token = params.token || "";
   const allowed = await consumeRateLimit(request, "invite-exchange", 20, 15 * 60);
-  if (!allowed || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
+  if (!allowed || !isValidInviteToken(token)) {
     return redirect("/celebracao?convite=invalido", { headers: noStoreHeaders() });
   }
 
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashInviteToken(token);
   const supabase = createServerAdminClient();
   const { data: invite } = await supabase
     .from("guest_invite_tokens")

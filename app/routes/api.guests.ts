@@ -1,9 +1,10 @@
-import { createHash, randomBytes } from "node:crypto";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
 import { createServerAdminClient } from "@/lib/supabase.server";
 import { assertSameOrigin, noStoreHeaders, readJsonBody } from "@/lib/security.server";
 import { requireUserSession } from "@/sessions";
+import { generateInviteToken } from "@/lib/invite-token";
+import { CreateInviteLinkActionSchema, RotateInviteLinkActionSchema } from "@/schemas/invite";
 
 const ActionSchema = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("add_guest"), names: z.array(z.string().trim().min(1)).min(1).max(100), group_name: z.string().trim().min(1).max(120), adults_count: z.number().int().min(0).max(20), children_count: z.number().int().min(0).max(20) }),
@@ -12,15 +13,31 @@ const ActionSchema = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("delete_guest"), id: z.string().uuid() }),
   z.object({ intent: z.literal("bulk_confirm"), ids: z.array(z.string().uuid()).min(1).max(200) }),
   z.object({ intent: z.literal("bulk_delete"), ids: z.array(z.string().uuid()).min(1).max(200) }),
-  z.object({ intent: z.literal("create_invite_link"), id: z.string().uuid() }),
+  CreateInviteLinkActionSchema,
+  RotateInviteLinkActionSchema,
 ]);
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserSession(request);
   const supabase = createServerAdminClient();
-  const { data: guests, error } = await supabase.from("guests").select("*").order("name");
-  if (error) return Response.json({ error: "Não foi possível carregar os convidados." }, { status: 500, headers: noStoreHeaders() });
-  return Response.json({ guests: guests || [] }, { headers: noStoreHeaders() });
+  const [{ data: guests, error: guestsError }, { data: activeInvites, error: invitesError }] = await Promise.all([
+    supabase.from("guests").select("*").order("name"),
+    supabase
+      .from("guest_invite_tokens")
+      .select("guest_id,created_at,last_used_at")
+      .is("revoked_at", null),
+  ]);
+  if (guestsError || invitesError) {
+    return Response.json({ error: "Não foi possível carregar os convidados." }, { status: 500, headers: noStoreHeaders() });
+  }
+  const invitesByGuest = new Map((activeInvites || []).map((invite) => [String(invite.guest_id), {
+    active: true as const,
+    created_at: String(invite.created_at),
+    last_used_at: invite.last_used_at ? String(invite.last_used_at) : null,
+  }]));
+  return Response.json({
+    guests: (guests || []).map((guest) => ({ ...guest, invite: invitesByGuest.get(String(guest.id)) || null })),
+  }, { headers: noStoreHeaders() });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -76,14 +93,39 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ success: true }, { headers: noStoreHeaders() });
   }
 
-  const rawToken = randomBytes(32).toString("base64url");
-  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const rotating = payload.intent === "rotate_invite_link";
+  const { rawToken, tokenHash } = generateInviteToken();
   const now = new Date().toISOString();
   const { data: guest } = await supabase.from("guests").select("id").eq("id", payload.id).maybeSingle();
   if (!guest) return Response.json({ error: "Convidado não encontrado." }, { status: 404, headers: noStoreHeaders() });
-  await supabase.from("guest_invite_tokens").update({ revoked_at: now }).eq("guest_id", payload.id).is("revoked_at", null);
-  const { error } = await supabase.from("guest_invite_tokens").insert({ guest_id: payload.id, token_hash: tokenHash });
-  if (error) return Response.json({ error: "Não foi possível gerar o convite." }, { status: 500, headers: noStoreHeaders() });
+
+  const { data: activeInvite, error: activeInviteError } = await supabase
+    .from("guest_invite_tokens")
+    .select("id,created_at,last_used_at")
+    .eq("guest_id", payload.id)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (activeInviteError) {
+    return Response.json({ error: "Não foi possível verificar o convite atual." }, { status: 500, headers: noStoreHeaders() });
+  }
+  if (!rotating && activeInvite) {
+    return Response.json({ error: "Este convidado já possui um link ativo. Use a ação de gerar novo link." }, { status: 409, headers: noStoreHeaders() });
+  }
+  if (rotating && !activeInvite) {
+    return Response.json({ error: "Este convidado ainda não possui um link ativo." }, { status: 409, headers: noStoreHeaders() });
+  }
+
+  const { error } = rotating
+    ? await supabase.rpc("rotate_guest_invite_token", { p_guest_id: payload.id, p_token_hash: tokenHash })
+    : await supabase.from("guest_invite_tokens").insert({ guest_id: payload.id, token_hash: tokenHash });
+  if (error) {
+    const conflict = error.code === "23505" || error.code === "P0002";
+    return Response.json({ error: conflict ? "O convite ativo mudou. Atualize a tela antes de tentar novamente." : "Não foi possível gerar o convite." }, { status: conflict ? 409 : 500, headers: noStoreHeaders() });
+  }
   const siteUrl = (process.env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/$/, "");
-  return Response.json({ success: true, inviteUrl: `${siteUrl}/celebracao/convite/${rawToken}` }, { headers: noStoreHeaders() });
+  return Response.json({
+    success: true,
+    inviteUrl: `${siteUrl}/celebracao/convite/${rawToken}`,
+    invite: { active: true, created_at: now, last_used_at: null },
+  }, { headers: noStoreHeaders() });
 }

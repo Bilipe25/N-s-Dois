@@ -6,13 +6,12 @@ import { ExternalLink, Gift, QrCode, ShoppingBag } from "lucide-react";
 
 type PublicGiftCardProps = {
   gift: PublicGift;
-  canReserve: boolean;
   busy?: boolean;
   onReserve: (gift: PublicGift) => void;
   onPix?: (gift: PublicGift) => void;
 };
 
-export function PublicGiftCard({ gift, canReserve, busy = false, onReserve, onPix }: PublicGiftCardProps) {
+export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicGiftCardProps) {
   const reservedBySomeoneElse = !gift.available && !gift.reservation_id;
 
   return (
@@ -53,7 +52,7 @@ export function PublicGiftCard({ gift, canReserve, busy = false, onReserve, onPi
               className={`min-h-11 rounded-full px-2 text-xs font-semibold ${gift.reservation_id ? "border border-stone-200 bg-stone-100 text-stone-700 hover:bg-stone-200" : "border border-rose-100 bg-rose-50 text-rose-700 hover:bg-rose-100"}`}
               variant="secondary"
             >
-              {busy ? "Aguarde…" : gift.reservation_id ? "Cancelar" : reservedBySomeoneElse ? "Reservado" : canReserve ? "Presentear" : "Como reservar"}
+              {busy ? "Aguarde…" : gift.reservation_id ? "Cancelar" : reservedBySomeoneElse ? "Reservado" : "Quero presentear"}
             </Button>
             {onPix && !reservedBySomeoneElse && (
               <Button size="sm" type="button" onClick={() => onPix(gift)} className="min-h-11 rounded-full border border-emerald-100 bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" variant="secondary">

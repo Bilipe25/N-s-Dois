@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GuestInviteMetadataSchema } from "./invite";
 
 export const GuestSchema = z.object({
     id: z.string().uuid(),
@@ -9,6 +10,7 @@ export const GuestSchema = z.object({
     children_count: z.number().int().min(0),
     rsvp_status: z.enum(["pendente", "confirmado", "recusado"]),
     phone: z.string().nullable().optional(),
+    invite: GuestInviteMetadataSchema.nullable().optional(),
 });
 
 // Input Schemas

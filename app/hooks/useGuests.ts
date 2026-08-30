@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Guest, AddGuestInput, UpdateGuestInput, UpdateRSVPInput, BulkActionInput } from "@/schemas/guest";
+import type { GuestInviteMetadata } from "@/schemas/invite";
 import { toast } from "sonner";
 
 async function api<T>(body?: object): Promise<T> {
@@ -30,6 +31,8 @@ export const useDeleteGuest = () => useApiMutation<string>((id) => ({ intent: "d
 export const useBulkConfirm = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_confirm", ids: input.ids }), "Convidados confirmados!");
 export const useBulkDelete = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_delete", ids: input.ids }), "Convidados excluídos!");
 
-export async function createGuestInviteLink(id: string) {
-  return api<{ inviteUrl: string }>({ intent: "create_invite_link", id });
+export async function createGuestInviteLink(id: string, mode: "create" | "rotate") {
+  return api<{ inviteUrl: string; invite: GuestInviteMetadata }>(mode === "rotate"
+    ? { intent: "rotate_invite_link", id, confirmed: true }
+    : { intent: "create_invite_link", id });
 }

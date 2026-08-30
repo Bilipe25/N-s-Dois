@@ -26,7 +26,7 @@ export type CelebrationConfig = {
 export type CelebrationLoaderData = {
   config: CelebrationConfig;
   events: CelebrationEvent[];
-  invitation: { active: boolean; responses: InvitationEvent[] };
+  invitation: { active: boolean; displayName: string | null; responses: InvitationEvent[] };
   gifts: PublicGift[];
   giftCursor: string | null;
   categories: string[];
@@ -129,7 +129,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     return {
       config: defaultConfig,
       events: [],
-      invitation: { active: false, responses: [] },
+      invitation: { active: false, displayName: null, responses: [] },
       gifts: [],
       giftCursor: null,
       categories: [],
@@ -160,9 +160,15 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
 
   const responses: InvitationEvent[] = [];
   const ownReservations = new Map<string, string>();
+  let displayName: string | null = null;
 
   if (guestId) {
-    const [{ data: rsvpRows }, { data: reservationRows }] = await Promise.all([
+    const [{ data: guest }, { data: rsvpRows }, { data: reservationRows }] = await Promise.all([
+      supabase
+        .from("guests")
+        .select("id,name")
+        .eq("id", guestId)
+        .maybeSingle(),
       supabase
         .from("guest_event_rsvps")
         .select("id,event_id,adult_limit,child_limit,confirmed_adults,confirmed_children,status,private_message,celebration_events!inner(state)")
@@ -175,7 +181,9 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
         .eq("status", "active"),
     ]);
 
-    for (const row of rsvpRows || []) {
+    displayName = guest?.id ? stringOrNull(guest.name) : null;
+
+    for (const row of displayName ? rsvpRows || [] : []) {
       responses.push({
         id: String(row.id),
         event_id: String(row.event_id),
@@ -187,7 +195,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
         private_message: stringOrNull(row.private_message),
       });
     }
-    for (const row of reservationRows || []) ownReservations.set(String(row.gift_id), String(row.id));
+    for (const row of displayName ? reservationRows || [] : []) ownReservations.set(String(row.gift_id), String(row.id));
   }
 
   const rawGifts = (giftRows || []).map((row) => {
@@ -202,7 +210,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
   return {
     config,
     events: (eventRows || []) as CelebrationEvent[],
-    invitation: { active: Boolean(guestId), responses },
+    invitation: { active: Boolean(displayName), displayName, responses },
     gifts: pageRows.map((row) => publicGift(row, ownReservations)),
     giftCursor: rawGifts.length > 12 ? "12" : null,
     categories: [...new Set(rawGifts.map((row) => stringOrNull(row.category)).filter((value): value is string => Boolean(value)))].sort(),

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(33);
 
 set local role anon;
 select throws_ok('select * from public.guests', '42501', null, 'anon cannot read guests');
@@ -17,6 +17,7 @@ select throws_ok('select * from public.gift_reservations', '42501', null, 'anon 
 select throws_ok('select * from public.security_rate_limits', '42501', null, 'anon cannot read rate limits');
 select throws_ok('select * from public.message_wall', '42501', null, 'anon cannot read legacy public messages');
 select throws_ok('select * from public.pix_confirmations', '42501', null, 'anon cannot read legacy PIX confirmations');
+select ok(not has_function_privilege('anon', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'anon cannot rotate invite tokens');
 
 reset role;
 set local role authenticated;
@@ -33,6 +34,36 @@ select throws_ok('select * from public.gift_reservations', '42501', null, 'authe
 select throws_ok('select * from public.security_rate_limits', '42501', null, 'authenticated cannot read rate limits');
 select throws_ok('select * from public.message_wall', '42501', null, 'authenticated cannot read legacy public messages');
 select throws_ok('select * from public.pix_confirmations', '42501', null, 'authenticated cannot read legacy PIX confirmations');
+select ok(not has_function_privilege('authenticated', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'authenticated cannot rotate invite tokens');
 
+reset role;
+select ok(has_function_privilege('service_role', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'service role can rotate invite tokens');
+
+insert into public.guests (id, name, group_name, adults_count, children_count, rsvp_status)
+values ('00000000-0000-4000-8000-000000000001', 'Convite de teste', 'Outros', 1, 0, 'pendente');
+insert into public.guest_invite_tokens (guest_id, token_hash)
+values ('00000000-0000-4000-8000-000000000001', repeat('0', 64));
+
+set local role service_role;
+select lives_ok(
+  $$select public.rotate_guest_invite_token('00000000-0000-4000-8000-000000000001'::uuid, repeat('1', 64))$$,
+  'service role rotates an active invite atomically'
+);
+select is(
+  (select count(*) from public.guest_invite_tokens where guest_id = '00000000-0000-4000-8000-000000000001' and revoked_at is null),
+  1::bigint,
+  'rotation leaves exactly one active invite'
+);
+select isnt(
+  (select token_hash::text from public.guest_invite_tokens where guest_id = '00000000-0000-4000-8000-000000000001' and revoked_at is null),
+  repeat('0', 64),
+  'the previous link hash is no longer active'
+);
+select ok(
+  (select revoked_at is not null from public.guest_invite_tokens where guest_id = '00000000-0000-4000-8000-000000000001' and token_hash = repeat('0', 64)),
+  'rotation preserves the previous token as revoked history'
+);
+
+reset role;
 select * from finish();
 rollback;

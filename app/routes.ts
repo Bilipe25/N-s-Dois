@@ -28,6 +28,7 @@ export default [
 
     route("celebracao", "routes/celebration.tsx"),
     route("celebracao/convite/:token", "routes/celebration.invite.$token.ts"),
+    route("celebracao/sair", "routes/celebration.exit.ts"),
     route("public/bridal-shower", "routes/redirect.public-celebration.ts"),
     route("public/wedding", "routes/redirect.public-wedding.ts"),
     route("api/subscribe", "routes/api.subscribe.tsx"),
