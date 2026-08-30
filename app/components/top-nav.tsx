@@ -27,7 +27,7 @@ export function TopNav({ unreadCount: initialUnreadCount = 0, action }: { unread
         if (pathname === "/groomsmen") return "Padrinhos";
         if (pathname === "/groomsmen/new") return "Novo Padrinho";
         if (pathname.startsWith("/groomsmen/")) return "Editar Padrinho";
-        if (pathname === "/bridal-shower") return "Chá de Casa Nova";
+        if (pathname === "/bridal-shower" || pathname === "/celebracao/admin") return "Celebração";
         if (pathname === "/calendar") return "Agenda";
         if (pathname === "/inspirations") return "Inspirações";
         if (pathname === "/assets") return "Nossos Bens";

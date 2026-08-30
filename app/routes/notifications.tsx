@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLoaderData, Link } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { getSession } from "@/sessions";
 import { Button } from "@/components/ui/button";
 import { Bell, Check } from "lucide-react";
@@ -16,7 +16,7 @@ export const meta: Route.MetaFunction = () => {
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const session = await getSession(request.headers.get("Cookie"));
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     const { data: notifications } = await supabase
         .from("notifications")

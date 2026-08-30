@@ -1,126 +1,89 @@
+import { createHash, randomBytes } from "node:crypto";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { createClient } from "@/lib/supabase";
-import { sendPushToUser } from "@/services/push.server";
-import { requireUserSession } from "@/sessions";
 import { z } from "zod";
-
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-    await requireUserSession(request);
-    const supabase = createClient(request);
-
-    const { data: guests, error } = await supabase
-        .from("guests")
-        .select("*")
-        .order("name", { ascending: true });
-
-    if (error) {
-        return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    return Response.json({ guests: guests || [] });
-};
+import { createServerAdminClient } from "@/lib/supabase.server";
+import { assertSameOrigin, noStoreHeaders, readJsonBody } from "@/lib/security.server";
+import { requireUserSession } from "@/sessions";
 
 const ActionSchema = z.discriminatedUnion("intent", [
-    z.object({
-        intent: z.literal("add_guest"),
-        names: z.array(z.string()),
-        group_name: z.string(),
-        user: z.string(),
-    }),
-    z.object({
-        intent: z.literal("update_rsvp"),
-        id: z.string().uuid(),
-        status: z.enum(["pendente", "confirmado", "recusado"]),
-    }),
+  z.object({ intent: z.literal("add_guest"), names: z.array(z.string().trim().min(1)).min(1).max(100), group_name: z.string().trim().min(1).max(120), adults_count: z.number().int().min(0).max(20), children_count: z.number().int().min(0).max(20) }),
+  z.object({ intent: z.literal("update_guest"), id: z.string().uuid(), name: z.string().trim().min(1).max(180), group_name: z.string().trim().min(1).max(120), adults_count: z.number().int().min(0).max(20), children_count: z.number().int().min(0).max(20), status: z.enum(["pendente", "confirmado", "recusado"]) }),
+  z.object({ intent: z.literal("update_rsvp"), id: z.string().uuid(), status: z.enum(["pendente", "confirmado", "recusado"]) }),
+  z.object({ intent: z.literal("delete_guest"), id: z.string().uuid() }),
+  z.object({ intent: z.literal("bulk_confirm"), ids: z.array(z.string().uuid()).min(1).max(200) }),
+  z.object({ intent: z.literal("bulk_delete"), ids: z.array(z.string().uuid()).min(1).max(200) }),
+  z.object({ intent: z.literal("create_invite_link"), id: z.string().uuid() }),
 ]);
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-    await requireUserSession(request);
+export async function loader({ request }: LoaderFunctionArgs) {
+  await requireUserSession(request);
+  const supabase = createServerAdminClient();
+  const { data: guests, error } = await supabase.from("guests").select("*").order("name");
+  if (error) return Response.json({ error: "Não foi possível carregar os convidados." }, { status: 500, headers: noStoreHeaders() });
+  return Response.json({ guests: guests || [] }, { headers: noStoreHeaders() });
+}
 
-    if (request.method !== "POST") {
-        return Response.json({ error: "Method not allowed" }, { status: 405 });
+export async function action({ request }: ActionFunctionArgs) {
+  const user = await requireUserSession(request);
+  assertSameOrigin(request);
+  if (request.method !== "POST") return Response.json({ error: "Método não permitido." }, { status: 405 });
+  const parsed = ActionSchema.safeParse(await readJsonBody(request, 32_768));
+  if (!parsed.success) return Response.json({ error: "Dados inválidos.", details: parsed.error.issues }, { status: 400, headers: noStoreHeaders() });
+  const supabase = createServerAdminClient();
+  const payload = parsed.data;
+
+  if (payload.intent === "add_guest") {
+    const rows = payload.names.map((name) => ({ name, group_name: payload.group_name, adults_count: payload.adults_count, children_count: payload.children_count, rsvp_status: "pendente" }));
+    const { data, error } = await supabase.from("guests").insert(rows).select("*");
+    if (error) return Response.json({ error: "Não foi possível adicionar os convidados." }, { status: 500, headers: noStoreHeaders() });
+    const { data: events } = await supabase.from("celebration_events").select("id").eq("state", "published");
+    if (events?.length && data?.length) {
+      await supabase.from("guest_event_rsvps").insert(data.flatMap((guest) => events.map((event) => ({ guest_id: guest.id, event_id: event.id, adult_limit: payload.adults_count, child_limit: payload.children_count }))));
     }
+    await supabase.from("notifications").insert({ type: "rsvp", title: "Lista de convidados atualizada", message: `${user} adicionou ${rows.length} convite(s).`, link: "/guests" });
+    return Response.json({ success: true, guests: data }, { status: 201, headers: noStoreHeaders() });
+  }
 
-    try {
-        const jsonData = await request.json();
-        const payload = ActionSchema.parse(jsonData);
-        const supabase = createClient(request);
+  if (payload.intent === "update_guest") {
+    const { error } = await supabase.from("guests").update({ name: payload.name, group_name: payload.group_name, adults_count: payload.adults_count, children_count: payload.children_count, rsvp_status: payload.status }).eq("id", payload.id);
+    if (error) return Response.json({ error: "Não foi possível atualizar o convidado." }, { status: 500, headers: noStoreHeaders() });
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
 
-        if (payload.intent === "add_guest") {
-            const { names, group_name, user } = payload;
+  if (payload.intent === "update_rsvp") {
+    const { error } = await supabase.from("guests").update({ rsvp_status: payload.status }).eq("id", payload.id);
+    if (error) return Response.json({ error: "Não foi possível atualizar o RSVP." }, { status: 500, headers: noStoreHeaders() });
+    await supabase.from("guest_event_rsvps").update({ status: payload.status, responded_at: payload.status === "pendente" ? null : new Date().toISOString(), updated_at: new Date().toISOString() }).eq("guest_id", payload.id);
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
 
-            // Notification Logic
-            let title = "";
-            let message = "";
-            const link = "/guests";
+  if (payload.intent === "delete_guest") {
+    const { error } = await supabase.from("guests").delete().eq("id", payload.id);
+    if (error) return Response.json({ error: "Não foi possível excluir o convidado." }, { status: 500, headers: noStoreHeaders() });
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
 
-            if (names.length === 1) {
-                title = "Novo Convidado ➕";
-                message = `${user} adicionou um novo convidado: ${names[0]} (${group_name}).`;
-            } else if (names.length > 1) {
-                title = "Novos Convidados ➕";
-                message = `${user} adicionou ${names.length} novos convidados em ${group_name}.`;
-            }
+  if (payload.intent === "bulk_confirm") {
+    const { error } = await supabase.from("guests").update({ rsvp_status: "confirmado" }).in("id", payload.ids);
+    if (error) return Response.json({ error: "Não foi possível confirmar os convidados." }, { status: 500, headers: noStoreHeaders() });
+    await supabase.from("guest_event_rsvps").update({ status: "confirmado", responded_at: new Date().toISOString(), updated_at: new Date().toISOString() }).in("guest_id", payload.ids);
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
 
-            if (title && message) {
-                try {
-                    await supabase.from("notifications").insert({
-                        type: "rsvp",
-                        title,
-                        message,
-                        link
-                    });
+  if (payload.intent === "bulk_delete") {
+    const { error } = await supabase.from("guests").delete().in("id", payload.ids);
+    if (error) return Response.json({ error: "Não foi possível excluir os convidados." }, { status: 500, headers: noStoreHeaders() });
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
 
-                    await sendPushToUser(request, "all", title, message, link);
-                } catch (notifError) {
-                    console.error("Error sending notification for guest (non-fatal):", notifError);
-                }
-            }
-
-            return Response.json({ success: true });
-        }
-
-        if (payload.intent === "update_rsvp") {
-            const { id, status } = payload;
-
-            // Fetch guest name for notification
-            const { data: guest } = await supabase
-                .from("guests")
-                .select("name")
-                .eq("id", id)
-                .single();
-
-            if (guest) {
-                const title = "Atualização de RSVP 📩";
-                const message = `${guest.name} teve a presença marcada como "${status}".`;
-                const link = "/guests";
-
-                try {
-                    await supabase.from("notifications").insert({
-                        type: "rsvp",
-                        title,
-                        message,
-                        link
-                    });
-
-                    await sendPushToUser(request, "all", title, message, link);
-                } catch (notifError) {
-                    console.error("Error sending notification for RSVP (non-fatal):", notifError);
-                }
-            }
-
-            return Response.json({ success: true });
-        }
-
-        return Response.json({ error: "Invalid intent" }, { status: 400 });
-
-    } catch (error: any) {
-        console.error("Error in api.guests:", error);
-
-        if (error instanceof z.ZodError) {
-            return Response.json({ error: "Dados inválidos", details: error.issues }, { status: 400 });
-        }
-
-        return Response.json({ error: error.message || "Internal Server Error" }, { status: 500 });
-    }
-};
+  const rawToken = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const now = new Date().toISOString();
+  const { data: guest } = await supabase.from("guests").select("id").eq("id", payload.id).maybeSingle();
+  if (!guest) return Response.json({ error: "Convidado não encontrado." }, { status: 404, headers: noStoreHeaders() });
+  await supabase.from("guest_invite_tokens").update({ revoked_at: now }).eq("guest_id", payload.id).is("revoked_at", null);
+  const { error } = await supabase.from("guest_invite_tokens").insert({ guest_id: payload.id, token_hash: tokenHash });
+  if (error) return Response.json({ error: "Não foi possível gerar o convite." }, { status: 500, headers: noStoreHeaders() });
+  const siteUrl = (process.env.PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/$/, "");
+  return Response.json({ success: true, inviteUrl: `${siteUrl}/celebracao/convite/${rawToken}` }, { headers: noStoreHeaders() });
+}

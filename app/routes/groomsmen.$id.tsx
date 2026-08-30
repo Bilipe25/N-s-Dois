@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLoaderData } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { data: groomsman, error } = await supabase
         .from("groomsmen")
         .select("*")

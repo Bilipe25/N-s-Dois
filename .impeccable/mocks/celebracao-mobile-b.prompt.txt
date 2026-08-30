@@ -1,0 +1,12 @@
+Use case: ui-mockup
+Asset type: high-fidelity mobile website composition, 390x844 viewport, no phone frame and no browser chrome
+Primary request: Create option B for the Portuguese celebration website “Celebrando o Amor e o Novo Lar” for Gabriel & Raabe. This is a real web UI comp, not a poster.
+Structure: slim top navigation with “Gabriel & Raabe” and menu; first viewport behaves like an architect’s material table: a tall left column with the headline, a right column made of three overlapping paper/material swatches holding “Amor”, “Casa”, and the RSVP action; beneath, a full-width event information band showing an honest empty state “Os próximos detalhes chegam em breve”; a second-fold preview introduces “Sua presença é o nosso melhor presente”.
+Style/medium: premium Brazilian editorial design inspired by a new-home material sample folio, precise grid with warm human details
+Color palette: ivory #F3EBDD, charcoal #262720, burnt clay #B85C42, olive #53604B, ochre #C89A57
+Materials/textures: subtle linen, uncoated paper, one translucent vellum overlay; no image of people
+Typography: narrow elegant modern serif for display, clear humanist sans for interface
+Composition/framing: structured two-column mobile grid that remains readable, dynamic overlaps without obstructing content, one primary terracotta CTA “Responder ao convite”
+Text (verbatim): “Gabriel & Raabe”, “Celebrando o Amor e o Novo Lar”, “Amor”, “Casa”, “Responder ao convite”, “Os próximos detalhes chegam em breve”, “Sua presença é o nosso melhor presente”
+Constraints: exact Portuguese text where legible; obvious website controls; 44px targets; accessible contrast; no generic rounded card grid; no gradient text; no stock photography; no fake date/address/countdown; no hearts; no phone frame; no watermark
+Avoid: poster-only composition, ecommerce appearance, ornate wedding invitation cliché, pink, gold foil, fake couple photography, invented facts

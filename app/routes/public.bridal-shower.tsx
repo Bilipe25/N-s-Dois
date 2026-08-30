@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, PackageSearch } from "lucide-react";
-import type { Route } from "./+types/public.bridal-shower";
 import { GiftCard } from "@/components/bridal-shower/gift-card";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { PixModal } from "@/components/bridal-shower/pix-modal";
@@ -21,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 import { createClient, hasSupabaseEnv } from "@/lib/supabase";
-import type { LoaderFunctionArgs } from "react-router";
+import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 
 // Loader para buscar config (necessário para meta tags OG)
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -47,7 +46,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     };
 };
 
-export const meta: Route.MetaFunction = ({ data }) => {
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
     const title = "Chá de Casa Nova | Gabriel & Raabe 💍";
     const description = "Estamos montando nosso lar com muito amor! Venha celebrar conosco e, se desejar, escolha um presente para nos ajudar nessa nova jornada. ❤️";
     const publicSiteUrl = ((data as { publicSiteUrl?: string })?.publicSiteUrl || "https://nosdois.vercel.app").replace(/\/$/, "");

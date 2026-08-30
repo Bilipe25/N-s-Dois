@@ -1,8 +1,10 @@
 import type { ActionFunctionArgs } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { getSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    assertSameOrigin(request);
     const session = await getSession(request.headers.get("Cookie"));
     const user = session.get("user");
 
@@ -16,7 +18,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "No subscription provided" }, { status: 400 });
     }
 
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     // Tentar inserir. Se já existir (user_name + subscription), o banco deve tratar (se tiver unique constraint)
     // Como definimos unique(user_name, subscription) no plano, podemos usar upsert ou ignore.

@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import type { Route } from "./+types/root";
 import "./app.css";
 import { Toaster } from "@/components/ui/sonner";
+import { createServerAdminClient, hasServerSupabaseEnv } from "@/lib/supabase.server";
 
 function getTrustedLogoUrl(value: unknown, supabaseUrl?: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -67,24 +68,13 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   // Nota: Em Remix/React Router v7, loader roda no server.
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
-
   let logoUrl = "/favicon.ico"; // Default
 
-  if (supabaseUrl && supabaseKey) {
+  if (supabaseUrl && hasServerSupabaseEnv()) {
     try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/app_config?select=logo_url&limit=1`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.length > 0 && data[0].logo_url) {
-          logoUrl = getTrustedLogoUrl(data[0].logo_url, supabaseUrl) || logoUrl;
-        }
-      }
+      const supabase = createServerAdminClient();
+      const { data } = await supabase.from("app_config").select("logo_url").limit(1).maybeSingle();
+      if (data?.logo_url) logoUrl = getTrustedLogoUrl(data.logo_url, supabaseUrl) || logoUrl;
     } catch (e) {
       console.error("Erro ao buscar logo no root:", e);
     }
@@ -94,7 +84,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     logoUrl,
     ENV: {
       SUPABASE_URL: process.env.SUPABASE_URL,
-      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY,
       VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || "",
       PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || new URL(request.url).origin,
     },
@@ -114,7 +104,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#C39DA3" />
+        <meta name="theme-color" content="#F1E4D1" />
         <Meta />
         <Links />
         <link rel="icon" href={data?.logoUrl || "/favicon.ico"} />
@@ -170,15 +160,15 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "Algo deu errado";
+  let details = "Não foi possível concluir esta ação.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : "Erro";
     details =
       error.status === 404
-        ? "The requested page could not be found."
+        ? "A página solicitada não foi encontrada."
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;

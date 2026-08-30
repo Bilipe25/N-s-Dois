@@ -1,11 +1,12 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { CreateBudgetItemSchema, UpdateBudgetItemSchema } from "@/schemas/budget";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     const { data: items, error } = await supabase
         .from("budget_items")
@@ -21,7 +22,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    assertSameOrigin(request);
+    const supabase = createServerAdminClient();
     const method = request.method;
 
     if (method === "POST") {

@@ -1,5 +1,5 @@
 import { useLoaderData, Form, Link, redirect, useNavigation } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { id } = params;
 
     const { data: guest, error } = await supabase
@@ -29,7 +29,7 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
 
 export const action = async ({ request, params }: Route.ActionArgs) => {
     const formData = await request.formData();
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { id } = params;
 
     const name = formData.get("name") as string;

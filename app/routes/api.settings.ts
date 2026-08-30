@@ -1,11 +1,12 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     let { data: config, error } = await supabase
         .from("app_config")
@@ -35,13 +36,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
+    assertSameOrigin(request);
     const method = request.method;
 
     if (method === "POST") {
         const formData = await request.formData();
 
         // Server-side environment variables
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const serviceRoleKey = process.env.SUPABASE_SECRET_KEY;
         const supabaseUrl = process.env.SUPABASE_URL;
 
         if (!serviceRoleKey || !supabaseUrl) {
@@ -78,7 +80,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const files = [
             { key: "login_photo", dbField: "login_photo_url", prefix: "login" },
             { key: "home_photo", dbField: "home_photo_url", prefix: "home" },
-            { key: "bridal_hero_photo", dbField: "bridal_shower_hero_url", prefix: "bridal_hero" },
             { key: "logo", dbField: "logo_url", prefix: "logo" },
         ];
 

@@ -39,7 +39,7 @@ export function AdminAddGiftDrawer({ open, onOpenChange, createGift }: AdminAddG
                 const formData = new FormData();
                 formData.append("photo", selectedFile);
                 
-                const response = await fetch("/api/bridal-shower?intent=upload_gift_image", {
+                const response = await fetch("/api/admin/celebracao/gifts?intent=upload_gift_image", {
                     method: "POST",
                     body: formData
                 });

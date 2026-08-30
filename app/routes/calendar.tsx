@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLoaderData, Form, Link } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     // Fetch manual events
     const { data: events, error: eventsError } = await supabase
@@ -39,7 +39,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 export const action = async ({ request }: Route.ActionArgs) => {
     const formData = await request.formData();
     const intent = formData.get("intent");
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     if (intent === "add_event") {
         const title = formData.get("title") as string;

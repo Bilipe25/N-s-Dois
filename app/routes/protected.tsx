@@ -6,7 +6,7 @@ import { TopNav } from "@/components/top-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Route } from "./+types/protected";
 
-import { createClient, hasSupabaseEnv } from "@/lib/supabase";
+import { createServerAdminClient, hasServerSupabaseEnv } from "@/lib/supabase.server";
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
     const session = await getSession(request.headers.get("Cookie"));
@@ -16,12 +16,12 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
         throw redirect("/login");
     }
 
-    if (!hasSupabaseEnv()) {
+    if (!hasServerSupabaseEnv()) {
         return { user, pendingTasksCount: 0, unreadNotificationsCount: 0 };
     }
 
     try {
-        const supabase = createClient(request);
+        const supabase = createServerAdminClient();
         const { count: pendingTasksCount } = await supabase
             .from("checklist_items")
             .select("*", { count: "exact", head: true })

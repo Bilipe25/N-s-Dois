@@ -1,12 +1,13 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { UpdateAssetSchema } from "@/schemas/assets";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 
 // GET - Listar assets
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     // Buscar assets manuais
     const { data: assets, error } = await supabase
@@ -35,7 +36,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 // POST - Criar asset
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    assertSameOrigin(request);
+    const supabase = createServerAdminClient();
 
     if (request.method === "POST") {
         try {

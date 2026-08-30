@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLoaderData, Link } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { data: groomsmen, error } = await supabase
         .from("groomsmen")
         .select("*")

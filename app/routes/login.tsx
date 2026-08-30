@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart } from "lucide-react";
-import { commitSession, getAppLoginPassword, getSession } from "@/sessions";
-import { createClient, hasSupabaseEnv } from "@/lib/supabase";
+import { commitSession, getSession, verifyAdminPassword } from "@/sessions";
+import { createServerAdminClient, hasServerSupabaseEnv } from "@/lib/supabase.server";
+import { assertSameOrigin, consumeRateLimit, noStoreHeaders } from "@/lib/security.server";
 import type { Route } from "./+types/login";
 
 export const meta: Route.MetaFunction = () => {
@@ -13,12 +14,12 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
-    if (!hasSupabaseEnv()) {
+    if (!hasServerSupabaseEnv()) {
         return { config: null };
     }
 
     try {
-        const supabase = createClient(request);
+        const supabase = createServerAdminClient();
         const { data: config } = await supabase.from("app_config").select("login_photo_url").single();
         return { config };
     } catch (error) {
@@ -28,15 +29,15 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 };
 
 export const action = async ({ request }: Route.ActionArgs) => {
+    assertSameOrigin(request);
+    if (!(await consumeRateLimit(request, "admin-login", 8, 15 * 60))) {
+        return Response.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429, headers: noStoreHeaders() });
+    }
     const formData = await request.formData();
-    const name = formData.get("name") as string;
-    const password = formData.get("password") as string;
-    const expectedPassword = getAppLoginPassword();
+    const name = String(formData.get("name") || "").trim();
+    const password = String(formData.get("password") || "");
 
-    if (
-        (name.toLowerCase() === "gabriel" && password === expectedPassword) ||
-        (name.toLowerCase() === "raabe" && password === expectedPassword)
-    ) {
+    if (await verifyAdminPassword(name, password)) {
         const session = await getSession(request.headers.get("Cookie"));
         session.set("user", name);
 
@@ -47,12 +48,12 @@ export const action = async ({ request }: Route.ActionArgs) => {
         });
     }
 
-    return { error: "Nome ou senha incorretos." };
+    return Response.json({ error: "Nome ou senha incorretos." }, { status: 401, headers: noStoreHeaders() });
 };
 
 export default function Login() {
     const { config } = useLoaderData<typeof loader>();
-    const actionData = useActionData<typeof action>();
+    const actionData = useActionData<typeof action>() as { error?: string } | undefined;
     const navigation = useNavigation();
     const isSubmitting = navigation.state === "submitting";
 

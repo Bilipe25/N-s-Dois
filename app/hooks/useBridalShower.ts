@@ -22,7 +22,7 @@ export const useBridalData = () => {
     return useQuery({
         queryKey: ["bridal_data"],
         queryFn: async () => {
-            const response = await fetch("/api/bridal-shower");
+            const response = await fetch("/api/admin/celebracao/gifts");
             if (!response.ok) throw new Error("Erro ao carregar dados");
             return await response.json() as { gifts: Gift[], guests: Guest[], config: Config };
         }
@@ -101,7 +101,7 @@ export const useCreateGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: CreateGiftInput) => {
-            const response = await fetch("/api/bridal-shower?intent=create_gift", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=create_gift", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(input)
@@ -121,7 +121,7 @@ export const useUpdateGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: UpdateGiftInput) => {
-            const response = await fetch("/api/bridal-shower?intent=update_gift", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=update_gift", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(input)
@@ -141,7 +141,7 @@ export const useDeleteGift = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const response = await fetch(`/api/bridal-shower?intent=delete_gift&id=${id}`, {
+            const response = await fetch(`/api/admin/celebracao/gifts?intent=delete_gift&id=${id}`, {
                 method: "DELETE"
             });
             if (!response.ok) throw new Error("Erro ao remover presente");
@@ -159,7 +159,7 @@ export const useToggleGiftStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, currentStatus }: { id: string, currentStatus: string }) => {
-            const response = await fetch("/api/bridal-shower?intent=toggle_gift_status", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=toggle_gift_status", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, currentStatus })
@@ -178,7 +178,7 @@ export const useBulkUpdateCategory = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: BulkUpdateCategoryInput) => {
-            const response = await fetch("/api/bridal-shower?intent=bulk_update_category", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=bulk_update_category", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(input)
@@ -198,7 +198,7 @@ export const useCreateGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (input: CreateGuestInput) => {
-            const response = await fetch("/api/bridal-shower?intent=create_guest", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=create_guest", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(input)
@@ -218,7 +218,7 @@ export const useDeleteGuest = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (id: string) => {
-            const response = await fetch(`/api/bridal-shower?intent=delete_guest&id=${id}`, {
+            const response = await fetch(`/api/admin/celebracao/gifts?intent=delete_guest&id=${id}`, {
                 method: "DELETE"
             });
             if (!response.ok) throw new Error("Erro ao remover convidado");
@@ -236,7 +236,7 @@ export const useToggleGuestConfirm = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, current }: { id: string, current: boolean }) => {
-            const response = await fetch("/api/bridal-shower?intent=toggle_guest_confirm", {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=toggle_guest_confirm", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, current })
@@ -255,7 +255,7 @@ export const useUpdateConfig = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string, updates: UpdateConfigInput }) => {
-            const response = await fetch(`/api/bridal-shower?intent=update_config&id=${id}`, {
+            const response = await fetch(`/api/admin/celebracao/gifts?intent=update_config&id=${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(updates)
@@ -327,7 +327,7 @@ export const useImportGifts = () => {
             }
 
             if (gifts.length > 0) {
-                const response = await fetch("/api/bridal-shower?intent=import_gifts", {
+                const response = await fetch("/api/admin/celebracao/gifts?intent=import_gifts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ gifts })
@@ -377,7 +377,7 @@ export const useImportGuests = () => {
             }
 
             if (guests.length > 0) {
-                const response = await fetch("/api/bridal-shower?intent=import_guests", {
+                const response = await fetch("/api/admin/celebracao/gifts?intent=import_guests", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ guests })
@@ -406,7 +406,7 @@ export const useImportGuestsFromMain = () => {
             }));
 
             if (guests.length > 0) {
-                const response = await fetch("/api/bridal-shower?intent=import_guests", {
+                const response = await fetch("/api/admin/celebracao/gifts?intent=import_guests", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ guests })

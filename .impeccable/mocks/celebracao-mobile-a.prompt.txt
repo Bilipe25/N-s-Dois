@@ -1,0 +1,12 @@
+Use case: ui-mockup
+Asset type: high-fidelity mobile website composition, 390x844 viewport, no phone frame and no browser chrome
+Primary request: Create option A for the Portuguese celebration website “Celebrando o Amor e o Novo Lar” for Gabriel & Raabe. This is a real web UI comp, not a poster.
+Structure: full viewport warm ivory ground; compact wordmark “G & R” at top left and text link “Nosso convite” at top right; an oversized editorial headline taking the upper half, broken intentionally into “Celebrando / o amor e / o novo lar”; a narrow olive architectural axis line connects headline to a tactile burnt-clay event panel; the event panel says “Novidades em breve” and has one prominent button “Abrir meu convite”; a quiet bottom strip previews “Celebração · Presentes · Contato”.
+Style/medium: sophisticated architectural material folio, editorial web design, semantic controls visible
+Color palette: ivory #F3EBDD, charcoal #262720, burnt clay #B85C42, olive #53604B, ochre #C89A57
+Materials/textures: subtle real linen and translucent vellum paper surfaces, restrained and physically credible; no fake couple photo
+Typography: high-contrast modern display serif with distinctive narrow forms, paired with clean humanist sans; large readable Portuguese
+Composition/framing: asymmetric, generous whitespace, one unmistakable primary action, show enough below the fold to prove it is a website
+Text (verbatim): “G & R”, “Nosso convite”, “Celebrando o amor e o novo lar”, “Gabriel & Raabe”, “Novidades em breve”, “Abrir meu convite”, “Celebração”, “Presentes”, “Contato”
+Constraints: exact Portuguese text where legible; 44px touch target proportions; accessible contrast; no card grid; no gradient text; no glassmorphism; no stock photography; no invented date, address, countdown, testimonial, price, or payment claim; no hearts; no device mockup; no watermark
+Avoid: generic wedding template, pink palette, autoplay video, ecommerce catalog hero, decorative icons, fake data

@@ -1,218 +1,35 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Guest, AddGuestInput, UpdateGuestInput, UpdateRSVPInput, BulkActionInput } from "@/schemas/guest";
 import { toast } from "sonner";
 
-const getSupabase = () => createClient();
+async function api<T>(body?: object): Promise<T> {
+  const response = await fetch("/api/guests", body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Não foi possível concluir a ação.");
+  return data as T;
+}
 
-// --- QUERIES ---
+export const useGuests = () => useQuery({ queryKey: ["guests"], queryFn: async () => (await api<{ guests: Guest[] }>()).guests });
+export const useGuest = (id: string) => useQuery({ queryKey: ["guests", id], queryFn: async () => (await api<{ guests: Guest[] }>()).guests.find((guest) => guest.id === id)!, enabled: Boolean(id) });
+export const useAppConfig = () => useQuery({ queryKey: ["app_config"], queryFn: async () => {
+  const response = await fetch("/api/settings");
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Configuração indisponível.");
+  return data.config;
+} });
 
-export const useGuests = () => {
-    return useQuery({
-        queryKey: ["guests"],
-        queryFn: async () => {
-            const supabase = getSupabase();
-            const { data, error } = await supabase
-                .from("guests")
-                .select("*")
-                .order("name", { ascending: true });
+function useApiMutation<TInput>(body: (input: TInput) => object, success: string) {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (input: TInput) => api(body(input)), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["guests"] }); toast.success(success); }, onError: (error: Error) => toast.error(error.message) });
+}
 
-            if (error) throw error;
-            return data as Guest[];
-        }
-    });
-};
+export const useAddGuest = (_user: string) => useApiMutation<AddGuestInput>((input) => ({ intent: "add_guest", names: input.name.split("\n").map((name) => name.trim()).filter(Boolean), group_name: input.group_name, adults_count: input.adults_count, children_count: input.children_count }), "Convidado(s) adicionado(s)!");
+export const useUpdateGuest = () => useApiMutation<UpdateGuestInput>((input) => ({ intent: "update_guest", id: input.id, name: input.name, group_name: input.group_name, adults_count: input.adults_count, children_count: input.children_count, status: input.rsvp_status }), "Convidado atualizado!");
+export const useUpdateRSVP = (_user: string) => useApiMutation<UpdateRSVPInput>((input) => ({ intent: "update_rsvp", id: input.id, status: input.status }), "RSVP atualizado!");
+export const useDeleteGuest = () => useApiMutation<string>((id) => ({ intent: "delete_guest", id }), "Convidado removido!");
+export const useBulkConfirm = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_confirm", ids: input.ids }), "Convidados confirmados!");
+export const useBulkDelete = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_delete", ids: input.ids }), "Convidados excluídos!");
 
-export const useGuest = (id: string) => {
-    return useQuery({
-        queryKey: ["guests", id],
-        queryFn: async () => {
-            const supabase = getSupabase();
-            const { data, error } = await supabase
-                .from("guests")
-                .select("*")
-                .eq("id", id)
-                .single();
-
-            if (error) throw error;
-            return data as Guest;
-        },
-        enabled: !!id
-    });
-};
-
-export const useAppConfig = () => {
-    return useQuery({
-        queryKey: ["app_config"],
-        queryFn: async () => {
-            const supabase = getSupabase();
-            const { data, error } = await supabase
-                .from("app_config")
-                .select("*")
-                .single();
-
-            if (error) throw error;
-            return data;
-        }
-    });
-};
-
-// --- MUTATIONS ---
-
-export const useAddGuest = (user: string) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (input: AddGuestInput) => {
-            const supabase = getSupabase();
-            const names = input.name.split('\n').filter(n => n.trim().length > 0);
-            const guestsToAdd = names.map(n => ({
-                name: n.trim(),
-                group_name: input.group_name,
-                adults_count: input.adults_count,
-                children_count: input.children_count,
-                rsvp_status: "pendente"
-            }));
-
-            const { data, error } = await supabase.from("guests").insert(guestsToAdd).select();
-            if (error) throw error;
-
-            // Call API for Notification
-            await fetch("/api/guests", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    intent: "add_guest",
-                    names,
-                    group_name: input.group_name,
-                    user
-                })
-            });
-
-            return data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("Convidado(s) adicionado(s)!");
-        },
-        onError: (error: any) => toast.error(`Erro ao adicionar: ${error.message}`)
-    });
-};
-
-export const useUpdateGuest = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (input: UpdateGuestInput) => {
-            const supabase = getSupabase();
-            const { error } = await supabase
-                .from("guests")
-                .update({
-                    name: input.name,
-                    group_name: input.group_name,
-                    adults_count: input.adults_count,
-                    children_count: input.children_count,
-                    rsvp_status: input.rsvp_status
-                })
-                .eq("id", input.id);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("Convidado atualizado!");
-        },
-        onError: (error: any) => toast.error(error.message)
-    });
-};
-
-export const useUpdateRSVP = (user: string) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ id, status }: UpdateRSVPInput) => {
-            const supabase = getSupabase();
-            const { error } = await supabase.from("guests").update({ rsvp_status: status }).eq("id", id);
-            if (error) throw error;
-
-            // Call API for Notification
-            await fetch("/api/guests", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    intent: "update_rsvp",
-                    id,
-                    status
-                })
-            });
-        },
-        onMutate: async ({ id, status }) => {
-            await queryClient.cancelQueries({ queryKey: ["guests"] });
-            const previousGuests = queryClient.getQueryData<Guest[]>(["guests"]);
-
-            if (previousGuests) {
-                queryClient.setQueryData<Guest[]>(["guests"], (old) =>
-                    old?.map(g => g.id === id ? { ...g, rsvp_status: status } : g)
-                );
-            }
-            return { previousGuests };
-        },
-        onError: (err, newTodo, context) => {
-            if (context?.previousGuests) {
-                queryClient.setQueryData(["guests"], context.previousGuests);
-            }
-            toast.error("Erro ao atualizar RSVP.");
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("RSVP atualizado!");
-        }
-    });
-};
-
-export const useDeleteGuest = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async (id: string) => {
-            const supabase = getSupabase();
-            const { error } = await supabase.from("guests").delete().eq("id", id);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("Convidado removido!");
-        },
-        onError: (error: any) => toast.error(error.message)
-    });
-};
-
-export const useBulkConfirm = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ ids }: BulkActionInput) => {
-            const supabase = getSupabase();
-            const { error } = await supabase
-                .from("guests")
-                .update({ rsvp_status: "confirmado" })
-                .in("id", ids);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("Convidados confirmados!");
-        },
-        onError: (error: any) => toast.error(error.message)
-    });
-};
-
-export const useBulkDelete = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: async ({ ids }: BulkActionInput) => {
-            const supabase = getSupabase();
-            const { error } = await supabase.from("guests").delete().in("id", ids);
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["guests"] });
-            toast.success("Convidados excluídos!");
-        },
-        onError: (error: any) => toast.error(error.message)
-    });
-};
+export async function createGuestInviteLink(id: string) {
+  return api<{ inviteUrl: string }>({ intent: "create_invite_link", id });
+}

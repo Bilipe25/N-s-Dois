@@ -1,8 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { z } from "zod";
 import { sendPushToUser } from "@/services/push.server";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 
 const ActionSchema = z.discriminatedUnion("intent", [
     z.object({
@@ -29,7 +30,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { data, error } = await supabase
         .from("groomsmen")
         .select("*")
@@ -44,6 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
+    assertSameOrigin(request);
 
     if (request.method !== "POST" && request.method !== "DELETE" && request.method !== "PUT") {
         return Response.json({ error: "Method not allowed" }, { status: 405 });
@@ -52,7 +54,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     try {
         const jsonData = await request.json();
         const payload = ActionSchema.parse(jsonData);
-        const supabase = createClient(request);
+        const supabase = createServerAdminClient();
 
         if (payload.intent === "create") {
             const { name, role, side, photoUrl, user } = payload;

@@ -1,5 +1,5 @@
 import { Form, useNavigation, useActionData, redirect, useLoaderData } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { data: item, error } = await supabase
         .from("budget_items")
         .select("*")
@@ -29,7 +29,7 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
 
 export const action = async ({ request, params }: Route.ActionArgs) => {
     const formData = await request.formData();
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
 
     const description = formData.get("description") as string;
     const category = formData.get("category") as string;

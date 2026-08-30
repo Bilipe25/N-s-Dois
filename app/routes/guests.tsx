@@ -11,7 +11,7 @@ import {
     DrawerDescription,
     DrawerFooter,
 } from "@/components/ui/drawer";
-import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil } from "lucide-react";
+import { Plus, FileDown, Loader2, User, Users, Calendar, MessageCircle, Check, X, Trash2, Pencil, Link2, Copy } from "lucide-react";
 import type { Route } from "./+types/guests";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,8 @@ import {
     useDeleteGuest,
     useBulkConfirm,
     useBulkDelete,
-    useAppConfig
+    useAppConfig,
+    createGuestInviteLink
 } from "@/hooks/useGuests";
 import type { Guest } from "@/schemas/guest";
 
@@ -92,6 +93,8 @@ export default function Guests() {
     const [showAddGuest, setShowAddGuest] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+    const [inviteLink, setInviteLink] = useState<{ guestId: string; url: string } | null>(null);
+    const [isCreatingInvite, setIsCreatingInvite] = useState(false);
 
     // Derived Data
     const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
@@ -109,6 +112,43 @@ export default function Guests() {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
+    };
+
+    const ensureInviteLink = async () => {
+        if (!selectedGuest) return null;
+        if (inviteLink?.guestId === selectedGuest.id) return inviteLink.url;
+        setIsCreatingInvite(true);
+        try {
+            const { inviteUrl } = await createGuestInviteLink(selectedGuest.id);
+            setInviteLink({ guestId: selectedGuest.id, url: inviteUrl });
+            return inviteUrl;
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Não foi possível criar o convite.");
+            return null;
+        } finally {
+            setIsCreatingInvite(false);
+        }
+    };
+
+    const handleCopyInvite = async () => {
+        const url = await ensureInviteLink();
+        if (!url) return;
+        await navigator.clipboard.writeText(url);
+        toast.success("Link pessoal copiado. Ele não será exibido novamente após fechar esta tela.");
+    };
+
+    const handleShareInvite = async () => {
+        if (!selectedGuest) return;
+        const shareWindow = window.open("about:blank", "_blank");
+        const url = await ensureInviteLink();
+        if (!url) {
+            shareWindow?.close();
+            return;
+        }
+        const message = `Olá ${selectedGuest.name.split(" ")[0]}, preparamos um convite pessoal para você celebrar conosco. Confirme sua presença por aqui: ${url}`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        if (shareWindow) shareWindow.location.href = whatsappUrl;
+        else window.location.href = whatsappUrl;
     };
 
     const handleBulkConfirm = () => {
@@ -540,16 +580,31 @@ export default function Guests() {
                                     </div>
                                 </div>
 
-                                {/* Link para WhatsApp */}
-                                <a
-                                    href={`https://wa.me/?text=${encodeURIComponent(`Olá ${selectedGuest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: ${typeof window !== "undefined" ? `${((window as any).ENV?.PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")}/public/wedding` : "/public/wedding"}`)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-center gap-2 w-full h-12 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium transition-colors"
-                                >
-                                    <MessageCircle className="h-5 w-5" />
-                                    Enviar Convite via WhatsApp
-                                </a>
+                                <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                                    <div className="flex items-start gap-2 text-xs text-stone-600">
+                                        <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <p>O link pessoal dá acesso ao RSVP e às reservas deste convite. Um novo link revoga o anterior.</p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-12 w-full"
+                                        disabled={isCreatingInvite}
+                                        onClick={handleCopyInvite}
+                                    >
+                                        {isCreatingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+                                        Gerar e copiar link pessoal
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        className="h-12 w-full bg-green-600 text-white hover:bg-green-700"
+                                        disabled={isCreatingInvite}
+                                        onClick={handleShareInvite}
+                                    >
+                                        <MessageCircle className="mr-2 h-5 w-5" />
+                                        Enviar convite pelo WhatsApp
+                                    </Button>
+                                </div>
                             </div>
 
                             <DrawerFooter className="flex-row gap-2 border-t pt-4">

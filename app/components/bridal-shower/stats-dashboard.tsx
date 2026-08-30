@@ -1,11 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "../ui/progress";
 import { Gift as GiftIcon, Users } from "lucide-react";
-import type { Gift, Guest } from "@/schemas/bridal-shower";
+import type { Gift } from "@/schemas/bridal-shower";
 
 interface StatsDashboardProps {
     gifts: Gift[];
-    guests: Guest[];
+    guests: Array<{ rsvp_status: "pendente" | "confirmado" | "recusado" }>;
 }
 
 export function StatsDashboard({ gifts, guests }: StatsDashboardProps) {
@@ -14,7 +14,7 @@ export function StatsDashboard({ gifts, guests }: StatsDashboardProps) {
     const progressGifts = totalGifts > 0 ? (boughtGifts / totalGifts) * 100 : 0;
 
     const totalGuests = guests.length;
-    const confirmedGuests = guests.filter(g => g.confirmed).length;
+    const confirmedGuests = guests.filter(g => g.rsvp_status === "confirmado").length;
     const progressGuests = totalGuests > 0 ? (confirmedGuests / totalGuests) * 100 : 0;
 
     return (

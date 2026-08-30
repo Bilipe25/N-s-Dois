@@ -1,7 +1,8 @@
 import type { ActionFunctionArgs } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { sendPushToUser } from "@/services/push.server";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 import { z } from "zod";
 
 const ActionSchema = z.discriminatedUnion("intent", [
@@ -29,6 +30,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
+    assertSameOrigin(request);
 
     if (request.method !== "POST") {
         return Response.json({ error: "Method not allowed" }, { status: 405 });
@@ -37,7 +39,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     try {
         const jsonData = await request.json();
         const payload = ActionSchema.parse(jsonData);
-        const supabase = createClient(request);
+        const supabase = createServerAdminClient();
 
         if (payload.intent === "toggle_like") {
             const { inspirationId, hasLiked, user } = payload;

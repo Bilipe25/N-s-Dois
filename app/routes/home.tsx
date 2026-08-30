@@ -108,11 +108,11 @@ export default function Home() {
             </div>
             <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Padrinhos</span>
           </Link>
-          <Link to="/bridal-shower" className="flex flex-col items-center gap-2 group">
+          <Link to="/celebracao/admin" className="flex flex-col items-center gap-2 group">
             <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
               <Gift className="h-6 w-6" />
             </div>
-            <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Chá</span>
+            <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">Celebração</span>
           </Link>
           <Link to="/inspirations" className="flex flex-col items-center gap-2 group">
             <div className="bg-white border border-primary/20 p-3 rounded-2xl text-primary shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">

@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Link as LinkIcon, ExternalLink, X, Upload, Download, MoreVertical, Edit, Check, Users } from "lucide-react";
+import { Plus, Trash2, Link as LinkIcon, ExternalLink, X, Upload, Download, MoreVertical, Edit, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,42 +18,28 @@ import { toast } from "sonner";
 
 import {
     useGifts,
-    useGuests,
-    useBridalConfig,
     useCreateGift,
     useUpdateGift,
     useDeleteGift,
     useToggleGiftStatus,
     useBulkUpdateCategory,
-    useCreateGuest,
-    useDeleteGuest,
-    useToggleGuestConfirm,
-    useUpdateConfig,
-    useImportGifts,
-    useImportGuests,
-    useMainGuests,
-    useImportGuestsFromMain
+    useImportGifts
 } from "@/hooks/useBridalShower";
+import { useGuests as useMainGuests } from "@/hooks/useGuests";
 
 // Extracted Components
-import { AdminConfigForm } from "@/components/bridal-shower/admin-config-form";
+import { CelebrationAdminControlPanel } from "@/components/celebration/admin-control-panel";
 import { AdminAddGiftDrawer } from "@/components/bridal-shower/admin-add-gift-drawer";
 import { AdminEditGiftDrawer } from "@/components/bridal-shower/admin-edit-gift-drawer";
 import { AdminGiftDetailsDrawer } from "@/components/bridal-shower/admin-gift-details-drawer";
-import { AdminAddGuestDrawer } from "@/components/bridal-shower/admin-add-guest-drawer";
-import { AdminImportFromMainDrawer } from "@/components/bridal-shower/admin-import-from-main-drawer";
-import { MessageWallSection } from "@/components/bridal-shower/message-wall-section";
-import { PixConfirmationsList } from "@/components/bridal-shower/pix-confirmations-list";
 
 export const meta: Route.MetaFunction = () => {
-    return [{ title: "Chá de Casa Nova - Admin" }];
+    return [{ title: "Administração da Celebração - Nós Dois" }];
 };
 
 export default function BridalShower() {
     const { data: gifts = [] } = useGifts();
-    const { data: guests = [] } = useGuests();
-    const { data: config } = useBridalConfig();
-    const { data: mainGuests = [], isLoading: isLoadingMainGuests } = useMainGuests();
+    const { data: guests = [] } = useMainGuests();
 
     // Mutations
     const createGift = useCreateGift();
@@ -61,28 +47,18 @@ export default function BridalShower() {
     const deleteGift = useDeleteGift();
     const toggleGiftStatus = useToggleGiftStatus();
     const bulkUpdateCategory = useBulkUpdateCategory();
-    const createGuest = useCreateGuest();
-    const deleteGuest = useDeleteGuest();
-    const toggleGuestConfirm = useToggleGuestConfirm();
-    const updateConfig = useUpdateConfig();
     const importGifts = useImportGifts();
-    const importGuests = useImportGuests();
-    const importGuestsFromMain = useImportGuestsFromMain();
 
     const [showQrCode, setShowQrCode] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [showAddGift, setShowAddGift] = useState(false);
     const [showEditGift, setShowEditGift] = useState(false);
     const [editingGift, setEditingGift] = useState<Gift | null>(null);
-    const [showAddGuest, setShowAddGuest] = useState(false);
-    const [showImportGuests, setShowImportGuests] = useState(false);
-    const [showImportFromMain, setShowImportFromMain] = useState(false);
 
     // Filters & Selection
     const [giftSearch, setGiftSearch] = useState("");
     const [giftCategory, setGiftCategory] = useState<GiftCategory | null>(null);
     const [giftStatus, setGiftStatus] = useState<"all" | "disponivel" | "comprado">("all");
-    const [guestSearch, setGuestSearch] = useState("");
     const [selectedGifts, setSelectedGifts] = useState<string[]>([]);
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
@@ -90,9 +66,8 @@ export default function BridalShower() {
 
     // Import Text State
     const [importGiftsText, setImportGiftsText] = useState("");
-    const [importGuestsText, setImportGuestsText] = useState("");
 
-    const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/public/bridal-shower` : "";
+    const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/celebracao` : "";
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(publicUrl);
@@ -107,9 +82,6 @@ export default function BridalShower() {
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
-    const filteredGuests = guests.filter((g) =>
-        g.name.toLowerCase().includes(guestSearch.toLowerCase())
-    );
 
     const handleSelectGift = (id: string, checked: boolean) => {
         if (checked) {
@@ -148,18 +120,6 @@ export default function BridalShower() {
         });
     };
 
-    const handleImportGuestsSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!importGuestsText) return;
-        importGuests.mutate(importGuestsText, {
-            onSuccess: () => {
-                setShowImportGuests(false);
-                setImportGuestsText("");
-                toast.success("Convidados importados com sucesso!");
-            }
-        });
-    };
-
     const exportGiftsToCSV = () => {
         const headers = ["Nome", "Categoria", "Faixa de Preço", "Status", "Reservado Por", "Data da Reserva"];
         const rows = gifts.map(g => [
@@ -183,28 +143,9 @@ export default function BridalShower() {
         document.body.removeChild(link);
     };
 
-    const exportGuestsToCSV = () => {
-        const headers = ["Nome", "Telefone", "Confirmado"];
-        const rows = guests.map(g => [
-            `"${g.name.replace(/"/g, '""')}"`,
-            `"${g.phone || ''}"`,
-            `"${g.confirmed ? 'Sim' : 'Não'}"`
-        ]);
-        
-        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
-            [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-            
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "convidados-cha-casa-nova.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
     return (
         <div className="space-y-6 relative min-h-screen pb-24">
+            <CelebrationAdminControlPanel />
             <StatsDashboard gifts={gifts} guests={guests} />
 
             {/* Compartilhamento */}
@@ -246,19 +187,16 @@ export default function BridalShower() {
                 </Card>
             )}
 
-            {/* Configuração Rápida */}
-            <AdminConfigForm config={config} updateConfig={updateConfig} />
-
             <Tabs defaultValue="gifts" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="gifts">Presentes</TabsTrigger>
-                    <TabsTrigger value="guests">Convidados</TabsTrigger>
-                    <TabsTrigger value="messages">Mural</TabsTrigger>
-                    <TabsTrigger value="pix">PIX</TabsTrigger>
+                    <Button variant="ghost" asChild className="h-9">
+                        <Link to="/guests">Convites e RSVP</Link>
+                    </Button>
                 </TabsList>
 
                 {/* Aba de Presentes */}
-                <TabsContent value="gifts" className="space-y-4 mt-4">
+                <TabsContent id="presentes" value="gifts" className="space-y-4 mt-4">
                     <GiftFilter
                         searchTerm={giftSearch}
                         onSearchChange={setGiftSearch}
@@ -394,121 +332,12 @@ export default function BridalShower() {
                     )}
                 </TabsContent>
 
-                {/* Aba de Convidados */}
-                <TabsContent value="guests" className="space-y-4 mt-4">
-                    <div className="flex gap-2 mb-4">
-                        <Input
-                            placeholder="Buscar convidado..."
-                            value={guestSearch}
-                            onChange={(e) => setGuestSearch(e.target.value)}
-                            className="bg-white"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        {filteredGuests.length === 0 ? (
-                            <p className="text-center text-sm text-muted-foreground py-8">
-                                {guests.length === 0 ? "Nenhum convidado ainda." : "Nenhum convidado encontrado."}
-                            </p>
-                        ) : (
-                            filteredGuests.map((guest) => (
-                                <div key={guest.id} className="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm">
-                                    <div>
-                                        <p className="font-medium text-sm">{guest.name}</p>
-                                        {guest.phone && <p className="text-xs text-muted-foreground">{guest.phone}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <Button
-                                            onClick={() => toggleGuestConfirm.mutate({ id: guest.id, current: guest.confirmed })}
-                                            variant={guest.confirmed ? "default" : "outline"}
-                                            size="sm"
-                                            className={`h-8 px-2 text-xs ${guest.confirmed ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                                        >
-                                            {guest.confirmed ? "Confirmado" : "Confirmar"}
-                                        </Button>
-                                        <Button
-                                            onClick={() => deleteGuest.mutate(guest.id)}
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    <div className="fixed bottom-safe-24 right-6 z-50 flex flex-col gap-3">
-                        <Button
-                            onClick={() => setShowImportFromMain(true)}
-                            size="icon"
-                            variant="secondary"
-                            className="h-10 w-10 rounded-full shadow-md bg-rose-100 hover:bg-rose-200 text-rose-600"
-                            title="Importar da Lista Principal"
-                        >
-                            <Users className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            onClick={exportGuestsToCSV}
-                            size="icon"
-                            variant="secondary"
-                            className="h-10 w-10 rounded-full shadow-md"
-                            title="Exportar Relatório CSV"
-                        >
-                            <Download className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            onClick={() => setShowImportGuests(true)}
-                            size="icon"
-                            variant="secondary"
-                            className="h-10 w-10 rounded-full shadow-md"
-                            title="Importar Texto"
-                        >
-                            <Upload className="h-5 w-5" />
-                        </Button>
-                        <Button
-                            onClick={() => setShowAddGuest(true)}
-                            size="icon"
-                            className="h-14 w-14 rounded-full shadow-lg bg-stone-900 hover:bg-stone-800 text-white"
-                        >
-                            <Plus className="h-6 w-6" />
-                        </Button>
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="messages" className="space-y-4 mt-4">
-                    <Card className="border-stone-200">
-                        <CardContent className="p-4">
-                            <MessageWallSection isAdmin={true} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="pix" className="space-y-4 mt-4">
-                    <Card className="border-stone-200">
-                        <CardContent className="p-4">
-                            <PixConfirmationsList />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
             </Tabs>
 
             {/* Modals & Drawers */}
             <AdminAddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
             <AdminEditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
-            <AdminAddGuestDrawer open={showAddGuest} onOpenChange={setShowAddGuest} createGuest={createGuest} />
             <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={() => setSelectedGiftDetails(null)} onEdit={handleEditGift} toggleStatus={toggleGiftStatus} />
-            
-            <AdminImportFromMainDrawer
-                open={showImportFromMain}
-                onOpenChange={setShowImportFromMain}
-                mainGuests={mainGuests}
-                currentGuests={guests}
-                isLoadingMainGuests={isLoadingMainGuests}
-                importGuestsFromMain={importGuestsFromMain}
-            />
 
             {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
@@ -534,36 +363,6 @@ export default function BridalShower() {
                             <Button type="button" variant="ghost" onClick={() => setShowImport(false)}>Cancelar</Button>
                             <Button type="submit" disabled={importGifts.isPending}>
                                 {importGifts.isPending ? "Importando..." : "Importar Lista"}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Modal de Importação em Massa de Convidados */}
-            <Dialog open={showImportGuests} onOpenChange={setShowImportGuests}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Importar Convidados</DialogTitle>
-                        <DialogDescription>
-                            Cole uma lista de nomes (um por linha). Ex: <br />
-                            João Silva<br />
-                            Maria Costa, 11999999999
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleImportGuestsSubmit}>
-                        <div className="py-4">
-                            <textarea
-                                className="w-full min-h-[150px] p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                placeholder="João Silva&#10;Maria Costa, 11999999999"
-                                value={importGuestsText}
-                                onChange={(e) => setImportGuestsText(e.target.value)}
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setShowImportGuests(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={importGuests.isPending} className="bg-rose-500 hover:bg-rose-600">
-                                {importGuests.isPending ? "Importando..." : "Importar Lista"}
                             </Button>
                         </DialogFooter>
                     </form>

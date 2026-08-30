@@ -8,7 +8,10 @@ function getSupabaseCredentials() {
 
     return {
         supabaseUrl: typeof window !== "undefined" ? clientEnv.SUPABASE_URL : process.env.SUPABASE_URL,
-        supabaseKey: typeof window !== "undefined" ? clientEnv.SUPABASE_ANON_KEY : process.env.SUPABASE_ANON_KEY,
+        supabaseKey:
+            typeof window !== "undefined"
+                ? clientEnv.SUPABASE_PUBLISHABLE_KEY
+                : process.env.SUPABASE_PUBLISHABLE_KEY,
     };
 }
 
@@ -21,7 +24,7 @@ function requireSupabaseCredentials() {
     const { supabaseUrl, supabaseKey } = getSupabaseCredentials();
 
     if (!supabaseUrl || !supabaseKey) {
-        throw new Error("SUPABASE_URL e SUPABASE_ANON_KEY não configurados.");
+        throw new Error("SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY não configurados.");
     }
 
     return { supabaseUrl, supabaseKey };

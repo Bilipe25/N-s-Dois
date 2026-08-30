@@ -1,5 +1,5 @@
 import { useLoaderData, Link, useNavigate, useParams } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ export const meta: Route.MetaFunction = () => {
 };
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const { data: task, error } = await supabase
         .from("checklist_items")
         .select("*")

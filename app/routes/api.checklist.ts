@@ -1,12 +1,13 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, data } from "react-router";
-import { createClient } from "@/lib/supabase";
+import { createServerAdminClient } from "@/lib/supabase.server";
 import { CreateChecklistItemSchema, UpdateChecklistItemSchema } from "@/schemas/checklist";
 import { requireUserSession } from "@/sessions";
+import { assertSameOrigin } from "@/lib/security.server";
 import { z } from "zod";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    const supabase = createServerAdminClient();
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
 
@@ -38,7 +39,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     await requireUserSession(request);
-    const supabase = createClient(request);
+    assertSameOrigin(request);
+    const supabase = createServerAdminClient();
     const method = request.method;
 
     if (method === "POST") {
