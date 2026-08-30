@@ -65,7 +65,7 @@ Foram adicionados title, description, canonical fixo em `/celebracao`, Open Grap
 
 ## 10. Qualidade e performance
 
-Estado validado: `typecheck`, lint, 8 testes unitários, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk da rota pública ficou em aproximadamente 16 KB JS e 12,5 KB CSS antes de gzip. PDF e gráficos permanecem em chunks administrativos separados. Em produção, `/celebracao` e a API pública de presentes responderam 200 após o lockdown e o redeploy final; a página personalizada entrega `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
+Estado validado: `typecheck`, lint, 8 testes unitários, 22 testes pgTAP de grants/RLS, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk da rota pública ficou em aproximadamente 16 KB JS e 12,5 KB CSS antes de gzip. PDF e gráficos permanecem em chunks administrativos separados. Em produção, `/celebracao` e a API pública de presentes responderam 200 após o lockdown e o redeploy final; a página personalizada entrega `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
 
 ## 11. Inventário legado remanescente
 
