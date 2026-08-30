@@ -4,17 +4,17 @@ Data da implementação local: 30/08/2026. Escopo canônico: `/celebracao`, conv
 
 ## 1. Resultado executivo
 
-A nova experiência pública, SSR-first e mobile-first foi implementada com fallback completo sem evento ou fotografia. RSVP, reservas e cancelamentos exigem sessão de convite individual; PIX gera BR Code EMV e não afirma pagamento. A administração agora concentra página, eventos/locais, aparência, PIX, contatos, compartilhamento e presentes; convites/RSVP vivem somente em `/guests`.
+A nova experiência pública, SSR-first e mobile-first foi implementada e publicada com fallback completo sem evento ou fotografia. RSVP, reservas e cancelamentos exigem sessão de convite individual; PIX gera BR Code EMV e não afirma pagamento. A administração agora concentra página, eventos/locais, aparência, PIX, contatos, compartilhamento e presentes; convites/RSVP vivem somente em `/guests`.
 
-O rollout remoto não foi executado: rotação de credenciais, migrations Supabase, lockdown, reescrita do histórico e force-push permanecem dependentes de autorização explícita e coordenação dos clones.
+O rollout remoto foi concluído em 30/08/2026: credenciais rotacionadas, migration aditiva e backfill aplicados, deploy compatível validado, lockdown de grants/RLS ativado, chaves legadas desabilitadas e histórico Git reescrito. Um clone espelho do GitHub confirmou zero commits e zero objetos alcançáveis para `.env.local`.
 
 ## 2. Achados e tratamento
 
 | ID | prioridade | arquivo/componente | problema | impacto | causa | solução |
 |---|---|---|---|---|---|---|
-| SEC-01 | P0 | `.env.local` / Git | Segredos rastreados e presentes no histórico | Comprometimento de banco, push e sessão | Arquivo privado versionado | Removido do índice, variantes ignoradas e `.env.example` vazio; rotação e rewrite pendentes de autorização |
+| SEC-01 | P0 | `.env.local` / Git | Segredos rastreados e presentes no histórico | Comprometimento de banco, push e sessão | Arquivo privado versionado | Removido do índice, variantes ignoradas, credenciais rotacionadas e histórico reescrito; espelho remoto validado sem o arquivo |
 | SEC-02 | P0 | `app/sessions.ts` | Senha e segredo com fallback conhecido | Acesso administrativo previsível | Defaults em código | `SESSION_SECRET` obrigatório, hashes scrypt distintos, comparação constante e sessão de sete dias |
-| SEC-03 | P0 | Data API Supabase | Tabelas privadas acessíveis ao anon/authenticated | Exposição de PII e subscriptions | Grants e RLS permissivos | Cliente service-role somente servidor, migration de REVOKE/RLS em duas fases e pgTAP |
+| SEC-03 | P0 | Data API Supabase | Tabelas privadas acessíveis ao anon/authenticated | Exposição de PII e subscriptions | Grants e RLS permissivos | Cliente secreto somente servidor, REVOKE/RLS aplicados após o deploy e validação remota por credencial |
 | SEC-04 | P0 | APIs públicas | Busca nominal, autocadastro e contratos legados | Enumeração e escrita insegura | Compatibilidade pública ampla | Endpoints antigos retornam 410; novos contratos exigem convite, Zod, origem, limite de corpo e rate limit persistente |
 | SEC-05 | P0 | React Router | Versão auditada posteriormente vulnerável a CSRF | Execução indevida de action | Advisory publicado após o plano | Conjunto alinhado em 7.18.3, versão corrigida da mesma linha; `npm audit` sem vulnerabilidades |
 | DAT-01 | P0 | RSVP legado | Escrita em `guests.message` inexistente | RSVP quebrado | Contrato divergente do schema | Mensagem privada movida para `guest_event_rsvps.private_message` |
@@ -40,7 +40,7 @@ O rollout remoto não foi executado: rotação de credenciais, migrations Supaba
 
 O algoritmo processa convidados principais e legados sem exportar nomes. Correspondência acontece apenas quando o nome normalizado possui exatamente um candidato. Não correspondidos recebem o grupo `Legado — Chá de Casa Nova`. Reservas com status comprado viram ativas; metadados sem status comprado viram histórico cancelado. Os scripts `celebration_preflight.sql` e `celebration_migration_validation.sql` retornam somente agregados.
 
-Os números auditados de referência são 58 principais, 11 legados, cinco matches únicos, seis divergências de confirmação, 94 presentes, seis status reservados e um metadado incompatível. Eles devem ser reconfirmados no banco imediatamente antes e depois da migration.
+O backfill remoto processou 58 convidados principais e 11 legados, com cinco correspondências únicas, totalizando 64 convidados consolidados e 69 vínculos convidado–evento. Foram criados dois eventos em rascunho, preservados 94 presentes e produzidas sete reservas históricas: seis ativas e uma cancelada para o metadado incompatível. As seis divergências de confirmação permaneceram auditáveis, sem sobrescrever `is_confirmed`.
 
 ## 6. Segurança aplicada
 
@@ -65,7 +65,7 @@ Foram adicionados title, description, canonical fixo em `/celebracao`, Open Grap
 
 ## 10. Qualidade e performance
 
-Estado local validado: `typecheck`, lint, 8 testes unitários, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk da rota pública ficou em aproximadamente 16 KB JS e 12,5 KB CSS antes de gzip. PDF e gráficos permanecem em chunks administrativos separados. A validação de Core Web Vitals/Lighthouse deve ser realizada no preview conectado ao banco e CDN reais.
+Estado validado: `typecheck`, lint, 8 testes unitários, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk da rota pública ficou em aproximadamente 16 KB JS e 12,5 KB CSS antes de gzip. PDF e gráficos permanecem em chunks administrativos separados. Em produção, `/celebracao` e a API pública de presentes responderam 200 após o lockdown e o redeploy final; a página personalizada entrega `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
 
 ## 11. Inventário legado remanescente
 
@@ -81,6 +81,6 @@ Não existe nova escrita pública nos cadastros legados. A remoção física só
 
 ## 12. Rollout, rollback e pendências reais
 
-Ordem segura: rotacionar credenciais no deploy; gerar snapshot agregado; aplicar migration aditiva; publicar código compatível; executar validações e QA remoto; aplicar lockdown; repetir consultas anon; monitorar; só então reescrever todo o histórico e force-push coordenado. O rollback reativa o código anterior sem apagar os dados novos.
+A ordem segura foi executada: snapshot agregado; rotação de Supabase, VAPID, senhas e segredos de sessão; migration aditiva; backfill e correção dos seis vínculos legados; deploy compatível; smoke tests; lockdown; validação pós-RLS; desativação de `anon`/`service_role`; remoção das variáveis legadas; reescrita e force-push. A chave pública recebe 401 em tabelas privadas, as chaves legadas recebem 401 e a chave final do servidor continua operando. O rollback de aplicação permanece aditivo e não exige excluir os dados novos.
 
-Pendências que exigem ação externa: nova data/endereço/fotografia; conexão Supabase autorizada; rotação de service role, VAPID, senhas, segredo de sessão e eventual anon key; migrations e pgTAP remotos; validação Lighthouse/OG no preview; reescrita Git e reclonagem de todos os colaboradores.
+Pendências reais: configurar nova data, endereços e fotografia; importar as senhas administrativas entregues fora do repositório para um gerenciador e apagar o arquivo de recuperação; distribuir os links individuais somente após revisão do casal; executar Lighthouse/Core Web Vitals e a matriz Playwright/Axe completa no ambiente real. Como o projeto remoto ainda não possui `supabase_migrations.schema_migrations`, futuras execuções via CLI devem primeiro reparar/adotar o histórico das duas migrations aplicadas pelo SQL Editor. Todos os clones anteriores ao force-push devem ser refeitos.
