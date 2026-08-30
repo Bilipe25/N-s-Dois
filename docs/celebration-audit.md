@@ -4,7 +4,7 @@ Data da implementação local: 30/08/2026. Escopo canônico: `/celebracao`, conv
 
 ## 1. Resultado executivo
 
-A nova experiência pública, SSR-first e mobile-first foi implementada e publicada com fallback completo sem evento ou fotografia. RSVP, reservas e cancelamentos exigem sessão de convite individual; PIX gera BR Code EMV e não afirma pagamento. A administração agora concentra página, eventos/locais, aparência, PIX, contatos, compartilhamento e presentes; convites/RSVP vivem somente em `/guests`.
+A nova experiência pública, SSR-first e mobile-first foi implementada e validada em preview de produção, com fallback completo sem evento ou fotografia. A restauração visual desta correção ainda não foi implantada no ambiente publicado. RSVP, reservas e cancelamentos exigem sessão de convite individual; PIX gera BR Code EMV e não afirma pagamento. A administração agora concentra página, eventos/locais, aparência, PIX, contatos, compartilhamento e presentes; convites/RSVP vivem somente em `/guests`.
 
 O rollout remoto foi concluído em 30/08/2026: credenciais rotacionadas, migration aditiva e backfill aplicados, deploy compatível validado, lockdown de grants/RLS ativado, chaves legadas desabilitadas e histórico Git reescrito. Um clone espelho do GitHub confirmou zero commits e zero objetos alcançáveis para `.env.local`.
 
@@ -33,6 +33,7 @@ O rollout remoto foi concluído em 30/08/2026: credenciais rotacionadas, migrati
 
 - `20260830021808_celebration_additive.sql`: colunas semânticas, eventos, RSVP por evento, tokens, reservas, rate limiting e backfill idempotente.
 - `20260830021811_celebration_lockdown.sql`: default privileges, REVOKE, grants de service role e RLS nas tabelas privadas.
+- `20260830120000_legacy_public_surfaces_lockdown.sql`: lockdown mínimo de `message_wall` e `pix_confirmations`; criado após a restauração visual revelar que essas duas superfícies históricas não estavam cobertas. Aplicado no projeto atual `Nós-Dois2` (`eamcrftdbhugeyrreiij`) pelo conector Supabase e registrado remotamente como migration `20260830151430 legacy_public_surfaces_lockdown`.
 - Nenhuma tabela ou coluna legada é removida.
 - Eventos derivados de dados antigos ficam em `draft`; nenhuma data ou local é inventado.
 
@@ -53,11 +54,15 @@ O backfill remoto processou 58 convidados principais e 11 legados, com cinco cor
 
 ## 7. Produto e interface
 
-A direção aprovada é a composição A com o portal de C. O hero editorial conduz a um portal de terracota que funciona como limiar para o próximo evento. A experiência usa linho marfim, barro, oliva e carvão; mídia real é opcional e o fallback não quebra. Estados sem evento, convite inválido, RSVP fechado, lista vazia, PIX indisponível, erro e pós-evento possuem copy explícita.
+A correção de direção de 30/08/2026 substituiu a composição A/portal C pela experiência afetiva do commit `9cd5beccb70efb51ed94fbbcaef957f8592dfc3d`. O hero imersivo, nomes do casal, texto carinhoso, contagem futura, cartões de locais, orientação configurável, cartões ricos de presentes, progresso, filtros, modais/drawers, contatos, compartilhamento e voltar ao topo foram restaurados ou adaptados em `/celebracao`.
+
+A página sem convite voltou a ser completa; o convite acrescenta RSVP, reserva identificada e cancelamento. A implementação antiga não foi reativada: `celebration_events`, `guest_event_rsvps`, `guest_invite_tokens`, `gift_reservations`, `app_config` e as APIs seguras continuam como fonte. Busca, categoria e faixa de preço consultam os 94 presentes no servidor, inclusive itens fora do primeiro lote SSR. O fallback do hero não mostra stock nem ícone de mídia quebrada.
+
+O mural não foi restaurado. O endpoint legado não está roteado e a migration mínima fechou a exposição de `message_wall` e `pix_confirmations`. A validação pós-migration executada com o papel `anon` retornou `42501 permission denied` para ambas; pela Data API com a publishable key, ambas retornaram HTTP `401` e código `42501`. Qualquer reconsideração futura exigirá um contrato público novo e deliberado.
 
 ## 8. Acessibilidade e responsividade
 
-A navegação possui nomes acessíveis, foco visível e alvos mínimos de 44 px. Contadores usam botões nomeados e `output`; escolhas usam radiogroup/aria-checked; mensagens de erro e sucesso usam live regions. `prefers-reduced-motion` desliga transições. A inspeção real cobriu 320, 360, 375, 390, 430, 768 e 1440 px sem overflow horizontal após os ajustes.
+A navegação possui nomes acessíveis, foco visível e alvos mínimos de 44 px. Contadores usam botões nomeados e `output`; escolhas usam radiogroup/aria-checked; mensagens de erro e sucesso usam live regions. `prefers-reduced-motion` desliga transições. A inspeção do build de produção cobriu 320, 360, 375, 390, 430, 768 e 1440 px sem overflow horizontal. Foram capturados hero mobile/desktop, busca global, cartão e modal PIX.
 
 ## 9. SEO, headers e privacidade de URL
 
@@ -65,7 +70,7 @@ Foram adicionados title, description, canonical fixo em `/celebracao`, Open Grap
 
 ## 10. Qualidade e performance
 
-Estado validado: `typecheck`, lint, 8 testes unitários, 22 testes pgTAP de grants/RLS, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk da rota pública ficou em aproximadamente 16 KB JS e 12,5 KB CSS antes de gzip. PDF e gráficos permanecem em chunks administrativos separados. Em produção, `/celebracao` e a API pública de presentes responderam 200 após o lockdown e o redeploy final; a página personalizada entrega `Cache-Control: no-store` e `Referrer-Policy: no-referrer`.
+Estado validado após a restauração: `typecheck`, lint, 10 testes unitários, build e `npm audit` passam; zero vulnerabilidades conhecidas. O chunk específico da rota pública ficou em 36,30 KB JS (11,67 KB gzip) e 3,89 KB CSS (1,31 KB gzip). PDF e gráficos permanecem em chunks administrativos separados. No preview do build com os dados remotos, `/celebracao`, presentes filtrados e PIX responderam 200; a página entrega `Cache-Control: no-store`, `Referrer-Policy: no-referrer` e CSP.
 
 ## 11. Inventário legado remanescente
 
@@ -83,4 +88,8 @@ Não existe nova escrita pública nos cadastros legados. A remoção física só
 
 A ordem segura foi executada: snapshot agregado; rotação de Supabase, VAPID, senhas e segredos de sessão; migration aditiva; backfill e correção dos seis vínculos legados; deploy compatível; smoke tests; lockdown; validação pós-RLS; desativação de `anon`/`service_role`; remoção das variáveis legadas; reescrita e force-push. A chave pública recebe 401 em tabelas privadas, as chaves legadas recebem 401 e a chave final do servidor continua operando. O rollback de aplicação permanece aditivo e não exige excluir os dados novos.
 
-Pendências reais: configurar nova data, endereços e fotografia; importar as senhas administrativas entregues fora do repositório para um gerenciador e apagar o arquivo de recuperação; distribuir os links individuais somente após revisão do casal; executar Lighthouse/Core Web Vitals e a matriz Playwright/Axe completa no ambiente real. Como o projeto remoto ainda não possui `supabase_migrations.schema_migrations`, futuras execuções via CLI devem primeiro reparar/adotar o histórico das duas migrations aplicadas pelo SQL Editor. Todos os clones anteriores ao force-push devem ser refeitos.
+O lockdown complementar foi aplicado no projeto atual `Nós-Dois2` (`eamcrftdbhugeyrreiij`). `message_wall` e `pix_confirmations` mantêm RLS habilitado, não concedem SELECT/INSERT/UPDATE/DELETE a `anon` ou `authenticated`, preservam essas operações para `service_role` e retornam HTTP `401`/Postgres `42501` quando consultadas anonimamente pela Data API.
+
+O advisor de segurança remoto ainda classifica quatro tabelas públicas com RLS desabilitado como erro: `events`, `groomsmen`, `inspiration_comments` e `inspiration_likes`. Também alerta que `handle_new_user()` e `keepalive_ping()` são funções `SECURITY DEFINER` executáveis por `anon`/`authenticated`, e que `handle_new_user()` não fixa `search_path`. Esses itens não foram alterados automaticamente porque exigem confirmar consumidores e políticas antes de bloquear acesso.
+
+Também permanecem o deploy desta restauração, a configuração de nova data, endereços e fotografia real, a distribuição dos links individuais após revisão do casal e a execução de Lighthouse/Core Web Vitals e Axe no ambiente publicado. O projeto remoto não possuía histórico de migrations no conector antes deste lockdown; migrations anteriores aplicadas por SQL Editor ainda devem ser adotadas/reconciliadas antes de usar o histórico como fonte integral. Todos os clones anteriores ao force-push devem ser refeitos.

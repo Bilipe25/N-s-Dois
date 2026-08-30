@@ -1,271 +1,316 @@
 ---
 name: "Nós Dois"
-description: "Sistema editorial quente para uma celebração íntima e a construção de um novo lar."
+description: "Sistema afetivo e fotográfico para uma celebração íntima, segura e acolhedora."
 colors:
-  ivory-linen: "#f1e4d1"
-  burnt-clay: "#b8673f"
-  deep-clay: "#8f452d"
-  portal-clay: "#763824"
-  botanical-olive: "#53604b"
-  olive-stone: "#aea992"
-  charcoal-ink: "#262720"
-  restrained-ochre: "#c89a57"
-  error-ink: "#6e251d"
-  error-surface: "#f5cfbd"
-  success-ink: "#34412d"
+  stone-canvas: "#fafaf9"
+  stone-soft: "#f5f5f4"
+  stone-border: "#e7e5e4"
+  stone-muted: "#78716c"
+  stone-copy: "#57534e"
+  stone-heading: "#292524"
+  stone-night: "#1c1917"
+  pure-white: "#ffffff"
+  rose-wash: "#fff1f2"
+  rose-selection: "#ffe4e6"
+  burnt-rose: "#f43f5e"
+  burnt-rose-hover: "#e11d48"
+  burnt-rose-ink: "#9f1239"
+  focus-rose: "#be123c"
+  emerald-wash: "#ecfdf5"
+  functional-green: "#047857"
+  success-ink: "#065f46"
 typography:
   display:
-    fontFamily: "Bodoni Moda, Georgia, serif"
-    fontSize: "clamp(5rem, 9.4vw, 9.3rem)"
-    fontWeight: 400
-    lineHeight: 0.82
-    letterSpacing: "-0.04em"
+    fontFamily: "Playfair Display, Georgia, serif"
+    fontSize: "clamp(3.25rem, 15vw, 7rem)"
+    fontWeight: 600
+    lineHeight: 0.92
+    letterSpacing: "-0.03em"
   headline:
-    fontFamily: "Bodoni Moda, Georgia, serif"
-    fontSize: "clamp(3.2rem, 6.5vw, 6rem)"
-    fontWeight: 400
-    lineHeight: 0.94
-    letterSpacing: "-0.035em"
+    fontFamily: "Playfair Display, Georgia, serif"
+    fontSize: "clamp(1.875rem, 5vw, 2.25rem)"
+    fontWeight: 600
+    lineHeight: 1.15
   title:
-    fontFamily: "Bodoni Moda, Georgia, serif"
-    fontSize: "1.8rem"
-    fontWeight: 500
-    lineHeight: 1.1
+    fontFamily: "Playfair Display, Georgia, serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    lineHeight: 1.25
   body:
-    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
-    lineHeight: 1.75
+    lineHeight: 1.625
   label:
-    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.85rem"
-    fontWeight: 600
-    lineHeight: 1
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.75rem"
+    fontWeight: 700
+    lineHeight: 1.25
+    letterSpacing: "0.08em"
   control:
-    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1
 rounded:
-  editorial: "0px"
-  functional: "12px"
+  control: "6px"
+  field: "12px"
+  card: "16px"
+  feature-card: "24px"
+  drawer-top: "20px"
   pill: "999px"
-  circle: "50%"
 spacing:
-  xxs: "8px"
-  xs: "10px"
+  xs: "8px"
   sm: "12px"
-  md: "18px"
+  md: "16px"
   lg: "24px"
   xl: "32px"
-  viewport-gutter: "clamp(20px, 5vw, 70px)"
-  section-block: "clamp(90px, 12vw, 170px)"
+  section: "64px"
+  page-gutter: "16px"
 components:
-  portal-threshold:
-    backgroundColor: "{colors.portal-clay}"
-    textColor: "{colors.ivory-linen}"
-    rounded: "{rounded.editorial}"
-    padding: "125px 40px 50px"
-    width: "min(820px, 72vw)"
-    height: "330px"
-  invitation-button:
-    backgroundColor: "{colors.ivory-linen}"
-    textColor: "{colors.charcoal-ink}"
+  primary-cta:
+    backgroundColor: "{colors.burnt-rose}"
+    textColor: "{colors.pure-white}"
     typography: "{typography.control}"
-    rounded: "{rounded.functional}"
+    rounded: "{rounded.pill}"
     padding: "16px 32px"
     height: "56px"
-  primary-button:
-    backgroundColor: "{colors.charcoal-ink}"
-    textColor: "{colors.ivory-linen}"
+  primary-cta-hover:
+    backgroundColor: "{colors.burnt-rose-hover}"
+    textColor: "{colors.pure-white}"
     typography: "{typography.control}"
-    rounded: "{rounded.functional}"
+    rounded: "{rounded.pill}"
     padding: "16px 32px"
     height: "56px"
-  choice-chip:
-    backgroundColor: "transparent"
-    textColor: "{colors.charcoal-ink}"
+  hero-secondary-action:
+    backgroundColor: "rgba(255, 255, 255, 0.10)"
+    textColor: "{colors.pure-white}"
     typography: "{typography.body}"
     rounded: "{rounded.pill}"
-    padding: "10px 18px"
-    height: "44px"
-  choice-chip-selected:
-    backgroundColor: "{colors.botanical-olive}"
-    textColor: "{colors.ivory-linen}"
-    typography: "{typography.body}"
-    rounded: "{rounded.pill}"
-    padding: "10px 18px"
-    height: "44px"
+    padding: "12px 16px"
+    height: "48px"
+  event-card:
+    backgroundColor: "{colors.pure-white}"
+    textColor: "{colors.stone-heading}"
+    rounded: "{rounded.feature-card}"
+    padding: "28px"
+  gift-card:
+    backgroundColor: "{colors.pure-white}"
+    textColor: "{colors.stone-heading}"
+    rounded: "{rounded.card}"
+    padding: "12px"
+    height: "144px"
   input-field:
-    backgroundColor: "rgba(255, 255, 255, 0.34)"
-    textColor: "{colors.charcoal-ink}"
+    backgroundColor: "{colors.stone-canvas}"
+    textColor: "{colors.stone-heading}"
     typography: "{typography.body}"
-    rounded: "{rounded.functional}"
-    padding: "14px 16px"
+    rounded: "{rounded.field}"
+    padding: "12px"
+    height: "44px"
+  modal-panel:
+    backgroundColor: "{colors.pure-white}"
+    textColor: "{colors.stone-heading}"
+    rounded: "{rounded.control}"
+    padding: "24px"
+    width: "min(32rem, calc(100vw - 32px))"
+  functional-action:
+    backgroundColor: "{colors.functional-green}"
+    textColor: "{colors.pure-white}"
+    typography: "{typography.control}"
+    rounded: "{rounded.pill}"
+    padding: "12px 32px"
+    height: "48px"
 ---
 
 # Design System: Nós Dois
 
 ## Overview
 
-**Creative North Star: "O Caderno de Materiais do Novo Lar"**
+**Creative North Star: "O Retrato Afetivo em Primeiro Plano"**
 
-O sistema apresenta a experiência como um caderno arquitetônico vivido: papel de linho marfim, barro queimado, oliva botânico, tinta carvão e linhas de planta substituem o repertório previsível de um template romântico. A composição A é a base — tipografia monumental, assimetria editorial, navegação rarefeita e grandes campos contínuos — com o gesto espacial da composição C incorporado como um portal entre o hero e o próximo encontro.
+O sistema coloca a celebração e a fotografia real no centro de uma experiência calorosa, direta e contemporânea. Um hero imersivo e escuro abre a página como um retrato em tela cheia; títulos em Playfair Display dão intimidade e solenidade, enquanto Inter mantém detalhes, filtros, formulários e ações simples de operar. Pedra, marfim e branco sustentam o conteúdo; rosa queimado conduz o gesto afetivo; verde aparece somente quando há função, contato ou estado positivo.
 
-A superfície pública é expressiva, tátil e generosa; a administração é uma camada operacional, compacta e previsível, feita com os primitivos de formulário já existentes. Elas compartilham clareza, contraste, linguagem direta e estados honestos, mas a administração não replica texturas, escala monumental nem o portal. Conteúdo continua inteligível sem fotografia, movimento ou cor; quando não existe mídia real, o fallback material é uma composição final, não um espaço quebrado.
+A fonte visual é a experiência do commit `9cd5beccb70efb51ed94fbbcaef957f8592dfc3d`, reinterpretada pelos componentes atuais. Essa autoridade é estritamente visual: a arquitetura segura vigente governa identidade, RSVP, reservas, cancelamentos e PIX. A página pública permanece completa sem convite; o link individual apenas libera ações privadas. Nenhum padrão antigo de busca pública, autocadastro, escrita direta ou confirmação de pagamento faz parte deste sistema.
+
+Fotografia é imersiva quando existe mídia real configurada. Sem ela, o hero usa um fallback cromático acabado — pedra profunda, luz radial rosa e overlay de alto contraste — sem imagem stock, arquivo quebrado ou conteúdo inventado. Datas, locais, orientação, contagem regressiva e mídia só aparecem quando vêm de configuração verificada.
 
 **Key Characteristics:**
 
-- Editorial quente, arquitetônico e material.
-- Tipografia serifada de alto contraste em diálogo com uma sans humanista.
-- Seções amplas e contínuas, com poucas caixas e hierarquia por escala, cor e ritmo.
-- Contrato A como composição-base e portal de C como única assinatura espacial.
-- Presença e informação prática antes de presentes ou contribuição.
-- Estados reais, privacidade e acessibilidade tratados como parte da linguagem visual.
+- Hero fotográfico imersivo com fallback cromático completo.
+- Base clara em pedra, marfim e branco, com rosa queimado como voz afetiva.
+- Verde reservado a PIX, contato, disponibilidade e sucesso.
+- Playfair Display para presença emocional; Inter para leitura e operação.
+- Cards ricos, arredondados e levemente elevados para eventos, presentes e estados.
+- Dialog no desktop e Drawer no mobile para tarefas privadas e focadas.
+- A estética histórica é referência visual; a arquitetura segura atual é a única referência funcional.
 
-**The One Threshold Rule.** O portal aparece uma única vez, na passagem do hero para o próximo encontro; repeti-lo o transforma em ornamento e elimina seu sentido narrativo.
+**The Visual Source, Safe Contract Rule.** Preserve o vocabulário visual da fonte restaurada, mas implemente fluxos somente pelos contratos seguros atuais; aparência nunca autoriza ressuscitar comportamento legado.
+
+**The Real Photograph Rule.** Use apenas fotografia configurada e legítima. Na ausência dela, entregue o fallback cromático completo, nunca imagem stock ou ficção visual.
 
 ## Colors
 
-A paleta parece extraída de linho, argila, folha e grafite: quente e terrosa, com contraste funcional e sem romantismo açucarado.
+A paleta combina neutros minerais e branco luminoso com um rosa quente de celebração; verdes entram como sinais funcionais, não como segunda identidade.
 
 ### Primary
 
-- **Barro Queimado:** campo de transição, seções de alta presença e superfícies que materializam o novo lar.
-- **Barro Profundo:** rodapé e áreas que precisam de maior densidade sem recorrer a preto puro.
-- **Barro do Portal:** interior multiplicado do limiar arquitetônico; use somente na assinatura do portal.
+- **Rosa Queimado:** ação principal, coração, pequenos ícones afetivos e pontos de destaque que convidam à participação.
+- **Rosa Queimado Profundo:** hover da ação principal e reforço de contraste em interações.
+- **Tinta Rosa:** texto e seleção ativa sobre lavagens claras.
 
 ### Secondary
 
-- **Oliva Botânico:** estados selecionados, eixo arquitetônico, seleção de texto e bandas narrativas.
-- **Oliva Pedra:** campo secundário e fallback arquitetônico de mídia; apoia o hero sem disputar com a tipografia.
-
-### Tertiary
-
-- **Ocre Contido:** detalhe raro de material ou separação. Não funciona como segundo CTA nem como acento constante.
+- **Verde Funcional:** PIX, contato e ações que comunicam utilidade ou disponibilidade.
+- **Tinta de Sucesso:** confirmação persistente e feedback positivo.
 
 ### Neutral
 
-- **Linho Marfim:** plano dominante da experiência pública e texto sobre campos escuros.
-- **Tinta Carvão:** texto principal, ação primária do RSVP e superfície do painel PIX.
-- **Tinta de Erro / Superfície de Erro:** par semântico reservado a falhas e convites inválidos.
-- **Tinta de Sucesso:** confirmação discreta de ações concluídas.
+- **Pedra Marfim:** canvas contínuo da página e fallback claro para carregamento.
+- **Pedra Suave:** placeholders, filtros, fundos secundários e áreas de baixa ênfase.
+- **Linha de Pedra:** divisores e bordas de cards, campos e controles.
+- **Pedra Silenciosa:** metadados e texto auxiliar.
+- **Pedra de Leitura:** corpo de texto e descrição.
+- **Pedra de Título:** headings, nomes de itens e dados importantes.
+- **Pedra Noturna:** base do hero, overlay, QR code e ações de alto contraste.
+- **Branco Puro:** cards, painéis, conteúdo modal e texto no hero.
 
-**The Material, Not Gradient Rule.** Variação visual vem de textura raster sutil e blocos tonais; não use gradientes brilhantes, halos ou fundos sintéticos de produto SaaS.
+### Tertiary
 
-**The Rare Ochre Rule.** O ocre pontua, nunca governa. Se uma tela parecer dourada, o acento foi usado em excesso.
+- **Lavagem Rosa:** fundos de RSVP, seleção, placeholder de presente e destaque gentil.
+- **Lavagem Esmeralda:** fundo de contribuição, sucesso e PIX sem peso comercial.
+
+**The Rose Leads, Green Confirms Rule.** Rosa conduz convite e afeto; verde sinaliza função, disponibilidade ou sucesso. Não faça os dois disputarem a mesma ação.
+
+**The Mineral Base Rule.** A maior parte da tela permanece em pedra, marfim ou branco; cores saturadas aparecem em ações, ícones e painéis com propósito.
 
 ## Typography
 
-**Display Font:** Bodoni Moda (com Georgia e serif como fallback)
+**Display Font:** Playfair Display (com Georgia e serif como fallback)
+**Body Font:** Inter (com ui-sans-serif e system-ui como fallback)
 
-**Body Font:** Manrope (com ui-sans-serif e system-ui como fallback)
-**Operational Font:** Inter na administração existente; não misture Inter e Manrope na mesma superfície pública.
-
-**Character:** Bodoni Moda dá verticalidade, contraste e gesto editorial; Manrope mantém dados, formulários e ações íntimos e legíveis. A tensão entre uma serif estreita e monumental e uma sans simples substitui ornamentos temáticos.
+**Character:** Playfair Display traz romance sóbrio e presença editorial sem recorrer a caligrafia. Inter oferece legibilidade firme para fluxos privados, dados de evento, filtros, estados e microcopy.
 
 ### Hierarchy
 
-- **Display** (400, escala fluida, entrelinha 0.82): reservado ao título principal; no mobile, reduz para escala fluida e entrelinha 0.92 para preservar leitura e composição.
-- **Headline** (400, escala fluida, entrelinha 0.94): títulos de seção e grandes frases narrativas.
-- **Title** (500, 1.8rem, entrelinha 1.1): títulos de eventos e legendas de blocos funcionais; presentes usam uma versão menor de 1.35rem.
-- **Body** (400, 1rem, entrelinha até 1.75): explicações, dados e orientação. Parágrafos ficam entre 60ch e 70ch.
-- **Label** (600, 0.85rem, entrelinha 1): ações compactas e metadados; navegação pode subir a 0.95rem.
-- **Control** (600, 1rem, entrelinha 1): CTA do portal e ação principal.
+- **Display** (600, escala fluida, entrelinha 0.92, tracking -0.03em): título sobre o hero, com legibilidade protegida por overlay e sombra.
+- **Headline** (600, escala fluida entre 1.875rem e 2.25rem): títulos de seções principais.
+- **Title** (600, 1.25rem, entrelinha 1.25): evento, painel, card vazio e cabeçalho de modal; cards compactos podem usar 1rem a 1.125rem.
+- **Body** (400, 1rem, entrelinha 1.625): narrativa, instruções e explicações; limitar linhas a aproximadamente 64ch.
+- **Label** (700, 0.75rem, tracking 0.08em): categorias, progresso e metadados em caixa alta; use apenas para fragmentos curtos.
+- **Control** (600, 1rem, entrelinha 1): CTA principal; controles densos reduzem para 0.75rem a 0.875rem.
 
-**The Serif Carries Meaning Rule.** Use a serif para títulos, nomes de capítulos e frases de presença; use a sans para tudo o que a pessoa precisa operar, conferir ou responder.
+**The One Serif Rule.** Playfair Display concentra toda a expressão romântica; não introduza script, caligrafia ou uma terceira fonte decorativa.
 
-**The No Decorative Type Rule.** Não adicione script, caligrafia, caixa-alta espaçada ou uma terceira fonte para fabricar romantismo.
+**The Operation Stays Sans Rule.** Botões, campos, filtros, descrições e estados usam Inter, mesmo quando estão dentro de um card ou painel com título serifado.
 
 ## Layout
 
-A composição é mobile-first e se apoia em campos verticais extensos, não em uma grade de cards. Em desktop, o hero usa duas colunas assimétricas — aproximadamente 1.6fr para o título e 0.8fr para mídia real ou fallback arquitetônico — com respiro entre 30px e 100px. O conteúdo editorial usa largura máxima de 1180px; a lista de presentes pode chegar a 1240px. Gutter lateral e espaçamento de seção são fluidos conforme os tokens normativos.
+O hero ocupa no mínimo 82svh e centraliza uma coluna de conteúdo de até 56rem, com 20px a 24px de gutter. Fotografia ou fallback preenche toda a área por `cover`; o conteúdo fica sobre overlay vertical escuro e organiza selo, display, história, CTA e uma grade curta de ações secundárias.
 
-As seções combinam um título largo com um bloco explicativo menor; linhas de 1px organizam eventos, respostas e presentes. No intervalo de 761px a 980px, o hero passa a bloco único e esconde o campo de mídia para preservar a hierarquia. Em 760px ou menos, navegação secundária desaparece, seções usam 20px de gutter e 90px de respiro vertical, linhas de evento viram uma coluna, escolhas e contadores empilham, a ação principal ocupa a largura e os painéis PIX e rodapé viram uma coluna.
+O conteúdo principal usa largura máxima de 64rem, gutter de 16px e intervalos verticais de 64px. Quando existe próximo evento verificável, a primeira superfície pode sobrepor o hero em 40px; sem esse dado, o conteúdo começa com respiro positivo. Eventos formam uma ou duas colunas a partir de 768px. Presentes formam uma coluna, duas a partir de 640px e três a partir de 1280px. O card de presente permanece horizontal: mídia de 112px, ampliada para 128px em telas maiores, e conteúdo flexível ao lado.
 
-O portal nasce do eixo vertical central do título. Em desktop, usa recorte de casa com ápice central e ombros a 31% da altura; no mobile, os ombros sobem para 21%, o portal cresce em profundidade e ocupa até 82vw. A ação e o próximo encontro ficam dentro do limiar; as seções seguintes herdam a gramática de materiais, mas nunca repetem a silhueta.
+Filtros ficam em uma superfície sticky no topo do fluxo, com fundo de pedra quase opaco e blur moderado. Categorias rolam horizontalmente em cápsulas. Painéis de tarefa mudam por dispositivo: abaixo de 640px usam Drawer inferior com até 92vh; acima disso usam Dialog central com até 90vh e largura de 28rem a 36rem. Conteúdo longo rola dentro do painel, não por trás dele.
 
-**The Continuous Field Rule.** Prefira seções contínuas, divisores e mudanças de material a pilhas de cartões. Um card só existe quando encapsula uma tarefa operacional real.
+Em larguras inferiores a 360px, escolhas de RSVP passam de duas para uma coluna. Alvos continuam com pelo menos 44px, e CTAs críticos usam 48px ou 56px.
 
-**The 390/1440 Contract Rule.** Toda nova composição pública deve funcionar primeiro nos contratos de 390px e 1440px, sem depender de recorte horizontal ou de uma fotografia para permanecer completa.
+**The Immersive First View Rule.** O primeiro viewport pertence ao hero e à ação principal; listas, filtros e detalhes entram depois, sem competir com o retrato.
+
+**The Adaptive Panel Rule.** A mesma tarefa usa Drawer no mobile e Dialog no desktop, preservando conteúdo, hierarquia, privacidade e estado.
 
 ## Elevation & Depth
 
-O sistema é plano por padrão e cria profundidade com sobreposição, recorte, textura e mudança de matéria. Sombras são raras, quentes e difusas: dão peso ao portal e resposta tátil ao CTA, sem produzir cartões flutuantes ou halos.
+O sistema combina profundidade fotográfica no hero com superfícies brancas suaves sobre pedra. Cards ricos têm sombra ambiente quente e baixa; hover adiciona apenas uma elevação curta. Modais e drawers recebem overlay escuro para remover distração. Blur aparece somente em ações translúcidas do hero e filtros sticky.
 
 ### Shadow Vocabulary
 
-- **Peso do Portal** (`filter: drop-shadow(0 18px 24px rgba(70, 33, 22, 0.16))`): somente sob o limiar arquitetônico.
-- **Repouso do CTA** (`box-shadow: 0 12px 28px rgba(46, 26, 19, 0.15)`): ação principal sobre barro.
-- **Elevação do CTA** (`box-shadow: 0 16px 32px rgba(46, 26, 19, 0.20)`): resposta de hover junto de uma subida de 2px.
+- **Card Rico** (`box-shadow: 0 16px 40px rgba(120, 113, 108, 0.14)`): eventos e superfícies de alta importância.
+- **Card em Repouso** (`box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05)`): presentes, QR code, mensagens e estados vazios.
+- **Card em Hover** (`box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -2px rgba(0, 0, 0, 0.10)`): resposta discreta de cards interativos.
+- **Ação em Destaque** (`box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -4px rgba(0, 0, 0, 0.10)`): CTA do hero e botão flutuante.
+- **Título no Hero** (`filter: drop-shadow(0 20px 13px rgba(0, 0, 0, 0.20))`): separação do display sobre fotografia ou fallback.
 
-**The Flat-by-Default Rule.** Superfícies editoriais ficam no plano; sombra sinaliza limiar ou resposta a interação, nunca decoração permanente.
+**The Soft Lift Rule.** Elementos interativos sobem no máximo 2px; imagem de presente pode ampliar até 1.05. Profundidade nunca vira flutuação contínua ou espetáculo.
+
+**The Focused Layer Rule.** Dialog e Drawer usam overlay preto a 80%; só o painel ativo recebe foco, rolagem e prioridade visual.
 
 ## Shapes
 
-Campos editoriais, bandas de história, eventos, presentes, PIX e rodapé têm bordas retas. O portal é o recorte geométrico dominante: um pentágono de casa sem contorno ornamental, alinhado por um eixo oliva de 2px. Controles e feedback usam cantos funcionais discretos; chips usam cápsula, e contadores circulares preservam alvo de toque.
+A linguagem é generosamente arredondada, mas hierárquica. Botões, filtros, badges, contadores e progressos são cápsulas. Campos e avisos usam 12px. Cards compactos usam 16px; eventos, RSVP, estados vazios e painéis promocionais usam 24px. Dialogs mantêm cantos contidos no desktop; Drawers usam topo de 20px e base presa à tela.
 
-**The Geometry Has Rank Rule.** Silhueta arquitetônica pertence ao portal; controles recebem curvas de 12px, seletores recebem cápsulas e o conteúdo editorial permanece ortogonal.
+Imagens de presentes são recortadas pelo card horizontal e separadas por uma linha leve. Ícones de seção vivem em quadrados de 48px com 16px de raio ou círculos amplos. O hero é a única superfície deliberadamente sem moldura: ocupa o viewport e termina por contraste, não por borda.
+
+**The Radius Signals Scale Rule.** Quanto maior e mais narrativa a superfície, maior o raio; controles continuam cápsulas e o hero permanece sem moldura.
 
 ## Components
 
 ### Buttons
 
-- **Shape:** retângulo material de cantos discretos, com 56px de altura na ação principal e pelo menos 44px nas ações secundárias.
-- **Invitation:** marfim sobre barro, amplo e sem ícone decorativo; concentra a entrada privada do convite.
-- **Primary:** carvão sobre marfim para salvar o RSVP; largura total no mobile.
-- **Secondary / Ghost:** fundo transparente, linha carvão semitransparente e 12px de raio para mapa, reserva, cópia e paginação.
-- **Hover / Focus:** elevação de 2px em 250ms com curva de saída expressiva; foco visível combina contorno branco de 3px e anel carvão externo. Estado disabled reduz opacidade, mantém rótulo e comunica espera.
+- **Primary:** cápsula rosa com texto branco, 56px no hero e 48px em RSVP ou reserva; pode usar coração quando a ação é presença.
+- **Functional:** cápsula verde com texto branco para PIX, contato ou disponibilidade; nunca substitui a ação afetiva principal.
+- **Hero Secondary:** vidro branco a 10%, borda branca translúcida, texto branco e blur discreto; sempre sobre overlay escuro.
+- **Outline / Ghost:** branco ou transparente, linha de pedra ou rosa e texto semanticamente correspondente.
+- **Hover / Focus:** hover sobe até 2px e aprofunda a cor; foco usa contorno rosa de 3px com offset de 3px. Active retorna ao plano; disabled mantém rótulo e reduz opacidade.
 
 ### Chips
 
-- **Style:** cápsulas transparentes com linha fina; selecionadas usam oliva botânico com texto marfim.
-- **State:** escolha de presença e filtros de presentes compartilham a mesma gramática, mas mantêm semântica e comportamento de teclado próprios.
+- **Category:** cápsula branca com linha de pedra; selecionada usa pedra de título com texto branco.
+- **RSVP:** cápsula pedra clara; selecionada usa lavagem rosa, linha rosa e tinta rosa.
+- **Badge:** cápsula compacta para loja, faixa ou estado; não funciona como CTA.
 
 ### Cards / Containers
 
-- **Public Surface:** listas são linhas editoriais com divisores, não cartões; a imagem de presente usa um bloco oliva translúcido como fallback.
-- **Operational Surface:** cartões de administração podem usar fundo neutro, borda, sombra curta e 12px de raio porque agrupam tarefas de edição.
-- **Internal Padding:** áreas funcionais usam 18px a 32px; grandes painéis usam padding fluido.
+- **Event Card:** branco, 24px de raio, padding de 28px, ícone rosa em bloco suave, título serifado e sombra rica.
+- **Gift Card:** horizontal, branco, 16px de raio, borda de pedra, sombra curta, mídia à esquerda e duas ações compactas. Sem imagem real, usa fallback rosa–pedra com ícone de presente.
+- **State Card:** branco ou lavagem semântica, ícone grande, título e orientação; deve oferecer recuperação quando existir ação segura.
+- **Sticky Filter:** pedra quase opaca com blur, borda suave e raio apenas em telas que já oferecem margem lateral.
 
 ### Inputs / Fields
 
-- **Style:** fundo marfim translúcido, linha carvão semitransparente, 12px de raio e padding de 14px por 16px.
-- **Focus:** usa o anel duplo global, sem depender apenas de mudança de cor.
-- **Error / Disabled:** erro usa o par semântico de tinta e superfície; desabilitado reduz opacidade e troca o cursor, sem remover o rótulo.
+- **Style:** fundo pedra marfim ou branco, linha de pedra, 12px de raio, 44px de altura mínima e texto Inter.
+- **Focus:** contorno rosa externo de alto contraste; nunca depender só da borda.
+- **Error / Success:** erro usa lavagem e tinta rosa profunda; sucesso usa lavagem esmeralda e tinta verde escura.
+- **Disabled / Loading:** mantém estrutura, rótulo e tamanho; reduz opacidade e comunica progresso textual.
 
 ### Navigation
 
-Marca serifada à esquerda, links centrais rarefeitos e convite à direita com sublinhado oliva. Todos os alvos têm pelo menos 44px. No mobile, os links centrais desaparecem e a marca com a entrada do convite formam a navegação essencial.
+Não há barra global competindo com o hero. A navegação de primeiro nível é a própria grade de ações secundárias do hero; a rolagem para seções respeita movimento reduzido. O botão flutuante de retorno aparece somente depois de 500px de rolagem e mantém 48px.
 
-### Portal Threshold
+### Hero Imersivo
 
-É a assinatura do sistema e a fusão deliberada do contrato A com o gesto de C. Um eixo oliva desce do hero até uma superfície de barro recortada em casa, revelando somente o próximo encontro verificado e a ação privada. Seu conteúdo fica visível por padrão; qualquer entrada orquestrada acontece uma vez e não bloqueia leitura.
+Fotografia real configurada ocupa o plano completo e é tratada como atmosfera, enquanto nome da experiência, título e história continuam em HTML. Um overlay de pedra noturna preserva contraste. A imagem entra por saturação e brilho em 900ms e por opacidade em 500ms. Se mídia estiver ausente ou falhar, o fallback cromático permanece completo e legível.
 
-### Event, Gift and PIX Rows
+### Dialog / Drawer
 
-Eventos e presentes usam linhas responsivas, ícones pequenos e hierarquia por tipo. Presentes são progressivos e opcionais; a reserva nunca parece compra. O painel PIX usa carvão e marfim, separa explicação de QR code e nunca comunica confirmação de pagamento.
+RSVP, reserva e PIX são tarefas privadas e focadas. No desktop, Dialog centraliza conteúdo sobre overlay e limita altura; no mobile, Drawer sobe da base com alça, topo arredondado e área interna rolável. Título Playfair, descrição Inter e CTA de largura total formam a hierarquia comum.
+
+### Gift List
+
+Filtro de busca, faixa e categorias precede uma grade responsiva de cards ricos. A reserva abre confirmação focada e só fica disponível pelo convite seguro; cancelamento pertence à própria reserva. PIX é apresentado como opção separada, nunca como checkout ou prova de pagamento.
 
 ### Motion & Accessibility
 
-Movimento existe para confirmar estado e conduzir o olhar ao único limiar: transições de controle usam 250ms e a curva `cubic-bezier(0.16, 1, 0.3, 1)`. Todo conteúdo permanece presente antes da animação. Com `prefers-reduced-motion`, rolagem suave é desativada e durações caem para 0.01ms. Navegação por teclado, nomes acessíveis, foco de alto contraste, alvos mínimos de 44px e informação independente de foto, cor ou movimento são requisitos do componente, não acabamentos.
+O hero pode revelar fotografia uma vez; cards usam 300ms para elevação e 500ms para zoom de mídia; progresso e contagem só animam dados reais. Conteúdo nunca nasce oculto sem fallback. Com `prefers-reduced-motion`, rolagem suave é removida e animações/transições caem para 0.01ms. Foco de 3px, alvos mínimos de 44px, títulos semânticos, radiogroups, estados textuais e contraste de overlay são requisitos. Informação essencial não depende de fotografia, hover, cor ou animação.
+
+**The 44px Target Rule.** Toda ação pública permanece com pelo menos 44px em ambos os eixos; ações principais usam 48px ou 56px.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** trate o contrato A como estrutura: título monumental, assimetria editorial, navegação esparsa, grandes campos e leitura progressiva.
-- **Do** use o portal de C uma única vez para ligar a promessa do hero ao próximo encontro e ao convite.
-- **Do** use textura de linho e argila em tiles raster leves, uniformes, mate e de baixo contraste; mantenha um fundo de cor equivalente.
-- **Do** mostre somente datas, locais, mídia e estados reais; ausências recebem fallback material e texto honesto.
-- **Do** preserve leitura e operação completas em 390px, 1440px, teclado e movimento reduzido.
-- **Do** mantenha RSVP como ação principal e presentes ou PIX como possibilidades posteriores e sem pressão.
+- **Do** use fotografia real configurada como plano imersivo e preserve o fallback cromático de pedra e rosa para ausência ou falha.
+- **Do** use Playfair Display em títulos afetivos e Inter em tudo o que a pessoa lê, filtra, confirma ou opera.
+- **Do** use cards ricos para eventos, presentes e estados que realmente agrupam conteúdo e ação.
+- **Do** adapte tarefas privadas para Drawer abaixo de 640px e Dialog a partir de 640px.
+- **Do** mantenha rosa como ação afetiva principal e verde como sinal funcional ou positivo.
+- **Do** mostre data, local, contagem, fotografia e orientação somente quando existirem dados verificados.
+- **Do** preserve sessão individual, respostas privadas, reserva identificada, cancelamento autorizado e operações sensíveis no servidor.
 
 ### Don't:
 
-- **Don't** use fotografia stock, imagem quebrada, countdown fictício, dress code inventado ou busca pública por nomes.
-- **Don't** transforme a superfície pública em grade de cartões, vitrine de presentes ou checkout.
-- **Don't** repita a casa, o eixo ou o recorte do portal em seções posteriores, botões, ícones ou molduras.
-- **Don't** adicione gradientes luminosos, glassmorphism, glow, sombras frias ou ornamento romântico genérico.
-- **Don't** misture Bodoni Moda, Manrope e a tipografia operacional na mesma hierarquia pública.
-- **Don't** dependa de fotografia, animação, cor isolada ou hover para transmitir conteúdo ou estado.
+- **Don't** use imagem stock, nomes, datas, locais, orientações ou confirmação de pagamento inventados.
+- **Don't** restaure busca pública de pessoas, autocadastro, escrita direta do navegador, fallback de credencial ou qualquer fluxo legado inseguro.
+- **Don't** trate presentes ou PIX como checkout, obrigação ou confirmação de presença.
+- **Don't** use verde como cor romântica principal nem rosa para indicar sucesso operacional quando verde já resolve o estado.
+- **Don't** aplique blur, sombra rica e raio de 24px a todo bloco; reserve profundidade para superfícies com hierarquia real.
+- **Don't** introduza script, caligrafia, ornamento temático genérico ou uma terceira família tipográfica.
+- **Don't** dependa de fotografia, cor, movimento ou hover para manter a experiência compreensível.

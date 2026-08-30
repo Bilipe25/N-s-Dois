@@ -6,6 +6,7 @@ import { GIFT_CATEGORIES } from "@/schemas/bridal-shower";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GiftFilterProps {
+    categories?: readonly string[];
     searchTerm: string;
     onSearchChange: (value: string) => void;
     selectedCategory: string | null;
@@ -17,6 +18,7 @@ interface GiftFilterProps {
 }
 
 export function GiftFilter({
+    categories = GIFT_CATEGORIES,
     searchTerm,
     onSearchChange,
     selectedCategory,
@@ -105,7 +107,7 @@ export function GiftFilter({
                     >
                         Todas Categorias
                     </Button>
-                    {GIFT_CATEGORIES.map((category) => (
+                    {categories.map((category) => (
                         <Button
                             key={category}
                             variant={selectedCategory === category ? "default" : "outline"}

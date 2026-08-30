@@ -36,6 +36,16 @@ export async function action({ request }: Route.ActionArgs) {
     const gift = Array.isArray(data.bridal_shower_gifts) ? data.bridal_shower_gifts[0] : data.bridal_shower_gifts;
     amountCents = gift && typeof gift.price_cents === "number" ? gift.price_cents : null;
     transactionId = `PRESENTE${String(data.id).replace(/-/g, "").slice(0, 12)}`;
+  } else if (parsed.data.giftId) {
+    const supabase = createServerAdminClient();
+    const { data } = await supabase
+      .from("bridal_shower_gifts")
+      .select("id,price_cents")
+      .eq("id", parsed.data.giftId)
+      .maybeSingle();
+    if (!data) return Response.json({ error: "Presente não encontrado." }, { status: 404, headers: noStoreHeaders() });
+    amountCents = typeof data.price_cents === "number" ? data.price_cents : null;
+    transactionId = `PRESENTE${String(data.id).replace(/-/g, "").slice(0, 12)}`;
   }
 
   try {

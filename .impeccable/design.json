@@ -1,175 +1,164 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-30T00:13:44.2133584-03:00",
+  "generatedAt": "2026-08-30T11:56:13.0019982-03:00",
   "title": "Design System: Nós Dois",
   "extensions": {
     "colorMeta": {
-      "ivory-linen": {
-        "role": "neutral",
-        "displayName": "Linho Marfim",
-        "canonical": "#f1e4d1",
-        "tonalRamp": ["oklch(15% 0.025 78)", "oklch(27% 0.025 78)", "oklch(39% 0.025 78)", "oklch(51% 0.025 78)", "oklch(63% 0.025 78)", "oklch(75% 0.025 78)", "oklch(87% 0.025 78)", "oklch(95% 0.025 78)"]
-      },
-      "burnt-clay": {
-        "role": "primary",
-        "displayName": "Barro Queimado",
-        "canonical": "#b8673f",
-        "tonalRamp": ["oklch(15% 0.12 45)", "oklch(27% 0.12 45)", "oklch(39% 0.12 45)", "oklch(51% 0.12 45)", "oklch(63% 0.12 45)", "oklch(75% 0.12 45)", "oklch(87% 0.08 45)", "oklch(95% 0.04 45)"]
-      },
-      "deep-clay": {
-        "role": "primary",
-        "displayName": "Barro Profundo",
-        "canonical": "#8f452d",
-        "tonalRamp": ["oklch(15% 0.11 42)", "oklch(27% 0.11 42)", "oklch(39% 0.11 42)", "oklch(51% 0.11 42)", "oklch(63% 0.11 42)", "oklch(75% 0.10 42)", "oklch(87% 0.07 42)", "oklch(95% 0.035 42)"]
-      },
-      "portal-clay": {
-        "role": "primary",
-        "displayName": "Barro do Portal",
-        "canonical": "#763824",
-        "tonalRamp": ["oklch(15% 0.10 40)", "oklch(27% 0.10 40)", "oklch(39% 0.10 40)", "oklch(51% 0.10 40)", "oklch(63% 0.10 40)", "oklch(75% 0.09 40)", "oklch(87% 0.06 40)", "oklch(95% 0.03 40)"]
-      },
-      "botanical-olive": {
-        "role": "secondary",
-        "displayName": "Oliva Botânico",
-        "canonical": "#53604b",
-        "tonalRamp": ["oklch(15% 0.055 125)", "oklch(27% 0.055 125)", "oklch(39% 0.055 125)", "oklch(51% 0.055 125)", "oklch(63% 0.055 125)", "oklch(75% 0.05 125)", "oklch(87% 0.035 125)", "oklch(95% 0.018 125)"]
-      },
-      "olive-stone": {
-        "role": "secondary",
-        "displayName": "Oliva Pedra",
-        "canonical": "#aea992",
-        "tonalRamp": ["oklch(15% 0.035 100)", "oklch(27% 0.035 100)", "oklch(39% 0.035 100)", "oklch(51% 0.035 100)", "oklch(63% 0.035 100)", "oklch(75% 0.035 100)", "oklch(87% 0.025 100)", "oklch(95% 0.012 100)"]
-      },
-      "charcoal-ink": {
-        "role": "neutral",
-        "displayName": "Tinta Carvão",
-        "canonical": "#262720",
-        "tonalRamp": ["oklch(15% 0.018 105)", "oklch(27% 0.018 105)", "oklch(39% 0.018 105)", "oklch(51% 0.018 105)", "oklch(63% 0.018 105)", "oklch(75% 0.016 105)", "oklch(87% 0.011 105)", "oklch(95% 0.006 105)"]
-      },
-      "restrained-ochre": {
-        "role": "tertiary",
-        "displayName": "Ocre Contido",
-        "canonical": "#c89a57",
-        "tonalRamp": ["oklch(15% 0.09 76)", "oklch(27% 0.09 76)", "oklch(39% 0.09 76)", "oklch(51% 0.09 76)", "oklch(63% 0.09 76)", "oklch(75% 0.09 76)", "oklch(87% 0.06 76)", "oklch(95% 0.03 76)"]
-      },
-      "error-ink": { "role": "semantic", "displayName": "Tinta de Erro", "canonical": "#6e251d", "tonalRamp": ["oklch(15% 0.13 30)", "oklch(27% 0.13 30)", "oklch(39% 0.13 30)", "oklch(51% 0.13 30)", "oklch(63% 0.12 30)", "oklch(75% 0.10 30)", "oklch(87% 0.07 30)", "oklch(95% 0.035 30)"] },
-      "error-surface": { "role": "semantic", "displayName": "Superfície de Erro", "canonical": "#f5cfbd", "tonalRamp": ["oklch(15% 0.055 42)", "oklch(27% 0.055 42)", "oklch(39% 0.055 42)", "oklch(51% 0.055 42)", "oklch(63% 0.055 42)", "oklch(75% 0.05 42)", "oklch(87% 0.035 42)", "oklch(95% 0.018 42)"] },
-      "success-ink": { "role": "semantic", "displayName": "Tinta de Sucesso", "canonical": "#34412d", "tonalRamp": ["oklch(15% 0.065 130)", "oklch(27% 0.065 130)", "oklch(39% 0.065 130)", "oklch(51% 0.065 130)", "oklch(63% 0.06 130)", "oklch(75% 0.05 130)", "oklch(87% 0.035 130)", "oklch(95% 0.018 130)"] }
+      "stone-canvas": { "role": "neutral", "displayName": "Pedra Marfim", "canonical": "#fafaf9", "tonalRamp": ["#0c0a09", "#1c1917", "#44403c", "#78716c", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "stone-soft": { "role": "neutral", "displayName": "Pedra Suave", "canonical": "#f5f5f4", "tonalRamp": ["#0c0a09", "#1c1917", "#44403c", "#78716c", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "stone-border": { "role": "neutral", "displayName": "Linha de Pedra", "canonical": "#e7e5e4", "tonalRamp": ["#0c0a09", "#1c1917", "#44403c", "#78716c", "#a8a29e", "#d6d3d1", "#e7e5e4", "#fafaf9"] },
+      "stone-muted": { "role": "neutral", "displayName": "Pedra Silenciosa", "canonical": "#78716c", "tonalRamp": ["#0c0a09", "#1c1917", "#44403c", "#78716c", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "stone-copy": { "role": "neutral", "displayName": "Pedra de Leitura", "canonical": "#57534e", "tonalRamp": ["#0c0a09", "#1c1917", "#44403c", "#57534e", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "stone-heading": { "role": "neutral", "displayName": "Pedra de Título", "canonical": "#292524", "tonalRamp": ["#0c0a09", "#1c1917", "#292524", "#57534e", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "stone-night": { "role": "neutral", "displayName": "Pedra Noturna", "canonical": "#1c1917", "tonalRamp": ["#0c0a09", "#1c1917", "#292524", "#57534e", "#a8a29e", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "pure-white": { "role": "neutral", "displayName": "Branco Puro", "canonical": "#ffffff", "tonalRamp": ["#0c0a09", "#292524", "#57534e", "#a8a29e", "#d6d3d1", "#e7e5e4", "#fafaf9", "#ffffff"] },
+      "rose-wash": { "role": "tertiary", "displayName": "Lavagem Rosa", "canonical": "#fff1f2", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#ffe4e6", "#fff1f2"] },
+      "rose-selection": { "role": "tertiary", "displayName": "Seleção Rosa", "canonical": "#ffe4e6", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#ffe4e6", "#fff1f2"] },
+      "burnt-rose": { "role": "primary", "displayName": "Rosa Queimado", "canonical": "#f43f5e", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#ffe4e6", "#fff1f2"] },
+      "burnt-rose-hover": { "role": "primary", "displayName": "Rosa Queimado Profundo", "canonical": "#e11d48", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#ffe4e6", "#fff1f2"] },
+      "burnt-rose-ink": { "role": "primary", "displayName": "Tinta Rosa", "canonical": "#9f1239", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#ffe4e6", "#fff1f2"] },
+      "focus-rose": { "role": "primary", "displayName": "Rosa de Foco", "canonical": "#be123c", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#ffe4e6", "#fff1f2"] },
+      "emerald-wash": { "role": "secondary", "displayName": "Lavagem Esmeralda", "canonical": "#ecfdf5", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#10b981", "#6ee7b7", "#d1fae5", "#ecfdf5"] },
+      "functional-green": { "role": "secondary", "displayName": "Verde Funcional", "canonical": "#047857", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#10b981", "#6ee7b7", "#d1fae5", "#ecfdf5"] },
+      "success-ink": { "role": "secondary", "displayName": "Tinta de Sucesso", "canonical": "#065f46", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#10b981", "#6ee7b7", "#d1fae5", "#ecfdf5"] }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Título monumental do hero; nunca em controles." },
-      "headline": { "displayName": "Headline", "purpose": "Títulos de seção e frases narrativas." },
-      "title": { "displayName": "Title", "purpose": "Eventos e blocos funcionais." },
-      "body": { "displayName": "Body", "purpose": "Orientação, dados e texto corrido." },
-      "label": { "displayName": "Label", "purpose": "Metadados e ações compactas." },
-      "control": { "displayName": "Control", "purpose": "Ações principais e CTA do convite." }
+      "display": { "displayName": "Display", "purpose": "Título imersivo do hero." },
+      "headline": { "displayName": "Headline", "purpose": "Títulos de seções principais." },
+      "title": { "displayName": "Title", "purpose": "Cards, eventos e painéis focados." },
+      "body": { "displayName": "Body", "purpose": "História, instruções, detalhes e formulários." },
+      "label": { "displayName": "Label", "purpose": "Categorias, progresso e metadados curtos." },
+      "control": { "displayName": "Control", "purpose": "Ações principais e funcionais." }
     },
     "shadows": [
-      { "name": "portal-weight", "value": "drop-shadow(0 18px 24px rgba(70, 33, 22, 0.16))", "purpose": "Peso material exclusivo do limiar arquitetônico." },
-      { "name": "cta-rest", "value": "0 12px 28px rgba(46, 26, 19, 0.15)", "purpose": "CTA principal em repouso sobre o barro." },
-      { "name": "cta-hover", "value": "0 16px 32px rgba(46, 26, 19, 0.20)", "purpose": "CTA principal elevado no hover." }
+      { "name": "rich-card", "value": "0 16px 40px rgba(120, 113, 108, 0.14)", "purpose": "Eventos e superfícies de alta importância." },
+      { "name": "card-rest", "value": "0 1px 2px rgba(0, 0, 0, 0.05)", "purpose": "Presentes, QR code, mensagens e estados vazios." },
+      { "name": "card-hover", "value": "0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -2px rgba(0, 0, 0, 0.10)", "purpose": "Elevação discreta de cards interativos." },
+      { "name": "featured-action", "value": "0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -4px rgba(0, 0, 0, 0.10)", "purpose": "CTA do hero e botão flutuante." },
+      { "name": "hero-title", "value": "drop-shadow(0 20px 13px rgba(0, 0, 0, 0.20))", "purpose": "Contraste do display sobre fotografia ou fallback." }
     ],
     "motion": [
-      { "name": "control-lift", "value": "250ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hover de controles e CTA, com deslocamento máximo de 2px." },
-      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Duração substituta sob prefers-reduced-motion; rolagem suave também é removida." }
+      { "name": "hero-reveal", "value": "900ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Revela uma fotografia configurada por saturação e brilho." },
+      { "name": "hero-photo-opacity", "value": "500ms ease-out", "purpose": "Entrada de opacidade da mídia após carregamento." },
+      { "name": "card-lift", "value": "300ms ease", "purpose": "Elevação curta, de até 2px, em cards interativos." },
+      { "name": "gift-image-zoom", "value": "500ms ease", "purpose": "Ampliação máxima de 1.05 na mídia do presente." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Substitui animações e transições quando movimento reduzido está ativo." }
     ],
     "breakpoints": [
-      { "name": "mobile", "value": "760px" },
-      { "name": "compact-desktop", "value": "980px" }
+      { "name": "narrow", "value": "360px" },
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "xl", "value": "1280px" }
     ]
   },
   "components": [
     {
-      "name": "Portal Threshold",
+      "name": "Immersive Hero Fallback",
       "kind": "custom",
-      "refersTo": "portal-threshold",
-      "description": "Assinatura única entre o hero e o próximo encontro.",
-      "html": "<section class=\"ds-portal\"><p class=\"ds-portal-copy\">Novidades em breve</p><a class=\"ds-portal-action\" href=\"#convite\">Abrir meu convite</a></section>",
-      "css": ".ds-portal { width: min(820px,72vw); min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 26px; padding: 125px 40px 50px; color: var(--celebration-ivory,#f1e4d1); background: var(--celebration-portal,#763824); clip-path: polygon(50% 0,100% 31%,100% 100%,0 100%,0 31%); filter: drop-shadow(0 18px 24px rgba(70,33,22,.16)); text-align: center; font-family: Manrope,sans-serif; } .ds-portal-copy { margin: 0; font-size: clamp(1.05rem,2vw,1.5rem); } .ds-portal-action { min-height: 56px; padding: 16px 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; color: #262720; background: #f1e4d1; box-shadow: 0 12px 28px rgba(46,26,19,.15); text-decoration: none; font-weight: 600; transition: transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s cubic-bezier(.16,1,.3,1); } .ds-portal-action:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(46,26,19,.2); } .ds-portal-action:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; }"
+      "description": "Fallback cromático completo usado quando não existe fotografia real configurada.",
+      "html": "<header class=\"ds-hero\"><div class=\"ds-hero-overlay\"></div><div class=\"ds-hero-content\"><span class=\"ds-hero-kicker\">Celebrando o novo lar</span><h1 class=\"ds-hero-title\">Uma celebração em primeiro plano</h1><p class=\"ds-hero-copy\">Os detalhes reais da experiência aparecem aqui.</p></div></header>",
+      "css": ".ds-hero { position: relative; min-height: 520px; overflow: hidden; display: grid; place-items: center; background: radial-gradient(circle at 25% 18%,rgba(244,63,94,.30),transparent 28rem),linear-gradient(135deg,#292524 0%,#44403c 52%,#1c1917 100%); color: #fff; } .ds-hero-overlay { position: absolute; inset: 0; background: linear-gradient(to top,rgba(28,25,23,.92),rgba(28,25,23,.42) 55%,rgba(28,25,23,.24)); } .ds-hero-content { position: relative; z-index: 1; width: min(56rem,calc(100% - 40px)); display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; } .ds-hero-kicker { padding: 8px 16px; border: 1px solid rgba(255,255,255,.30); border-radius: 999px; background: rgba(0,0,0,.15); font: 700 .75rem/1.25 Inter,sans-serif; letter-spacing: .18em; text-transform: uppercase; backdrop-filter: blur(4px); } .ds-hero-title { max-width: 12ch; margin: 0; font: 600 clamp(3.25rem,10vw,7rem)/.92 \"Playfair Display\",Georgia,serif; letter-spacing: -.03em; filter: drop-shadow(0 20px 13px rgba(0,0,0,.20)); } .ds-hero-copy { max-width: 42rem; margin: 0; color: #f5f5f4; font: 400 1rem/1.625 Inter,sans-serif; }"
     },
     {
-      "name": "Primary RSVP Button",
+      "name": "Primary Celebration CTA",
       "kind": "button",
-      "refersTo": "primary-button",
-      "description": "Ação principal para salvar a resposta ao convite.",
-      "html": "<button class=\"ds-btn-primary\" type=\"button\">Salvar minha resposta</button>",
-      "css": ".ds-btn-primary { min-height: 56px; padding: 16px 32px; border: 0; border-radius: 12px; color: #f1e4d1; background: #262720; box-shadow: 0 12px 28px rgba(46,26,19,.15); font: 600 1rem/1 Manrope,sans-serif; cursor: pointer; transition: transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s cubic-bezier(.16,1,.3,1); } .ds-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(46,26,19,.2); } .ds-btn-primary:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } .ds-btn-primary:active { transform: translateY(0); } .ds-btn-primary:disabled { opacity: .65; cursor: wait; }"
+      "refersTo": "primary-cta",
+      "description": "Ação afetiva principal para abrir ou responder ao convite.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Confirmar presença</button>",
+      "css": ".ds-btn-primary { width: min(100%,40rem); min-height: 56px; padding: 16px 32px; border: 0; border-radius: 999px; color: #fff; background: #f43f5e; box-shadow: 0 10px 15px -3px rgba(0,0,0,.10),0 4px 6px -4px rgba(0,0,0,.10); font: 600 1rem/1 Inter,sans-serif; cursor: pointer; transition: transform .3s ease,background-color .3s ease,box-shadow .3s ease; } .ds-btn-primary:hover { transform: translateY(-2px); background: #e11d48; } .ds-btn-primary:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-btn-primary:active { transform: translateY(0); } .ds-btn-primary:disabled { opacity: .5; cursor: not-allowed; }"
     },
     {
-      "name": "Choice Chip",
-      "kind": "chip",
-      "refersTo": "choice-chip-selected",
-      "description": "Escolha de presença ou filtro com estado selecionado explícito.",
-      "html": "<button class=\"ds-chip\" type=\"button\" aria-pressed=\"true\">Estarei presente</button>",
-      "css": ".ds-chip { min-height: 44px; padding: 10px 18px; border: 1px solid #53604b; border-radius: 999px; color: #f1e4d1; background: #53604b; font: 400 1rem/1.2 Manrope,sans-serif; cursor: pointer; transition: transform .25s cubic-bezier(.16,1,.3,1); } .ds-chip:hover { transform: translateY(-2px); } .ds-chip:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } .ds-chip:active { transform: translateY(0); }"
+      "name": "Hero Secondary Action",
+      "kind": "button",
+      "refersTo": "hero-secondary-action",
+      "description": "Ação translúcida para navegação curta dentro do hero.",
+      "html": "<button class=\"ds-btn-glass\" type=\"button\">Ver locais</button>",
+      "css": ".ds-btn-glass { min-height: 48px; padding: 12px 16px; border: 1px solid rgba(255,255,255,.30); border-radius: 999px; color: #fff; background: rgba(255,255,255,.10); font: 500 .875rem/1 Inter,sans-serif; backdrop-filter: blur(4px); cursor: pointer; transition: transform .3s ease,background-color .3s ease; } .ds-btn-glass:hover { transform: translateY(-2px); background: rgba(255,255,255,.20); } .ds-btn-glass:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-btn-glass:active { transform: translateY(0); }"
     },
     {
-      "name": "Text Field",
+      "name": "Functional Green Action",
+      "kind": "button",
+      "refersTo": "functional-action",
+      "description": "Ação funcional reservada a PIX, contato ou disponibilidade.",
+      "html": "<button class=\"ds-btn-functional\" type=\"button\">Abrir PIX</button>",
+      "css": ".ds-btn-functional { min-height: 48px; padding: 12px 32px; border: 0; border-radius: 999px; color: #fff; background: #047857; font: 600 1rem/1 Inter,sans-serif; cursor: pointer; transition: transform .3s ease,background-color .3s ease; } .ds-btn-functional:hover { transform: translateY(-2px); background: #065f46; } .ds-btn-functional:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-btn-functional:active { transform: translateY(0); } .ds-btn-functional:disabled { opacity: .5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Event Card",
+      "kind": "card",
+      "refersTo": "event-card",
+      "description": "Card rico para dados reais de evento e ação de mapa.",
+      "html": "<article class=\"ds-event-card\"><div class=\"ds-event-icon\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z\"/><circle cx=\"12\" cy=\"10\" r=\"2\"/></svg></div><h3 class=\"ds-event-title\">Próximo encontro</h3><p class=\"ds-event-copy\">Data e local aparecem quando publicados.</p><a class=\"ds-event-link\" href=\"#detalhes\">Ver detalhes</a></article>",
+      "css": ".ds-event-card { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px; border: 1px solid #f5f5f4; border-radius: 24px; color: #292524; background: #fff; box-shadow: 0 16px 40px rgba(120,113,108,.14); text-align: center; font-family: Inter,sans-serif; transition: transform .3s ease,box-shadow .3s ease; } .ds-event-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,.10),0 2px 4px -2px rgba(0,0,0,.10); } .ds-event-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; color: #f43f5e; background: #fff1f2; } .ds-event-title { margin: 0; font: 700 1.25rem/1.25 \"Playfair Display\",Georgia,serif; } .ds-event-copy { margin: 0; color: #57534e; font-size: .875rem; line-height: 1.625; } .ds-event-link { min-height: 44px; display: inline-flex; align-items: center; padding: 10px 18px; border: 1px solid #fecdd3; border-radius: 999px; color: #be123c; text-decoration: none; font-weight: 600; } .ds-event-link:hover { background: #fff1f2; } .ds-event-link:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Gift Card",
+      "kind": "card",
+      "refersTo": "gift-card",
+      "description": "Card horizontal rico com fallback de mídia e ações separadas.",
+      "html": "<article class=\"ds-gift-card\"><div class=\"ds-gift-media\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" width=\"32\" height=\"32\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"13\" rx=\"2\"/><path d=\"M12 8v13M3 12h18M7.5 8C5 8 5 4 7 4c3 0 5 4 5 4s2-4 5-4c2 0 2 4-.5 4\"/></svg></div><div class=\"ds-gift-content\"><p class=\"ds-gift-label\">Presente</p><h3 class=\"ds-gift-title\">Item da lista</h3><div class=\"ds-gift-actions\"><button class=\"ds-gift-reserve\" type=\"button\">Presentear</button><button class=\"ds-gift-pix\" type=\"button\">PIX</button></div></div></article>",
+      "css": ".ds-gift-card { min-height: 144px; display: flex; align-items: stretch; overflow: hidden; border: 1px solid #e7e5e4; border-radius: 16px; color: #292524; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.05); transition: transform .3s ease,box-shadow .3s ease; } .ds-gift-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,.10),0 2px 4px -2px rgba(0,0,0,.10); } .ds-gift-media { width: 112px; flex: none; display: grid; place-items: center; border-right: 1px solid #f5f5f4; color: #fecdd3; background: linear-gradient(135deg,#fff1f2,#fafaf9); } .ds-gift-content { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; } .ds-gift-label { margin: 0 0 4px; color: #78716c; font: 700 .625rem/1.25 Inter,sans-serif; letter-spacing: .08em; text-transform: uppercase; } .ds-gift-title { margin: 0; font: 500 1rem/1.25 \"Playfair Display\",Georgia,serif; } .ds-gift-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; } .ds-gift-actions button { min-height: 44px; border-radius: 999px; font: 600 .75rem/1 Inter,sans-serif; cursor: pointer; } .ds-gift-reserve { border: 1px solid #ffe4e6; color: #be123c; background: #fff1f2; } .ds-gift-reserve:hover { background: #ffe4e6; } .ds-gift-pix { border: 1px solid #d1fae5; color: #047857; background: #ecfdf5; } .ds-gift-pix:hover { background: #d1fae5; } .ds-gift-actions button:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; }"
+    },
+    {
+      "name": "Search Field and Category Chip",
       "kind": "input",
       "refersTo": "input-field",
-      "description": "Campo material translúcido para busca e mensagens privadas.",
-      "html": "<label class=\"ds-field-label\" for=\"ds-message\">Mensagem opcional</label><textarea class=\"ds-field\" id=\"ds-message\" rows=\"3\" placeholder=\"Escreva somente se quiser.\"></textarea>",
-      "css": ".ds-field-label { display: block; margin-bottom: 10px; color: #262720; font: 600 .85rem/1.2 Manrope,sans-serif; } .ds-field { width: 100%; min-height: 96px; padding: 14px 16px; border: 1px solid rgba(38,39,32,.36); border-radius: 12px; color: #262720; background: rgba(255,255,255,.34); font: 400 1rem/1.6 Manrope,sans-serif; resize: vertical; } .ds-field:hover { border-color: rgba(38,39,32,.56); } .ds-field:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } .ds-field:disabled { opacity: .5; cursor: not-allowed; }"
+      "description": "Primitivos do filtro sticky de presentes.",
+      "html": "<div class=\"ds-filter\"><label class=\"ds-filter-label\" for=\"ds-search\">Buscar presente</label><input class=\"ds-search\" id=\"ds-search\" placeholder=\"Buscar presente...\"><button class=\"ds-category\" type=\"button\" aria-pressed=\"true\">Todas as categorias</button></div>",
+      "css": ".ds-filter { display: grid; gap: 12px; padding: 12px 16px; border: 1px solid rgba(231,229,228,.70); border-radius: 16px; background: rgba(250,250,249,.95); font-family: Inter,sans-serif; backdrop-filter: blur(12px); } .ds-filter-label { color: #57534e; font-size: .75rem; font-weight: 700; } .ds-search { min-height: 44px; padding: 12px; border: 1px solid #e7e5e4; border-radius: 12px; color: #292524; background: #fff; font: 400 1rem/1.25 Inter,sans-serif; } .ds-search:hover { border-color: #d6d3d1; } .ds-search:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-category { width: fit-content; min-height: 44px; padding: 10px 16px; border: 1px solid #292524; border-radius: 999px; color: #fff; background: #292524; font: 600 .75rem/1 Inter,sans-serif; cursor: pointer; } .ds-category:hover { background: #1c1917; } .ds-category:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-category:active { transform: translateY(1px); }"
     },
     {
-      "name": "Event Row",
+      "name": "Adaptive Task Panel",
       "kind": "custom",
-      "description": "Linha editorial responsiva para data, local e ação de mapa.",
-      "html": "<article class=\"ds-event\"><p class=\"ds-event-date\">Data em breve</p><div><h3 class=\"ds-event-title\">Próximo encontro</h3><p class=\"ds-event-place\">Detalhes publicados pelo casal</p></div><a class=\"ds-event-link\" href=\"#detalhes\">Ver detalhes</a></article>",
-      "css": ".ds-event { display: grid; grid-template-columns: minmax(190px,.7fr) minmax(280px,1.4fr) auto; gap: 30px; align-items: center; padding: 32px 0; border-top: 1px solid rgba(38,39,32,.42); border-bottom: 1px solid rgba(38,39,32,.32); color: #262720; font-family: Manrope,sans-serif; } .ds-event-date,.ds-event-place { margin: 0; line-height: 1.5; } .ds-event-title { margin: 0 0 8px; font: 500 1.8rem/1.1 \"Bodoni Moda\",Georgia,serif; } .ds-event-link { min-height: 44px; display: inline-flex; align-items: center; color: inherit; text-underline-offset: .3em; } .ds-event-link:hover { color: #53604b; } .ds-event-link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } @media (max-width:760px) { .ds-event { grid-template-columns: 1fr; gap: 14px; padding: 26px 0; } .ds-event-link { justify-self: start; } }"
-    },
-    {
-      "name": "PIX Panel",
-      "kind": "card",
-      "description": "Painel opcional escuro que explica contribuição sem linguagem de checkout.",
-      "html": "<section class=\"ds-pix\"><div><h3 class=\"ds-pix-title\">Contribuição opcional</h3><p class=\"ds-pix-copy\">Use somente se fizer sentido para você.</p><button class=\"ds-pix-button\" type=\"button\">Gerar código</button></div><div class=\"ds-pix-code\" aria-label=\"Área do código PIX\">Código</div></section>",
-      "css": ".ds-pix { display: grid; grid-template-columns: 1fr auto; gap: 60px; align-items: center; padding: clamp(36px,6vw,72px); color: #f1e4d1; background: #262720; font-family: Manrope,sans-serif; } .ds-pix-title { margin: 0 0 14px; font: 500 2.4rem/1.1 \"Bodoni Moda\",Georgia,serif; } .ds-pix-copy { max-width: 60ch; line-height: 1.65; } .ds-pix-button { min-height: 44px; padding: 10px 18px; border: 1px solid currentColor; border-radius: 12px; color: inherit; background: transparent; cursor: pointer; } .ds-pix-button:hover { background: rgba(241,228,209,.1); } .ds-pix-button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } .ds-pix-button:active { transform: translateY(1px); } .ds-pix-code { min-width: 132px; min-height: 132px; display: grid; place-items: center; padding: 18px; color: #262720; background: #f1e4d1; } @media (max-width:760px) { .ds-pix { grid-template-columns: 1fr; gap: 36px; } .ds-pix-code { width: fit-content; } }"
-    },
-    {
-      "name": "Public Navigation",
-      "kind": "nav",
-      "description": "Marca serifada, links centrais e convite sublinhado com redução essencial no mobile.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Navegação principal\"><a class=\"ds-mark\" href=\"#inicio\">N & D</a><div class=\"ds-nav-links\"><a href=\"#celebracao\">Celebração</a><a href=\"#presentes\">Presentes</a><a href=\"#contato\">Contato</a></div><a class=\"ds-invite-link\" href=\"#convite\">Nosso convite</a></nav>",
-      "css": ".ds-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 28px; color: #262720; font-family: Manrope,sans-serif; } .ds-nav a { min-height: 44px; display: inline-flex; align-items: center; color: inherit; text-decoration: none; } .ds-mark { font: 500 clamp(2rem,3vw,3.4rem)/1 \"Bodoni Moda\",Georgia,serif; letter-spacing: -.04em; } .ds-nav-links { display: flex; gap: clamp(22px,3vw,44px); } .ds-nav-links a:hover,.ds-invite-link:hover { color: #53604b; } .ds-nav a:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px #262720; } .ds-invite-link { justify-self: end; padding-block: 10px; border-bottom: 1px solid #53604b; } @media (max-width:760px) { .ds-nav { grid-template-columns: 1fr auto; } .ds-nav-links { display: none; } }"
+      "refersTo": "modal-panel",
+      "description": "Dialog no desktop e Drawer inferior no mobile para tarefas privadas.",
+      "html": "<section class=\"ds-panel\" role=\"dialog\" aria-labelledby=\"ds-panel-title\"><div class=\"ds-panel-handle\" aria-hidden=\"true\"></div><h2 class=\"ds-panel-title\" id=\"ds-panel-title\">Confirmar escolha</h2><p class=\"ds-panel-copy\">Revise os detalhes antes de continuar.</p><button class=\"ds-panel-action\" type=\"button\">Continuar</button></section>",
+      "css": ".ds-panel { width: min(32rem,calc(100vw - 32px)); display: grid; gap: 16px; padding: 24px; border: 1px solid #e7e5e4; border-radius: 6px; color: #292524; background: #fff; box-shadow: 0 10px 15px -3px rgba(0,0,0,.10),0 4px 6px -4px rgba(0,0,0,.10); font-family: Inter,sans-serif; } .ds-panel-handle { display: none; } .ds-panel-title { margin: 0; font: 600 1.5rem/1.2 \"Playfair Display\",Georgia,serif; } .ds-panel-copy { margin: 0; color: #57534e; font-size: .875rem; line-height: 1.625; } .ds-panel-action { min-height: 48px; padding: 12px 24px; border: 0; border-radius: 999px; color: #fff; background: #f43f5e; font: 600 1rem/1 Inter,sans-serif; cursor: pointer; } .ds-panel-action:hover { background: #e11d48; } .ds-panel-action:focus-visible { outline: 3px solid #be123c; outline-offset: 3px; } .ds-panel-action:active { transform: translateY(1px); } @media (max-width:639px) { .ds-panel { width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 16px 16px 32px; } .ds-panel-handle { width: 60px; height: 6px; display: block; justify-self: center; border-radius: 999px; background: #e7e5e4; } }"
     }
   ],
   "narrative": {
-    "northStar": "O Caderno de Materiais do Novo Lar",
-    "overview": "O sistema apresenta a experiência como um caderno arquitetônico vivido: papel de linho marfim, barro queimado, oliva botânico, tinta carvão e linhas de planta substituem o repertório previsível de um template romântico. A composição A é a base — tipografia monumental, assimetria editorial, navegação rarefeita e grandes campos contínuos — com o gesto espacial da composição C incorporado como um portal entre o hero e o próximo encontro.\n\nA superfície pública é expressiva, tátil e generosa; a administração é uma camada operacional, compacta e previsível, feita com os primitivos de formulário já existentes. Elas compartilham clareza, contraste, linguagem direta e estados honestos, mas a administração não replica texturas, escala monumental nem o portal. Conteúdo continua inteligível sem fotografia, movimento ou cor; quando não existe mídia real, o fallback material é uma composição final, não um espaço quebrado.",
+    "northStar": "O Retrato Afetivo em Primeiro Plano",
+    "overview": "O sistema coloca a celebração e a fotografia real no centro de uma experiência calorosa, direta e contemporânea. Um hero imersivo e escuro abre a página como um retrato em tela cheia; títulos em Playfair Display dão intimidade e solenidade, enquanto Inter mantém detalhes, filtros, formulários e ações simples de operar. Pedra, marfim e branco sustentam o conteúdo; rosa queimado conduz o gesto afetivo; verde aparece somente quando há função, contato ou estado positivo.\n\nA fonte visual é a experiência do commit `9cd5beccb70efb51ed94fbbcaef957f8592dfc3d`, reinterpretada pelos componentes atuais. Essa autoridade é estritamente visual: a arquitetura segura vigente governa identidade, RSVP, reservas, cancelamentos e PIX. A página pública permanece completa sem convite; o link individual apenas libera ações privadas. Nenhum padrão antigo de busca pública, autocadastro, escrita direta ou confirmação de pagamento faz parte deste sistema.\n\nFotografia é imersiva quando existe mídia real configurada. Sem ela, o hero usa um fallback cromático acabado — pedra profunda, luz radial rosa e overlay de alto contraste — sem imagem stock, arquivo quebrado ou conteúdo inventado. Datas, locais, orientação, contagem regressiva e mídia só aparecem quando vêm de configuração verificada.",
     "keyCharacteristics": [
-      "Editorial quente, arquitetônico e material.",
-      "Tipografia serifada de alto contraste em diálogo com uma sans humanista.",
-      "Seções amplas e contínuas, com poucas caixas e hierarquia por escala, cor e ritmo.",
-      "Contrato A como composição-base e portal de C como única assinatura espacial.",
-      "Presença e informação prática antes de presentes ou contribuição.",
-      "Estados reais, privacidade e acessibilidade tratados como parte da linguagem visual."
+      "Hero fotográfico imersivo com fallback cromático completo.",
+      "Base clara em pedra, marfim e branco, com rosa queimado como voz afetiva.",
+      "Verde reservado a PIX, contato, disponibilidade e sucesso.",
+      "Playfair Display para presença emocional; Inter para leitura e operação.",
+      "Cards ricos, arredondados e levemente elevados para eventos, presentes e estados.",
+      "Dialog no desktop e Drawer no mobile para tarefas privadas e focadas.",
+      "A estética histórica é referência visual; a arquitetura segura atual é a única referência funcional."
     ],
     "rules": [
-      { "name": "The One Threshold Rule", "body": "O portal aparece uma única vez, na passagem do hero para o próximo encontro; repeti-lo o transforma em ornamento e elimina seu sentido narrativo.", "section": "overview" },
-      { "name": "The Material, Not Gradient Rule", "body": "Variação visual vem de textura raster sutil e blocos tonais; não use gradientes brilhantes, halos ou fundos sintéticos de produto SaaS.", "section": "colors" },
-      { "name": "The Rare Ochre Rule", "body": "O ocre pontua, nunca governa. Se uma tela parecer dourada, o acento foi usado em excesso.", "section": "colors" },
-      { "name": "The Serif Carries Meaning Rule", "body": "Use a serif para títulos, nomes de capítulos e frases de presença; use a sans para tudo o que a pessoa precisa operar, conferir ou responder.", "section": "typography" },
-      { "name": "The No Decorative Type Rule", "body": "Não adicione script, caligrafia, caixa-alta espaçada ou uma terceira fonte para fabricar romantismo.", "section": "typography" },
-      { "name": "The Continuous Field Rule", "body": "Prefira seções contínuas, divisores e mudanças de material a pilhas de cartões. Um card só existe quando encapsula uma tarefa operacional real.", "section": "layout" },
-      { "name": "The 390/1440 Contract Rule", "body": "Toda nova composição pública deve funcionar primeiro nos contratos de 390px e 1440px, sem depender de recorte horizontal ou de uma fotografia para permanecer completa.", "section": "layout" },
-      { "name": "The Flat-by-Default Rule", "body": "Superfícies editoriais ficam no plano; sombra sinaliza limiar ou resposta a interação, nunca decoração permanente.", "section": "elevation" },
-      { "name": "The Geometry Has Rank Rule", "body": "Silhueta arquitetônica pertence ao portal; controles recebem curvas de 12px, seletores recebem cápsulas e o conteúdo editorial permanece ortogonal.", "section": "shapes" }
+      { "name": "The Visual Source, Safe Contract Rule", "body": "Preserve o vocabulário visual da fonte restaurada, mas implemente fluxos somente pelos contratos seguros atuais; aparência nunca autoriza ressuscitar comportamento legado.", "section": "overview" },
+      { "name": "The Real Photograph Rule", "body": "Use apenas fotografia configurada e legítima. Na ausência dela, entregue o fallback cromático completo, nunca imagem stock ou ficção visual.", "section": "overview" },
+      { "name": "The Rose Leads, Green Confirms Rule", "body": "Rosa conduz convite e afeto; verde sinaliza função, disponibilidade ou sucesso. Não faça os dois disputarem a mesma ação.", "section": "colors" },
+      { "name": "The Mineral Base Rule", "body": "A maior parte da tela permanece em pedra, marfim ou branco; cores saturadas aparecem em ações, ícones e painéis com propósito.", "section": "colors" },
+      { "name": "The One Serif Rule", "body": "Playfair Display concentra toda a expressão romântica; não introduza script, caligrafia ou uma terceira fonte decorativa.", "section": "typography" },
+      { "name": "The Operation Stays Sans Rule", "body": "Botões, campos, filtros, descrições e estados usam Inter, mesmo quando estão dentro de um card ou painel com título serifado.", "section": "typography" },
+      { "name": "The Immersive First View Rule", "body": "O primeiro viewport pertence ao hero e à ação principal; listas, filtros e detalhes entram depois, sem competir com o retrato.", "section": "layout" },
+      { "name": "The Adaptive Panel Rule", "body": "A mesma tarefa usa Drawer no mobile e Dialog no desktop, preservando conteúdo, hierarquia, privacidade e estado.", "section": "layout" },
+      { "name": "The Soft Lift Rule", "body": "Elementos interativos sobem no máximo 2px; imagem de presente pode ampliar até 1.05. Profundidade nunca vira flutuação contínua ou espetáculo.", "section": "elevation" },
+      { "name": "The Focused Layer Rule", "body": "Dialog e Drawer usam overlay preto a 80%; só o painel ativo recebe foco, rolagem e prioridade visual.", "section": "elevation" },
+      { "name": "The Radius Signals Scale Rule", "body": "Quanto maior e mais narrativa a superfície, maior o raio; controles continuam cápsulas e o hero permanece sem moldura.", "section": "shapes" },
+      { "name": "The 44px Target Rule", "body": "Toda ação pública permanece com pelo menos 44px em ambos os eixos; ações principais usam 48px ou 56px.", "section": "components" }
     ],
     "dos": [
-      "Do trate o contrato A como estrutura: título monumental, assimetria editorial, navegação esparsa, grandes campos e leitura progressiva.",
-      "Do use o portal de C uma única vez para ligar a promessa do hero ao próximo encontro e ao convite.",
-      "Do use textura de linho e argila em tiles raster leves, uniformes, mate e de baixo contraste; mantenha um fundo de cor equivalente.",
-      "Do mostre somente datas, locais, mídia e estados reais; ausências recebem fallback material e texto honesto.",
-      "Do preserve leitura e operação completas em 390px, 1440px, teclado e movimento reduzido.",
-      "Do mantenha RSVP como ação principal e presentes ou PIX como possibilidades posteriores e sem pressão."
+      "Do use fotografia real configurada como plano imersivo e preserve o fallback cromático de pedra e rosa para ausência ou falha.",
+      "Do use Playfair Display em títulos afetivos e Inter em tudo o que a pessoa lê, filtra, confirma ou opera.",
+      "Do use cards ricos para eventos, presentes e estados que realmente agrupam conteúdo e ação.",
+      "Do adapte tarefas privadas para Drawer abaixo de 640px e Dialog a partir de 640px.",
+      "Do mantenha rosa como ação afetiva principal e verde como sinal funcional ou positivo.",
+      "Do mostre data, local, contagem, fotografia e orientação somente quando existirem dados verificados.",
+      "Do preserve sessão individual, respostas privadas, reserva identificada, cancelamento autorizado e operações sensíveis no servidor."
     ],
     "donts": [
-      "Don't use fotografia stock, imagem quebrada, countdown fictício, dress code inventado ou busca pública por nomes.",
-      "Don't transforme a superfície pública em grade de cartões, vitrine de presentes ou checkout.",
-      "Don't repita a casa, o eixo ou o recorte do portal em seções posteriores, botões, ícones ou molduras.",
-      "Don't adicione gradientes luminosos, glassmorphism, glow, sombras frias ou ornamento romântico genérico.",
-      "Don't misture Bodoni Moda, Manrope e a tipografia operacional na mesma hierarquia pública.",
-      "Don't dependa de fotografia, animação, cor isolada ou hover para transmitir conteúdo ou estado."
+      "Don't use imagem stock, nomes, datas, locais, orientações ou confirmação de pagamento inventados.",
+      "Don't restaure busca pública de pessoas, autocadastro, escrita direta do navegador, fallback de credencial ou qualquer fluxo legado inseguro.",
+      "Don't trate presentes ou PIX como checkout, obrigação ou confirmação de presença.",
+      "Don't use verde como cor romântica principal nem rosa para indicar sucesso operacional quando verde já resolve o estado.",
+      "Don't aplique blur, sombra rica e raio de 24px a todo bloco; reserve profundidade para superfícies com hierarquia real.",
+      "Don't introduza script, caligrafia, ornamento temático genérico ou uma terceira família tipográfica.",
+      "Don't dependa de fotografia, cor, movimento ou hover para manter a experiência compreensível."
     ]
   }
 }

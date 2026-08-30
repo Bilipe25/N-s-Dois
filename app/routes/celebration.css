@@ -1,167 +1,131 @@
-:root[data-celebration="active"] {
-  --celebration-ivory: #f1e4d1;
-  --celebration-clay: #b8673f;
-  --celebration-clay-dark: #8f452d;
-  --celebration-olive: #53604b;
-  --celebration-charcoal: #262720;
-  --celebration-ochre: #c89a57;
-  color-scheme: light;
+html[data-celebration="active"] {
   scroll-behavior: smooth;
+  background: #fafaf9;
+}
+
+html[data-celebration="active"] body {
+  background: #fafaf9;
 }
 
 .celebration-page {
-  min-height: 100svh;
-  overflow: clip;
-  color: var(--celebration-charcoal);
-  background-color: var(--celebration-ivory);
-  background-image: url("/celebration/linen-ivory.webp");
-  font-family: "Manrope", sans-serif;
-  caret-color: var(--celebration-clay-dark);
+  --celebration-focus: #be123c;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-.celebration-page ::selection { background: var(--celebration-olive); color: var(--celebration-ivory); }
-.celebration-page :focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 6px var(--celebration-charcoal); }
-.celebration-page a { text-underline-offset: .3em; }
-
-.celebration-hero { min-height: 760px; padding: 24px clamp(20px, 5vw, 76px) 150px; position: relative; }
-.celebration-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 28px; position: relative; z-index: 4; }
-.celebration-mark { color: inherit; text-decoration: none; font: 500 clamp(2rem, 3vw, 3.4rem)/1 "Bodoni Moda", serif; letter-spacing: -.04em; }
-.celebration-nav-links { display: flex; gap: clamp(22px, 3vw, 44px); }
-.celebration-nav a:not(.celebration-mark) { color: inherit; font-size: .95rem; text-decoration: none; }
-.celebration-nav a { min-height: 44px; display: inline-flex; align-items: center; }
-.celebration-invite-link { justify-self: end; border-bottom: 1px solid var(--celebration-olive); padding-block: 10px; }
-
-.celebration-hero-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, .8fr); gap: clamp(30px, 6vw, 100px); align-items: center; margin-top: clamp(60px, 9vh, 112px); }
-.celebration-title-block h1 { margin: 0; max-width: 900px; font: 400 clamp(5rem, 9.4vw, 9.3rem)/.82 "Bodoni Moda", serif; letter-spacing: -.04em; text-wrap: balance; }
-.celebration-title-block p { margin: 24px 0 0; font-size: clamp(1.2rem, 2vw, 2rem); }
-.celebration-media { align-self: stretch; min-height: 420px; background: linear-gradient(90deg, rgba(241,228,209,.28), transparent 12%), var(--celebration-olive); position: relative; opacity: .82; }
-.celebration-media::before { content: ""; position: absolute; inset: 0 auto 0 12%; width: 42%; background: rgba(241,228,209,.62); }
-.celebration-media.has-image { opacity: 1; background: var(--celebration-olive); }
-.celebration-media.has-image::before { display: none; }
-.celebration-media img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
-.celebration-axis { position: absolute; z-index: 5; left: 50%; bottom: 28px; width: 2px; height: 160px; background: var(--celebration-olive); transform: translateX(-50%); }
-
-.celebration-portal-wrap { min-height: 250px; position: relative; margin-top: -118px; background-color: var(--celebration-clay); background-image: url("/celebration/clay-terracotta.webp"); }
-.celebration-portal { width: min(820px, 72vw); min-height: 330px; margin: 0 auto; padding: 125px 40px 50px; display: flex; flex-direction: column; align-items: center; gap: 26px; text-align: center; color: var(--celebration-ivory); background-color: #763824; background-image: url("/celebration/clay-terracotta.webp"); background-blend-mode: multiply; clip-path: polygon(50% 0, 100% 31%, 100% 100%, 0 100%, 0 31%); filter: drop-shadow(0 18px 24px rgba(70, 33, 22, .16)); }
-.celebration-portal p { margin: 0; max-width: 36ch; font-size: clamp(1.05rem, 2vw, 1.5rem); }
-.celebration-portal-action, .celebration-primary-button { min-height: 56px; border: 0; border-radius: 12px; padding: 16px 32px; display: inline-flex; align-items: center; justify-content: center; color: var(--celebration-charcoal); background: var(--celebration-ivory); box-shadow: 0 12px 28px rgba(46, 26, 19, .15); font: 600 1rem/1 "Manrope", sans-serif; text-decoration: none; transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s cubic-bezier(.16,1,.3,1); }
-.celebration-portal-action:hover, .celebration-primary-button:hover { transform: translateY(-2px); box-shadow: 0 16px 32px rgba(46, 26, 19, .2); }
-.celebration-primary-button:disabled { cursor: wait; opacity: .65; }
-
-.celebration-invite-error { max-width: 900px; margin: 42px auto 0; padding: 18px 24px; color: #6e251d; background: #f5cfbd; border-radius: 12px; }
-.celebration-section { max-width: 1180px; margin: 0 auto; padding: clamp(90px, 12vw, 170px) clamp(20px, 5vw, 70px); }
-.celebration-section-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); gap: clamp(30px, 8vw, 120px); align-items: end; margin-bottom: 62px; }
-.celebration-section-heading h2, .celebration-footer h2 { margin: 0; font: 400 clamp(3.2rem, 6.5vw, 6rem)/.94 "Bodoni Moda", serif; letter-spacing: -.035em; text-wrap: balance; }
-.celebration-section-heading p, .celebration-footer p { max-width: 65ch; margin: 0; line-height: 1.75; }
-
-.celebration-event-list { border-top: 1px solid rgba(38,39,32,.42); }
-.celebration-event-row { display: grid; grid-template-columns: minmax(190px,.7fr) minmax(280px,1.4fr) auto; gap: 30px; align-items: center; padding: 32px 0; border-bottom: 1px solid rgba(38,39,32,.32); }
-.celebration-event-row h3 { margin: 0 0 8px; font: 500 1.8rem/1.1 "Bodoni Moda", serif; }
-.celebration-event-row p, .celebration-event-row address { margin: 4px 0; font-style: normal; line-height: 1.5; }
-.celebration-event-date { display: flex; gap: 12px; align-items: flex-start; text-transform: capitalize; }
-.celebration-event-date svg, .celebration-event-row a svg { width: 20px; flex: none; }
-.celebration-event-row a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; color: inherit; }
-.celebration-empty-copy { max-width: 60ch; margin: 0; padding: 30px 0; font-size: 1.1rem; line-height: 1.7; }
-.celebration-story-band { color: var(--celebration-ivory); background: var(--celebration-olive); padding: clamp(80px, 12vw, 150px) clamp(20px, 8vw, 130px); }
-.celebration-story-band p { max-width: 1050px; margin: 0 auto; font: 400 clamp(3rem, 6vw, 6rem)/1.02 "Bodoni Moda", serif; letter-spacing: -.03em; }
-
-.celebration-rsvp-section { max-width: 1080px; }
-.celebration-rsvp-form { display: grid; gap: 28px; }
-.celebration-rsvp-event { margin: 0; padding: 32px 0; border: 0; border-top: 1px solid rgba(38,39,32,.38); }
-.celebration-rsvp-event legend { padding: 0 0 22px; font: 500 1.9rem "Bodoni Moda", serif; }
-.celebration-choice { display: flex; flex-wrap: wrap; gap: 12px; }
-.celebration-choice button, .celebration-category-list button { min-height: 44px; padding: 10px 18px; color: inherit; background: transparent; border: 1px solid rgba(38,39,32,.35); border-radius: 999px; cursor: pointer; }
-.celebration-choice button.is-active, .celebration-category-list button.is-active { color: var(--celebration-ivory); background: var(--celebration-olive); border-color: var(--celebration-olive); }
-.celebration-counters { display: flex; gap: 18px; margin-top: 24px; }
-.celebration-counter { min-width: 210px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 16px; background: rgba(255,255,255,.24); }
-.celebration-counter-controls { display: flex; align-items: center; gap: 12px; }
-.celebration-counter-controls button { width: 44px; height: 44px; border: 1px solid rgba(38,39,32,.35); border-radius: 50%; background: transparent; cursor: pointer; }
-.celebration-counter-controls button:disabled { opacity: .35; cursor: not-allowed; }
-.celebration-counter-controls svg { width: 16px; margin: auto; }
-.celebration-message { display: grid; gap: 10px; max-width: 680px; margin-top: 24px; }
-.celebration-message small { color: #5c5e55; font-weight: 400; }
-.celebration-message textarea, .celebration-gift-tools input { width: 100%; border: 1px solid rgba(38,39,32,.36); border-radius: 12px; color: inherit; background: rgba(255,255,255,.34); padding: 14px 16px; font: inherit; }
-.celebration-form-error { color: #7c211b; }
-.celebration-form-success { display: flex; gap: 10px; align-items: center; color: #34412d; }
-.celebration-form-success svg { width: 20px; }
-.celebration-rsvp-form > .celebration-primary-button { justify-self: start; color: var(--celebration-ivory); background: var(--celebration-charcoal); }
-
-.celebration-gifts-section { max-width: 1240px; }
-.celebration-gift-tools { display: grid; gap: 18px; margin-bottom: 34px; }
-.celebration-gift-tools label { max-width: 480px; }
-.celebration-category-list { display: flex; gap: 10px; overflow-x: auto; padding: 4px; scrollbar-color: var(--celebration-olive) transparent; }
-.celebration-category-list button { white-space: nowrap; }
-.celebration-gift-message { padding: 14px 18px; background: rgba(83,96,75,.12); }
-.celebration-gift-list { border-top: 1px solid rgba(38,39,32,.35); }
-.celebration-gift-row { display: grid; grid-template-columns: 110px minmax(220px,1fr) minmax(190px,.55fr); gap: 24px; align-items: center; padding: 22px 0; border-bottom: 1px solid rgba(38,39,32,.28); }
-.celebration-gift-image { width: 110px; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; background: rgba(83,96,75,.12); }
-.celebration-gift-image img { width: 100%; height: 100%; object-fit: cover; }
-.celebration-gift-image svg { width: 28px; }
-.celebration-gift-copy p { margin: 0 0 4px; color: #595b52; font-size: .8rem; }
-.celebration-gift-copy h3 { margin: 0 0 6px; font: 500 1.35rem "Bodoni Moda", serif; }
-.celebration-gift-actions { display: grid; gap: 8px; }
-.celebration-gift-actions a, .celebration-gift-actions button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid rgba(38,39,32,.36); border-radius: 12px; color: inherit; background: transparent; font: 600 .85rem "Manrope", sans-serif; text-decoration: none; cursor: pointer; }
-.celebration-gift-actions button:disabled { opacity: .5; cursor: not-allowed; }
-.celebration-gift-actions svg { width: 16px; }
-.celebration-load-more { display: block; min-height: 48px; margin: 34px auto 0; border: 1px solid rgba(38,39,32,.42); border-radius: 12px; padding: 11px 24px; color: inherit; background: transparent; font: 600 .9rem "Manrope", sans-serif; cursor: pointer; }
-.celebration-load-more:disabled { opacity: .55; cursor: wait; }
-
-.celebration-pix-section { padding-top: 0; }
-.celebration-pix-box { display: grid; grid-template-columns: 1fr auto; gap: 60px; align-items: center; padding: clamp(36px, 6vw, 72px); color: var(--celebration-ivory); background: var(--celebration-charcoal); }
-.celebration-pix-box h3 { margin: 0 0 14px; font: 500 2.4rem "Bodoni Moda", serif; }
-.celebration-pix-box p { max-width: 60ch; line-height: 1.65; }
-.celebration-pix-box button { min-height: 44px; border: 1px solid currentColor; border-radius: 12px; padding: 10px 18px; color: inherit; background: transparent; cursor: pointer; }
-.celebration-pix-code { display: grid; place-items: center; gap: 14px; padding: 18px; background: var(--celebration-ivory); color: var(--celebration-charcoal); }
-.celebration-pix-code button { display: flex; gap: 8px; align-items: center; }
-.celebration-pix-code svg { width: 18px; }
-
-.celebration-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; padding: clamp(70px, 10vw, 130px) clamp(20px, 7vw, 110px); color: var(--celebration-ivory); background: var(--celebration-clay-dark); }
-.celebration-footer > div:first-child > span { font: 500 4rem "Bodoni Moda", serif; }
-.celebration-footer h2 { font-size: clamp(2.4rem, 4vw, 4.5rem); }
-.celebration-footer a { min-height: 44px; display: block; width: fit-content; padding-block: 10px; color: inherit; }
-.celebration-error-page { display: grid; min-height: 100svh; place-content: center; gap: 16px; padding: 30px; text-align: center; }
-.celebration-error-page h1 { font: 500 clamp(3rem, 7vw, 6rem) "Bodoni Moda", serif; }
-
-@media (min-width: 761px) and (max-width: 980px) {
-  .celebration-hero-layout { display: block; }
-  .celebration-title-block h1 { max-width: 760px; font-size: clamp(4rem, 11vw, 6.5rem); }
-  .celebration-media { display: none; }
+.celebration-page .font-serif,
+.celebration-page h1,
+.celebration-page h2 {
+  font-family: "Playfair Display", Georgia, serif;
 }
 
-@media (max-width: 760px) {
-  .celebration-hero { min-height: 760px; padding: 20px 20px 155px; }
-  .celebration-nav { grid-template-columns: 1fr auto; }
-  .celebration-nav-links { display: none; }
-  .celebration-invite-link { font-size: .9rem; }
-  .celebration-hero-layout { display: block; margin-top: 70px; }
-  .celebration-title-block h1 { font-size: clamp(2.55rem, 13.3vw, 5.8rem); line-height: .92; }
-  .celebration-title-block p { font-size: 1.2rem; }
-  .celebration-media { display: none; }
-  .celebration-axis { height: 135px; bottom: 20px; }
-  .celebration-portal-wrap { margin-top: -112px; min-height: 390px; background: transparent; }
-  .celebration-portal { width: min(82vw, 520px); min-height: 440px; padding: 145px 24px 42px; clip-path: polygon(50% 0, 100% 21%, 100% 100%, 0 100%, 0 21%); justify-content: center; }
-  .celebration-portal p { font-size: 1.45rem; }
-  .celebration-portal-action { width: min(100%, 320px); }
-  .celebration-section { padding: 90px 20px; }
-  .celebration-section-heading { display: block; margin-bottom: 44px; }
-  .celebration-section-heading h2 { font-size: clamp(3.2rem, 14vw, 4.8rem); }
-  .celebration-section-heading p { margin-top: 24px; }
-  .celebration-event-row { grid-template-columns: 1fr; gap: 14px; padding: 26px 0; }
-  .celebration-event-row > a { justify-self: start; }
-  .celebration-story-band { padding: 90px 20px; }
-  .celebration-story-band p { font-size: clamp(3rem, 13vw, 4.4rem); }
-  .celebration-choice { display: grid; grid-template-columns: 1fr; }
-  .celebration-counters { display: grid; }
-  .celebration-counter { min-width: 0; }
-  .celebration-rsvp-form > .celebration-primary-button { width: 100%; }
-  .celebration-gift-row { grid-template-columns: 86px 1fr; }
-  .celebration-gift-image { width: 86px; }
-  .celebration-gift-actions { grid-column: 1 / -1; grid-template-columns: 1fr; }
-  .celebration-pix-box, .celebration-footer { grid-template-columns: 1fr; gap: 36px; }
-  .celebration-pix-code { width: fit-content; max-width: 100%; }
+.celebration-page :where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--celebration-focus);
+  outline-offset: 3px;
+}
+
+.celebration-page ::selection {
+  background: #ffe4e6;
+  color: #881337;
+}
+
+.celebration-romantic-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 82svh;
+  background:
+    radial-gradient(circle at 25% 18%, rgba(244, 63, 94, 0.3), transparent 28rem),
+    linear-gradient(135deg, #292524 0%, #44403c 52%, #1c1917 100%);
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.celebration-romantic-hero.has-photo {
+  animation: celebration-hero-reveal 900ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.celebration-hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+}
+
+.celebration-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(28, 25, 23, .92), rgba(28, 25, 23, .42) 55%, rgba(28, 25, 23, .24));
+}
+
+.celebration-counter {
+  display: grid;
+  gap: .65rem;
+}
+
+.celebration-counter > span,
+.celebration-message > span {
+  color: #57534e;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.celebration-counter-controls {
+  display: grid;
+  grid-template-columns: 2.75rem 3rem 2.75rem;
+  align-items: center;
+  gap: .35rem;
+}
+
+.celebration-counter-controls button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid #e7e5e4;
+  border-radius: 999px;
+  background: white;
+  color: #44403c;
+}
+
+.celebration-counter-controls button:disabled { opacity: .35; }
+.celebration-counter-controls svg { width: 1rem; }
+.celebration-counter-controls output { text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.celebration-rsvp-form { display: grid; gap: 1rem; }
+.celebration-rsvp-event { display: grid; gap: 1rem; border: 1px solid #e7e5e4; border-radius: 1rem; padding: 1rem; background: #fff; }
+.celebration-rsvp-event legend { padding: 0 .4rem; font-family: "Playfair Display", Georgia, serif; font-size: 1.1rem; font-weight: 600; color: #292524; }
+.celebration-choice { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.celebration-choice button { min-height: 2.75rem; border: 1px solid #e7e5e4; border-radius: 999px; background: #fafaf9; padding: .55rem .8rem; color: #57534e; font-size: .82rem; font-weight: 700; }
+.celebration-choice button.is-active { border-color: #fb7185; background: #fff1f2; color: #9f1239; }
+.celebration-counters { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; }
+.celebration-message { display: grid; gap: .5rem; }
+.celebration-message small { font-weight: 400; }
+.celebration-message textarea { width: 100%; resize: vertical; border: 1px solid #d6d3d1; border-radius: .75rem; background: #fafaf9; padding: .75rem; color: #292524; }
+.celebration-form-error, .celebration-form-success { display: flex; align-items: center; gap: .5rem; border-radius: .75rem; padding: .75rem; font-size: .875rem; }
+.celebration-form-error { background: #fff1f2; color: #9f1239; }
+.celebration-form-success { background: #ecfdf5; color: #065f46; }
+.celebration-form-success svg { width: 1rem; }
+.celebration-panel-empty { display: grid; justify-items: center; gap: .75rem; padding: 2rem .75rem; text-align: center; color: #57534e; }
+.celebration-panel-empty > svg { width: 2rem; height: 2rem; color: #f43f5e; }
+.celebration-panel-empty a { min-height: 2.75rem; display: inline-flex; align-items: center; color: #9f1239; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+@keyframes celebration-hero-reveal {
+  from { filter: saturate(.75) brightness(.82); }
+  to { filter: saturate(1) brightness(1); }
+}
+
+@media (max-width: 359px) {
+  .celebration-choice { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root[data-celebration="active"] { scroll-behavior: auto; }
-  .celebration-page *, .celebration-page *::before, .celebration-page *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  html[data-celebration="active"] { scroll-behavior: auto; }
+  .celebration-page *, .celebration-page *::before, .celebration-page *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }

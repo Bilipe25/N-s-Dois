@@ -30,6 +30,7 @@ export type CelebrationLoaderData = {
   gifts: PublicGift[];
   giftCursor: string | null;
   categories: string[];
+  giftStats: { total: number; reserved: number };
   migrationReady: boolean;
 };
 
@@ -59,6 +60,17 @@ function stringOrNull(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function httpUrlOrNull(value: unknown) {
+  const candidate = stringOrNull(value);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:" ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 function numberOr(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -70,8 +82,8 @@ function configFromRow(row: ConfigRow | null): CelebrationConfig {
     subtitle: stringOrNull(row.celebration_subtitle),
     story: stringOrNull(row.celebration_story) || defaultConfig.story,
     postEventMessage: stringOrNull(row.celebration_post_event_message) || defaultConfig.postEventMessage,
-    heroUrl: stringOrNull(row.celebration_hero_url) || stringOrNull(row.bridal_shower_hero_url),
-    ogUrl: stringOrNull(row.celebration_og_url),
+    heroUrl: httpUrlOrNull(row.celebration_hero_url) || httpUrlOrNull(row.bridal_shower_hero_url),
+    ogUrl: httpUrlOrNull(row.celebration_og_url),
     heroFocalX: numberOr(row.celebration_hero_focal_x, 50),
     heroFocalY: numberOr(row.celebration_hero_focal_y, 50),
     rsvpEnabled: row.celebration_rsvp_enabled === true,
@@ -92,10 +104,11 @@ function publicGift(row: Record<string, unknown>, ownReservations: Map<string, s
     id,
     item_name: String(row.item_name || "Presente"),
     category: stringOrNull(row.category),
-    link: stringOrNull(row.link),
+    suggested_store: stringOrNull(row.suggested_store),
+    link: httpUrlOrNull(row.link),
     price_range: stringOrNull(row.price_range),
     price_cents: typeof row.price_cents === "number" ? row.price_cents : null,
-    image_url: stringOrNull(row.image_url),
+    image_url: httpUrlOrNull(row.image_url),
     available: row.has_active_reservation !== true,
     reservation_id: ownReservations.get(id) || null,
   };
@@ -120,6 +133,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
       gifts: [],
       giftCursor: null,
       categories: [],
+      giftStats: { total: 0, reserved: 0 },
       migrationReady: false,
     };
   }
@@ -135,9 +149,8 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     config.giftsEnabled
       ? supabase
           .from("bridal_shower_gifts")
-          .select("id,item_name,category,link,price_range,price_cents,image_url,gift_reservations!left(id,status,guest_id)")
+          .select("id,item_name,category,suggested_store,link,price_range,price_cents,image_url,gift_reservations!left(id,status,guest_id)")
           .order("item_name")
-          .limit(13)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -191,8 +204,12 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     events: (eventRows || []) as CelebrationEvent[],
     invitation: { active: Boolean(guestId), responses },
     gifts: pageRows.map((row) => publicGift(row, ownReservations)),
-    giftCursor: rawGifts.length > 12 ? String(pageRows.at(-1)?.item_name || "") : null,
+    giftCursor: rawGifts.length > 12 ? "12" : null,
     categories: [...new Set(rawGifts.map((row) => stringOrNull(row.category)).filter((value): value is string => Boolean(value)))].sort(),
+    giftStats: {
+      total: rawGifts.length,
+      reserved: rawGifts.filter((row) => row.has_active_reservation).length,
+    },
     migrationReady: true,
   };
 }

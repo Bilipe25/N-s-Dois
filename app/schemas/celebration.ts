@@ -29,6 +29,7 @@ export const PublicGiftSchema = z.object({
   id: z.string().uuid(),
   item_name: z.string().min(1),
   category: z.string().nullable(),
+  suggested_store: z.string().nullable(),
   link: z.string().url().nullable().or(z.literal("")),
   price_range: z.string().nullable(),
   price_cents: z.number().int().positive().nullable(),
@@ -48,7 +49,10 @@ export const RsvpRequestSchema = z.object({
 });
 
 export const GiftReservationRequestSchema = z.object({ giftId: z.string().uuid() });
-export const PixPayloadRequestSchema = z.object({ reservationId: z.string().uuid().optional() });
+export const PixPayloadRequestSchema = z.object({
+  reservationId: z.string().uuid().optional(),
+  giftId: z.string().uuid().optional(),
+}).refine((value) => !(value.reservationId && value.giftId), "Informe somente uma referência de presente.");
 
 export type CelebrationEvent = z.infer<typeof CelebrationEventSchema>;
 export type InvitationEvent = z.infer<typeof InvitationEventSchema>;

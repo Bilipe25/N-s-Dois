@@ -15,6 +15,8 @@ select throws_ok('select * from public.guest_event_rsvps', '42501', null, 'anon 
 select throws_ok('select * from public.guest_invite_tokens', '42501', null, 'anon cannot read invite tokens');
 select throws_ok('select * from public.gift_reservations', '42501', null, 'anon cannot read reservation owners');
 select throws_ok('select * from public.security_rate_limits', '42501', null, 'anon cannot read rate limits');
+select throws_ok('select * from public.message_wall', '42501', null, 'anon cannot read legacy public messages');
+select throws_ok('select * from public.pix_confirmations', '42501', null, 'anon cannot read legacy PIX confirmations');
 
 reset role;
 set local role authenticated;
@@ -29,6 +31,8 @@ select throws_ok('select * from public.guest_event_rsvps', '42501', null, 'authe
 select throws_ok('select * from public.guest_invite_tokens', '42501', null, 'authenticated cannot read invite tokens');
 select throws_ok('select * from public.gift_reservations', '42501', null, 'authenticated cannot read reservations');
 select throws_ok('select * from public.security_rate_limits', '42501', null, 'authenticated cannot read rate limits');
+select throws_ok('select * from public.message_wall', '42501', null, 'authenticated cannot read legacy public messages');
+select throws_ok('select * from public.pix_confirmations', '42501', null, 'authenticated cannot read legacy PIX confirmations');
 
 select * from finish();
 rollback;

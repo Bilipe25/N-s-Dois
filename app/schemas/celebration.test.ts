@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RsvpRequestSchema } from "./celebration";
+import { PixPayloadRequestSchema, PublicGiftSchema, RsvpRequestSchema } from "./celebration";
 
 const eventId = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -10,5 +10,32 @@ describe("schema de RSVP", () => {
 
   it("rejeita acompanhantes e mensagens acima dos limites", () => {
     expect(RsvpRequestSchema.safeParse({ eventResponses: [{ eventId, status: "confirmado", confirmedAdults: 21, confirmedChildren: 0, message: "x".repeat(1001) }] }).success).toBe(false);
+  });
+});
+
+describe("contratos públicos de presentes", () => {
+  it("aceita PIX livre, por presente ou por reserva, mas não duas referências", () => {
+    const reservationId = "550e8400-e29b-41d4-a716-446655440001";
+    expect(PixPayloadRequestSchema.safeParse({}).success).toBe(true);
+    expect(PixPayloadRequestSchema.safeParse({ giftId: eventId }).success).toBe(true);
+    expect(PixPayloadRequestSchema.safeParse({ reservationId }).success).toBe(true);
+    expect(PixPayloadRequestSchema.safeParse({ giftId: eventId, reservationId }).success).toBe(false);
+  });
+
+  it("mantém o contrato público sem identidade da reserva", () => {
+    const parsed = PublicGiftSchema.parse({
+      id: eventId,
+      item_name: "Torradeira",
+      category: "Cozinha",
+      suggested_store: null,
+      link: null,
+      price_range: "R$ 50 a R$ 150",
+      price_cents: null,
+      image_url: null,
+      available: true,
+      reservation_id: null,
+    });
+    expect(parsed).not.toHaveProperty("reserved_by");
+    expect(parsed).not.toHaveProperty("guest_id");
   });
 });

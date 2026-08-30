@@ -1,46 +1,43 @@
-# Celebrando o Amor e o Novo Lar
+# Celebrando o Amor e o Novo Lar — restauração da experiência afetiva
 
 ## Escopo e modo
 
-- Superfície: rota pública `/celebracao` e estados personalizados do convite.
-- Modo: Persuade, com RSVP como ação principal e informação prática antes de presentes.
+- Superfície: rota pública oficial `/celebracao`, com ou sem convite individual.
+- Modo: celebrar e orientar. A página pública é completa; o convite acrescenta RSVP, reserva identificada e cancelamento.
 
-## Visitante, tarefa e conteúdo
+## Fonte de verdade visual
 
-- Convidados e familiares chegam principalmente por WhatsApp em celulares.
-- Devem entender a celebração, ver somente eventos reais e responder com privacidade.
-- Sem convite, a página continua útil e orienta o contato com o casal sem busca nominal.
-- Datas, locais, fotografia, contatos e PIX vêm da configuração; ausências recebem estados honestos.
+- Commit `9cd5beccb70efb51ed94fbbcaef957f8592dfc3d`.
+- Referências primárias: `app/routes/public.bridal-shower.tsx` e `app/components/bridal-shower/*` naquele commit.
+- A direção anterior de caderno arquitetônico, composição A e portal da C foi explicitamente revogada pelo usuário e não governa esta superfície.
 
-## Direção aprovada
+## Mundo visual restaurado
 
-- “Caderno de materiais do novo lar”: linho/papel marfim, barro queimado, verde-folha e linhas arquitetônicas.
-- Composição A aprovada, incorporando o gesto de portal da composição C entre hero e próximo evento.
-- Comps: `.impeccable/mocks/celebracao-approved-mobile.png` e `.impeccable/mocks/celebracao-approved-desktop.png`.
-- Momento memorável: o eixo vertical do título encontra um recorte de porta/casa que revela o próximo evento e a ação do convite.
+- Hero fotográfico imersivo com overlay escuro, nomes do casal em serifada romântica e texto afetivo.
+- Base em pedra/marfim, branco, rosa queimado e verde funcional; seções claras, leves e acolhedoras.
+- Cartões de locais e presentes ricos, filtros legíveis, progresso discreto, modais/drawers para tarefas focadas.
+- Movimento pontual e suave; nenhum efeito depende de movimento para comunicar estado.
+- A fotografia vem da configuração. Sem foto, o hero usa um fallback cromático completo, sem stock remoto e sem imagem quebrada.
 
-## Sistema extraído dos comps
+## Hierarquia e recursos obrigatórios
 
-| Ingrediente | Registro aprovado | Implementação |
-| --- | --- | --- |
-| Fundo | marfim amostrado `#F1E4D1` | HTML/CSS + tile de linho raster eficiente |
-| Campo de evento | barro amostrado `#B8673F` | HTML/CSS + tile mineral raster eficiente |
-| Campo secundário | oliva/pedra amostrado `#AEA992`, oliva funcional `#53604B` | HTML/CSS |
-| Tipografia | display serif estreita de alto contraste; sans humanista | fonte web obtida e CSS, texto permanece semântico |
-| Portal | recorte geométrico central, com eixo vertical oliva | CSS `clip-path`/pseudo-elementos, responsivo |
-| CTA | bloco marfim amplo, mínimo 44 px, sem ícone decorativo | botão/link semântico |
-| Hero futuro | área de mídia real configurável; fallback material completo | `<picture>` quando houver foto; CSS quando não houver |
+1. Hero com Gabriel & Raabe, CTA de RSVP, atalhos para PIX, locais, orientação, presentes e compartilhar.
+2. Contagem regressiva apenas para o próximo evento publicado no futuro.
+3. Eventos/locais reais em cartões e dress code/nota somente quando configurados.
+4. RSVP seguro: convite individual abre a resposta; sem convite, explica o link pessoal e oferece contato.
+5. Lista completa de presentes com busca, categoria e preço globais, progresso, paginação e estados vazio/reservado/próprio.
+6. Reserva/cancelamento via APIs seguras e modal/drawer; PIX em modal com payload produzido no servidor.
+7. Mural somente se protegido, contatos, compartilhar URL canônica, voltar ao topo e rodapé.
 
-## Gramática de componentes
+## Limites arquiteturais
 
-- Seções grandes e contínuas, sem grade de cards como esqueleto.
-- Cantos discretos de 12–16 px apenas em controles e itens funcionais; campos editoriais permanecem retos.
-- Linhas de 1 px, sombras apenas com deslocamento e blur suave; nenhum halo.
-- Display em escala forte; sans para controles e dados. Corpo limitado a 70ch.
-- Uma única entrada orquestrada no portal; conteúdo visível por padrão e motion reduzido sem transição.
+- Não reativar hooks/endpoints públicos legados, cliente Supabase browser, busca nominal, autocadastro, confirmação de pagamento ou PII de reservas.
+- Preservar `celebration_events`, `guest_event_rsvps`, `guest_invite_tokens`, `gift_reservations`, `app_config`, RLS/grants, service role no servidor, Zod, CSRF/origin e rate limiting.
+- URLs de convite nunca entram em canonical, compartilhamento ou metadata.
+- Datas, locais, imagem, dress code e informações não configuradas recebem estados honestos; nada é inventado.
 
-## Restrições e pendências
+## Responsividade e acesso
 
-- Não inventar data, endereço, imagem do casal ou confirmação de pagamento.
-- Fotografia horizontal real e data futura continuam pendentes de configuração.
-- O comp mostra somente o primeiro viewport; RSVP, eventos, presentes, PIX e contato herdam a mesma gramática sem repetir o portal.
+- Mobile-first em 320, 360, 375, 390 e 430 px; tablet 768 px; desktop 1440 px.
+- Alvos de pelo menos 44 px, foco visível, teclado completo, contraste AA, nomes acessíveis e `prefers-reduced-motion`.
+- O primeiro lote de presentes continua SSR e o restante é carregado sob demanda; filtros consultam o conjunto completo no servidor.
