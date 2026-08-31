@@ -78,10 +78,10 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
   </form>;
 
   return <form onSubmit={identify} className="space-y-4 py-2">
-    <p className="text-sm leading-relaxed text-stone-600">{context === "gift" ? "Antes de reservar, diga seu nome completo para vincular sua escolha." : "Digite seu nome completo exatamente como você costuma usar."}</p>
+    <p className="text-sm leading-relaxed text-stone-600">{context === "gift" ? "Antes de escolher este presente, diga seu nome completo." : "Digite seu nome completo para encontrarmos sua resposta."}</p>
     <label className="block space-y-2 text-sm font-medium text-stone-800">Nome completo<Input autoFocus name="name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={120} required className="h-12 text-base" placeholder="Seu nome e sobrenome" /></label>
     {error && <p className="celebration-form-error" role="alert">{error}</p>}
     <Button type="submit" disabled={busy || name.trim().length < 3} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procurando…</> : "Continuar"}</Button>
-    <p className="text-center text-xs leading-relaxed text-stone-500">Não mostramos a lista de convidados nem sugerimos nomes. Sua identificação fica protegida.</p>
+    <p className="text-center text-xs leading-relaxed text-stone-500">Seu nome é usado apenas para encontrar ou registrar sua resposta. A lista de convidados não é exibida.</p>
   </form>;
 }

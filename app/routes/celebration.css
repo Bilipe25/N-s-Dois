@@ -28,6 +28,12 @@ html[data-celebration="active"] body {
   color: #881337;
 }
 
+.celebration-section-heading {
+  font-size: clamp(1.75rem, 7.25vw, 2.25rem);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
 .celebration-romantic-hero {
   position: relative;
   overflow: hidden;
@@ -57,6 +63,39 @@ html[data-celebration="active"] body {
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, rgba(28, 25, 23, .92), rgba(28, 25, 23, .42) 55%, rgba(28, 25, 23, .24));
+}
+
+.celebration-hero-title {
+  font-size: clamp(3rem, 14vw, 7rem);
+  text-wrap: balance;
+}
+
+.celebration-scroll-top {
+  bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + .75rem));
+}
+
+.celebration-footer {
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
+}
+
+.celebration-drawer {
+  max-height: calc(100dvh - env(safe-area-inset-top) - .5rem);
+}
+
+.celebration-drawer-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+}
+
+.celebration-drawer-close {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  color: #57534e;
 }
 
 .celebration-counter {
@@ -118,6 +157,25 @@ html[data-celebration="active"] body {
 
 @media (max-width: 359px) {
   .celebration-choice { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 639px) {
+  .celebration-hero-content {
+    min-height: max(35rem, 82svh);
+    gap: 1.25rem;
+  }
+
+  .celebration-hero-title {
+    font-size: clamp(2.85rem, 14vw, 4.25rem);
+  }
+}
+
+@media (max-height: 640px) and (max-width: 639px) {
+  .celebration-hero-content {
+    min-height: 35rem;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

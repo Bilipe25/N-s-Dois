@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PublicGift } from "@/schemas/celebration";
 import { ExternalLink, Gift, QrCode, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type PublicGiftCardProps = {
   gift: PublicGift;
@@ -13,13 +14,16 @@ type PublicGiftCardProps = {
 
 export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicGiftCardProps) {
   const reservedBySomeoneElse = !gift.available && !gift.reservation_id;
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => setImageFailed(false), [gift.image_url]);
 
   return (
     <Card className={`h-full overflow-hidden border-stone-200 bg-white shadow-sm transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md ${reservedBySomeoneElse ? "opacity-65" : ""}`}>
       <div className="flex h-full min-h-36 items-stretch">
         <div className="relative flex w-28 shrink-0 items-center justify-center overflow-hidden border-r border-stone-100 bg-stone-50 sm:w-32">
-          {gift.image_url ? (
-            <img src={gift.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+          {gift.image_url && !imageFailed ? (
+            <img src={gift.image_url} alt="" width={320} height={320} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" onError={() => setImageFailed(true)} />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-50 to-stone-50">
               <Gift className="h-8 w-8 text-rose-200" strokeWidth={1.5} aria-hidden="true" />
@@ -40,7 +44,7 @@ export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicG
               {gift.suggested_store && <Badge variant="secondary" className="bg-stone-100 px-1.5 py-0 text-[10px] font-normal text-stone-700"><ShoppingBag className="mr-1 h-3 w-3" />{gift.suggested_store}</Badge>}
               {gift.price_range && <Badge variant="outline" className="border-stone-200 px-1.5 py-0 text-[10px] font-normal text-stone-700">{gift.price_range}</Badge>}
             </div>
-            {gift.link && <a href={gift.link} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-rose-600 underline-offset-4 hover:underline"><ExternalLink className="h-3 w-3" />Ver sugestão online</a>}
+            {gift.link && <a href={gift.link} target="_blank" rel="noopener noreferrer" aria-label={`Ver sugestão online para ${gift.item_name}`} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-rose-700 underline-offset-4 hover:underline"><ExternalLink className="h-3.5 w-3.5" />Ver sugestão online</a>}
           </div>
 
           <div className="mt-2 grid grid-cols-2 gap-2 pt-2">
@@ -49,13 +53,14 @@ export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicG
               type="button"
               disabled={busy || reservedBySomeoneElse}
               onClick={() => onReserve(gift)}
-              className={`min-h-11 rounded-full px-2 text-xs font-semibold ${gift.reservation_id ? "border border-stone-200 bg-stone-100 text-stone-700 hover:bg-stone-200" : "border border-rose-100 bg-rose-50 text-rose-700 hover:bg-rose-100"}`}
+              aria-label={gift.reservation_id ? `Cancelar escolha de ${gift.item_name}` : reservedBySomeoneElse ? `${gift.item_name} já foi reservado` : `Escolher ${gift.item_name} para presentear`}
+              className={`min-h-11 rounded-full px-2 text-xs font-semibold ${gift.reservation_id ? "border border-stone-200 bg-stone-100 text-stone-700 hover:bg-stone-200" : "bg-rose-500 text-white hover:bg-rose-600"}`}
               variant="secondary"
             >
-              {busy ? "Aguarde…" : gift.reservation_id ? "Cancelar" : reservedBySomeoneElse ? "Reservado" : "Quero presentear"}
+              {busy ? "Aguarde…" : gift.reservation_id ? "Cancelar" : reservedBySomeoneElse ? "Reservado" : "Escolher"}
             </Button>
             {onPix && !reservedBySomeoneElse && (
-              <Button size="sm" type="button" onClick={() => onPix(gift)} className="min-h-11 rounded-full border border-emerald-100 bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" variant="secondary">
+              <Button size="sm" type="button" onClick={() => onPix(gift)} aria-label={`Presentear ${gift.item_name} por PIX`} className="min-h-11 rounded-full border border-emerald-200 bg-white px-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50" variant="outline">
                 <QrCode className="mr-1 h-3.5 w-3.5" />PIX
               </Button>
             )}

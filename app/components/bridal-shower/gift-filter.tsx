@@ -37,14 +37,15 @@ export function GiftFilter({
                         placeholder="Buscar presente..."
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="pl-9 bg-white h-10"
+                        className="h-11 bg-white pl-9 pr-12 text-base sm:text-sm"
                     />
                     {searchTerm && (
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                            className="absolute right-0 top-1/2 h-11 w-11 -translate-y-1/2"
                             onClick={() => onSearchChange("")}
+                            aria-label="Limpar busca"
                         >
                             <X className="h-3 w-3" />
                         </Button>
@@ -54,7 +55,7 @@ export function GiftFilter({
                 {onPriceRangeSelect && (
                     <div className="w-full sm:w-[180px]">
                         <Select value={selectedPriceRange || "all"} onValueChange={(val) => onPriceRangeSelect(val === "all" ? "" : val)}>
-                            <SelectTrigger className="h-10 bg-white">
+                            <SelectTrigger className="h-11 bg-white text-base sm:text-sm">
                                 <SelectValue placeholder="Faixa de Preço" />
                             </SelectTrigger>
                             <SelectContent>
@@ -72,7 +73,7 @@ export function GiftFilter({
                         <Button
                             variant={selectedStatus === "all" ? "default" : "ghost"}
                             size="sm"
-                            className={`flex-1 sm:flex-none ${selectedStatus === "all" ? "shadow-sm" : ""}`}
+                            className={`min-h-11 flex-1 sm:flex-none ${selectedStatus === "all" ? "shadow-sm" : ""}`}
                             onClick={() => onStatusSelect("all")}
                         >
                             Todos
@@ -80,7 +81,7 @@ export function GiftFilter({
                         <Button
                             variant={selectedStatus === "disponivel" ? "default" : "ghost"}
                             size="sm"
-                            className={`flex-1 sm:flex-none ${selectedStatus === "disponivel" ? "bg-green-600 text-white shadow-sm hover:bg-green-700" : "hover:text-green-600"}`}
+                            className={`min-h-11 flex-1 sm:flex-none ${selectedStatus === "disponivel" ? "bg-green-600 text-white shadow-sm hover:bg-green-700" : "hover:text-green-600"}`}
                             onClick={() => onStatusSelect("disponivel")}
                         >
                             Disponíveis
@@ -88,7 +89,7 @@ export function GiftFilter({
                         <Button
                             variant={selectedStatus === "comprado" ? "default" : "ghost"}
                             size="sm"
-                            className={`flex-1 sm:flex-none ${selectedStatus === "comprado" ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600" : "hover:text-rose-500"}`}
+                            className={`min-h-11 flex-1 sm:flex-none ${selectedStatus === "comprado" ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600" : "hover:text-rose-500"}`}
                             onClick={() => onStatusSelect("comprado")}
                         >
                             Reservados
@@ -103,7 +104,7 @@ export function GiftFilter({
                         variant={selectedCategory === null ? "default" : "outline"}
                         size="sm"
                         onClick={() => onCategorySelect(null)}
-                        className={`rounded-full ${selectedCategory === null ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
+                        className={`min-h-11 rounded-full ${selectedCategory === null ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
                     >
                         Todas Categorias
                     </Button>
@@ -113,7 +114,7 @@ export function GiftFilter({
                             variant={selectedCategory === category ? "default" : "outline"}
                             size="sm"
                             onClick={() => onCategorySelect(category)}
-                            className={`rounded-full ${selectedCategory === category ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
+                            className={`min-h-11 rounded-full ${selectedCategory === category ? 'bg-stone-800 text-white hover:bg-stone-900' : 'bg-white'}`}
                         >
                             {category}
                         </Button>

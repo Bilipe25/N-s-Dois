@@ -11,10 +11,13 @@ export function GiftProgressBar({ total, reserved }: GiftProgressBarProps) {
     const percentage = Math.round((reserved / total) * 100);
 
     return (
-        <div className="py-2 mb-6">
-            <div className="flex flex-col items-center justify-center mb-3">
-                <p className="text-sm text-stone-500 font-medium tracking-wide">
-                    {reserved} DE {total} PRESENTES RESERVADOS
+        <div className="mb-5 py-1">
+            <div className="mb-3 flex flex-col items-center justify-center text-center">
+                <p className="text-sm font-medium text-stone-600">
+                    {reserved > 0 ? "Presentes escolhidos com carinho" : "Escolha um presente, se quiser"}
+                </p>
+                <p className="mt-0.5 text-xs text-stone-500">
+                    {reserved > 0 ? `${reserved} de ${total} escolhas` : `${total} sugestões disponíveis`}
                 </p>
             </div>
             <div className="h-1.5 w-full max-w-md mx-auto bg-stone-200/50 rounded-full overflow-hidden">
