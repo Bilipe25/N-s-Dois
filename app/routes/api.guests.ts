@@ -13,6 +13,7 @@ const ActionSchema = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("delete_guest"), id: z.string().uuid() }),
   z.object({ intent: z.literal("bulk_confirm"), ids: z.array(z.string().uuid()).min(1).max(200) }),
   z.object({ intent: z.literal("bulk_delete"), ids: z.array(z.string().uuid()).min(1).max(200) }),
+  z.object({ intent: z.literal("approve_public_rsvp"), id: z.string().uuid() }),
   CreateInviteLinkActionSchema,
   RotateInviteLinkActionSchema,
 ]);
@@ -107,6 +108,13 @@ export async function action({ request }: ActionFunctionArgs) {
     .maybeSingle();
   if (activeInviteError) {
     return Response.json({ error: "Não foi possível verificar o convite atual." }, { status: 500, headers: noStoreHeaders() });
+  }
+
+  if (payload.intent === "approve_public_rsvp") {
+    const { data, error } = await supabase.from("guests").update({ review_status: "approved" }).eq("id", payload.id).eq("source", "public_rsvp").select("id").maybeSingle();
+    if (error) return Response.json({ error: "Não foi possível aprovar o cadastro." }, { status: 500, headers: noStoreHeaders() });
+    if (!data) return Response.json({ error: "Cadastro novo não encontrado." }, { status: 404, headers: noStoreHeaders() });
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
   }
   if (!rotating && activeInvite) {
     return Response.json({ error: "Este convidado já possui um link ativo. Use a ação de gerar novo link." }, { status: 409, headers: noStoreHeaders() });

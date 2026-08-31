@@ -7,6 +7,12 @@ export interface Guest {
     rsvp_status: "pendente" | "confirmado" | "recusado";
     created_at: string;
     phone?: string | null;
+    source: "admin" | "public_rsvp";
+    review_status: "pending" | "approved";
+    rsvp_adults?: number | null;
+    rsvp_children?: number | null;
+    rsvp_message?: string | null;
+    rsvp_responded_at?: string | null;
     invite?: {
         active: true;
         created_at: string;

@@ -38,7 +38,7 @@ export const PublicGiftSchema = z.object({
   reservation_id: z.string().uuid().nullable().optional(),
 });
 
-export const RsvpRequestSchema = z.object({
+export const EventRsvpRequestSchema = z.object({
   eventResponses: z.array(z.object({
     eventId: z.string().uuid(),
     status: z.enum(["confirmado", "recusado"]),
@@ -46,6 +46,34 @@ export const RsvpRequestSchema = z.object({
     confirmedChildren: z.number().int().min(0).max(20),
     message: z.string().trim().max(1000).optional().default(""),
   })).min(1).max(10),
+});
+
+export const GeneralRsvpRequestSchema = z.object({
+  generalResponse: z.object({
+    status: z.enum(["confirmado", "recusado"]),
+    confirmedAdults: z.number().int().min(0).max(20),
+    confirmedChildren: z.number().int().min(0).max(20),
+    message: z.string().trim().max(1000).optional().default(""),
+  }),
+});
+
+export const RsvpRequestSchema = z.union([EventRsvpRequestSchema, GeneralRsvpRequestSchema]);
+
+export const IdentifyGuestSchema = z.object({
+  name: z.string().trim().min(3).max(120),
+});
+
+export const PublicRsvpRegistrationSchema = z.object({
+  name: z.string().trim().min(3).max(120),
+  status: z.enum(["confirmado", "recusado"]),
+  confirmedAdults: z.number().int().min(0).max(6),
+  confirmedChildren: z.number().int().min(0).max(6),
+  message: z.string().trim().max(1000).optional().default(""),
+  phone: z.string().trim().max(30).optional().default(""),
+}).superRefine((value, context) => {
+  if (value.status === "confirmado" && value.confirmedAdults < 1) {
+    context.addIssue({ code: "custom", path: ["confirmedAdults"], message: "Informe ao menos um adulto." });
+  }
 });
 
 export const GiftReservationRequestSchema = z.object({ giftId: z.string().uuid() });

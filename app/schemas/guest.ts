@@ -6,10 +6,16 @@ export const GuestSchema = z.object({
     created_at: z.string(),
     name: z.string().min(1, "Nome é obrigatório"),
     group_name: z.string().min(1, "Grupo é obrigatório"),
-    adults_count: z.number().int().min(1),
+    adults_count: z.number().int().min(0),
     children_count: z.number().int().min(0),
     rsvp_status: z.enum(["pendente", "confirmado", "recusado"]),
     phone: z.string().nullable().optional(),
+    source: z.enum(["admin", "public_rsvp"]).optional().default("admin"),
+    review_status: z.enum(["pending", "approved"]).optional().default("approved"),
+    rsvp_adults: z.number().int().min(0).nullable().optional(),
+    rsvp_children: z.number().int().min(0).nullable().optional(),
+    rsvp_message: z.string().nullable().optional(),
+    rsvp_responded_at: z.string().nullable().optional(),
     invite: GuestInviteMetadataSchema.nullable().optional(),
 });
 

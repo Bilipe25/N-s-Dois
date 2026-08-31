@@ -13,7 +13,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const guestId = await getInviteGuestId(request);
-  if (!guestId) return Response.json({ error: "Abra o link individual do seu convite." }, { status: 401, headers: noStoreHeaders() });
+  if (!guestId) return Response.json({ error: "Identifique-se antes de confirmar." }, { status: 401, headers: noStoreHeaders() });
   const config = await getCelebrationConfig();
   if (!config.rsvpEnabled || await celebrationIsPast()) return Response.json({ error: "As confirmações não estão disponíveis agora." }, { status: 403, headers: noStoreHeaders() });
 
@@ -21,6 +21,42 @@ export async function action({ request }: Route.ActionArgs) {
   if (!parsed.success) return Response.json({ error: "Revise os dados da resposta." }, { status: 400, headers: noStoreHeaders() });
 
   const supabase = createServerAdminClient();
+  if ("generalResponse" in parsed.data) {
+    const { data: guest, error: guestError } = await supabase
+      .from("guests")
+      .select("id,source,adults_count,children_count")
+      .eq("id", guestId)
+      .maybeSingle();
+    if (guestError || !guest) return Response.json({ error: "Não foi possível validar sua identificação." }, { status: 403, headers: noStoreHeaders() });
+
+    const response = parsed.data.generalResponse;
+    const adultLimit = guest.source === "public_rsvp" ? 6 : Math.max(0, Number(guest.adults_count || 0));
+    const childLimit = guest.source === "public_rsvp" ? 6 : Math.max(0, Number(guest.children_count || 0));
+    const adults = response.status === "recusado" ? 0 : response.confirmedAdults;
+    const children = response.status === "recusado" ? 0 : response.confirmedChildren;
+    if (adults > adultLimit || children > childLimit || (response.status === "confirmado" && adults < 1)) {
+      return Response.json({ error: "A quantidade ultrapassa o limite permitido." }, { status: 400, headers: noStoreHeaders() });
+    }
+
+    const now = new Date().toISOString();
+    const { error: updateError } = await supabase.from("guests").update({
+      rsvp_status: response.status,
+      rsvp_adults: adults,
+      rsvp_children: children,
+      rsvp_message: response.message || null,
+      rsvp_responded_at: now,
+    }).eq("id", guestId);
+    if (updateError) return Response.json({ error: "Não foi possível salvar a resposta." }, { status: 500, headers: noStoreHeaders() });
+
+    await supabase.from("notifications").insert({
+      type: "rsvp",
+      title: "Resposta de presença recebida",
+      message: "Uma resposta de presença foi atualizada.",
+      link: "/guests",
+    });
+    return Response.json({ success: true }, { headers: noStoreHeaders() });
+  }
+
   const eventIds = parsed.data.eventResponses.map((response) => response.eventId);
   const { data: allowedRows, error } = await supabase
     .from("guest_event_rsvps")
@@ -60,7 +96,16 @@ export async function action({ request }: Route.ActionArgs) {
 
   const statuses = parsed.data.eventResponses.map((response) => response.status);
   const legacyStatus = statuses.includes("confirmado") ? "confirmado" : "recusado";
-  await supabase.from("guests").update({ rsvp_status: legacyStatus }).eq("id", guestId);
+  const maxAdults = Math.max(...parsed.data.eventResponses.map((response) => response.status === "recusado" ? 0 : response.confirmedAdults));
+  const maxChildren = Math.max(...parsed.data.eventResponses.map((response) => response.status === "recusado" ? 0 : response.confirmedChildren));
+  const firstMessage = parsed.data.eventResponses.find((response) => response.message)?.message || null;
+  await supabase.from("guests").update({
+    rsvp_status: legacyStatus,
+    rsvp_adults: maxAdults,
+    rsvp_children: maxChildren,
+    rsvp_message: firstMessage,
+    rsvp_responded_at: new Date().toISOString(),
+  }).eq("id", guestId);
   await supabase.from("notifications").insert({
     type: "rsvp",
     title: "Resposta de convite recebida",

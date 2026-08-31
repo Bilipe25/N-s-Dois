@@ -86,8 +86,8 @@ function GuestItem({
         pendente: "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
     const weddingUrl = typeof window !== "undefined"
-        ? `${((window as any).ENV?.PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "")}/public/wedding`
-        : "/public/wedding";
+        ? `${window.location.origin.replace(/\/$/, "")}/celebracao`
+        : "/celebracao";
     const inviteText = encodeURIComponent(`Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: ${weddingUrl}`);
 
     return (
@@ -119,7 +119,7 @@ function GuestItem({
                 </div>
 
                 <div className="min-w-0">
-                    <p className="text-sm font-semibold text-stone-800 truncate">{guest.name}</p>
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-stone-800"><span className="truncate">{guest.name}</span>{guest.source === "public_rsvp" && <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700">Novo pelo site</span>}</p>
                     <div className="flex items-center gap-2 text-[10px] text-stone-500">
                         <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600 font-medium">{guest.group_name}</span>
                         <span>•</span>

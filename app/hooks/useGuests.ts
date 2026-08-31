@@ -30,6 +30,7 @@ export const useUpdateRSVP = (_user: string) => useApiMutation<UpdateRSVPInput>(
 export const useDeleteGuest = () => useApiMutation<string>((id) => ({ intent: "delete_guest", id }), "Convidado removido!");
 export const useBulkConfirm = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_confirm", ids: input.ids }), "Convidados confirmados!");
 export const useBulkDelete = () => useApiMutation<BulkActionInput>((input) => ({ intent: "bulk_delete", ids: input.ids }), "Convidados excluídos!");
+export const useApproveGuest = () => useApiMutation<string>((id) => ({ intent: "approve_public_rsvp", id }), "Cadastro aprovado!");
 
 export async function createGuestInviteLink(id: string, mode: "create" | "rotate") {
   return api<{ inviteUrl: string; invite: GuestInviteMetadata }>(mode === "rotate"

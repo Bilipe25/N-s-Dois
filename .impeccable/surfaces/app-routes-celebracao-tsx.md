@@ -29,8 +29,8 @@ related_targets: ["app/components/celebration","app/routes/api.public.celebratio
 
 ## Camada de convite
 
-- O CTA público permanece “Confirmar presença”; sem sessão, abre orientação acolhedora para usar o link pessoal, sem bloquear conteúdo.
-- Uma sessão válida acrescenta somente saudação discreta, estado “convite ativo”, RSVP, reservas pessoais e a ação de sair do convite.
+- O CTA público permanece “Confirmar presença”; sem sessão, abre identificação privada pelo nome completo, sem autocomplete nem enumeração da lista.
+- Uma sessão válida acrescenta somente saudação discreta, estado de identificação ativa, RSVP, reservas pessoais e a ação de trocar a identificação. O link pessoal permanece como alternativa avançada.
 - O nome validado aparece apenas na UI privada, nunca em URL, metadata, armazenamento do browser ou compartilhamento público.
 - Reserva sem convite abre orientação e contatos; PIX e navegação dos presentes permanecem públicos.
 

@@ -48,6 +48,8 @@ export default [
     route("api/confirm-presence", "routes/api.legacy-rsvp-disabled.ts"),
     route("api/assets", "routes/api.assets.ts"),
     route("api/public/celebracao/rsvp", "routes/api.public.celebration-rsvp.ts"),
+    route("api/public/celebracao/rsvp/identify", "routes/api.public.celebration-rsvp-identify.ts"),
+    route("api/public/celebracao/rsvp/register", "routes/api.public.celebration-rsvp-register.ts"),
     route("api/public/celebracao/gifts", "routes/api.public.celebration-gifts.ts"),
     route("api/public/celebracao/gift-reservations", "routes/api.public.celebration-gift-reservations.ts"),
     route("api/public/celebracao/gift-reservations/:id", "routes/api.public.celebration-gift-reservations.$id.ts"),

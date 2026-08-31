@@ -9,7 +9,7 @@ web
 ## Users
 
 - Gabriel e Raabe organizam a celebração, administram eventos, convidados, presentes, contatos e configurações.
-- Convidados e familiares acessam uma página pública compartilhável; quem recebe um link individual pode responder ao convite e reservar ou cancelar presentes.
+- Convidados e familiares acessam uma página pública compartilhável; a identificação principal é pelo nome completo e permite responder, reservar ou cancelar presentes sem expor a lista. Quem ainda não está cadastrado pode enviar uma resposta espontânea, sinalizada para revisão administrativa.
 
 ## Product Purpose
 
@@ -29,7 +29,7 @@ A mesma lista canônica de convidados sustenta a organização administrativa e 
 ## Capabilities and Constraints
 
 - URL pública canônica: `/celebracao`.
-- Links individuais: `/celebracao/convite/:token`, trocados por sessão HttpOnly antes de exibir dados personalizados.
+- Identificação por nome exato normalizado cria sessão HttpOnly sem autocomplete nem retorno de candidatos. Links individuais em `/celebracao/convite/:token` permanecem como alternativa avançada e também são trocados por sessão HttpOnly.
 - RSVP por evento com limites de adultos e crianças, edição posterior e mensagem privada opcional.
 - Presentes públicos paginados, reserva separada do RSVP e cancelamento pelo próprio convidado.
 - PIX livre ou com valor exato de um presente, gerando BR Code EMV sem processar ou confirmar pagamento.

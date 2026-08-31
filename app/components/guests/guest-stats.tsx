@@ -8,17 +8,14 @@ interface GuestStatsProps {
 }
 
 export function GuestStats({ guests }: GuestStatsProps) {
-    const totalAdults = guests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
-    const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
-    const totalGuests = totalAdults + totalChildren;
+    const officialGuests = guests.filter((guest) => guest.source !== "public_rsvp");
+    const newFromSite = guests.filter((guest) => guest.source === "public_rsvp");
+    const totalGuests = officialGuests.length;
 
     const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
-    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0), 0);
-    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
+    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + (curr.rsvp_adults ?? curr.adults_count ?? 0), 0);
+    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + (curr.rsvp_children ?? curr.children_count ?? 0), 0);
     const confirmedTotal = confirmedAdults + confirmedChildren;
-
-    const pendingCount = guests.filter(g => g.rsvp_status === 'pendente').length;
-    const declinedCount = guests.filter(g => g.rsvp_status === 'recusado').length;
 
     const groups = Array.from(new Set(guests.map(g => g.group_name))).filter(Boolean) as string[];
     const groupData = groups.map(g => ({
@@ -36,7 +33,7 @@ export function GuestStats({ guests }: GuestStatsProps) {
                             <Users className="h-4 w-4" />
                         </div>
                         <div className="text-2xl font-serif font-bold text-stone-800">{totalGuests}</div>
-                        <div className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">Total Convidados</div>
+                        <div className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">Cadastros da lista</div>
                     </CardContent>
                 </Card>
 
@@ -47,7 +44,7 @@ export function GuestStats({ guests }: GuestStatsProps) {
                             <Check className="h-4 w-4" />
                         </div>
                         <div className="text-2xl font-serif font-bold text-green-700">{confirmedTotal}</div>
-                        <div className="text-[10px] text-green-600 uppercase tracking-wider font-medium">Confirmados</div>
+                        <div className="text-[10px] text-green-600 uppercase tracking-wider font-medium">Pessoas previstas</div>
                     </CardContent>
                 </Card>
 
@@ -57,8 +54,8 @@ export function GuestStats({ guests }: GuestStatsProps) {
                         <div className="h-8 w-8 rounded-full bg-yellow-50 flex items-center justify-center mb-2 text-yellow-600">
                             <HelpCircle className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-yellow-700">{pendingCount}</div>
-                        <div className="text-[10px] text-yellow-600 uppercase tracking-wider font-medium">Pendentes</div>
+                        <div className="text-2xl font-serif font-bold text-yellow-700">{newFromSite.length}</div>
+                        <div className="text-[10px] text-yellow-600 uppercase tracking-wider font-medium">Novos pelo site</div>
                     </CardContent>
                 </Card>
 
@@ -68,8 +65,8 @@ export function GuestStats({ guests }: GuestStatsProps) {
                         <div className="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center mb-2 text-red-600">
                             <X className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-red-700">{declinedCount}</div>
-                        <div className="text-[10px] text-red-600 uppercase tracking-wider font-medium">Recusados</div>
+                        <div className="text-2xl font-serif font-bold text-red-700">{confirmedGuests.filter((guest) => guest.source !== "public_rsvp").length}</div>
+                        <div className="text-[10px] text-red-600 uppercase tracking-wider font-medium">Confirmados da lista</div>
                     </CardContent>
                 </Card>
             </div>

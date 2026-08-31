@@ -41,6 +41,7 @@ import {
     useDeleteGuest,
     useBulkConfirm,
     useBulkDelete,
+    useApproveGuest,
     useAppConfig,
     createGuestInviteLink
 } from "@/hooks/useGuests";
@@ -94,6 +95,7 @@ export default function Guests() {
     const { mutate: deleteGuest } = useDeleteGuest();
     const { mutate: bulkConfirm } = useBulkConfirm();
     const { mutate: bulkDelete } = useBulkDelete();
+    const { mutate: approveGuest, isPending: isApproving } = useApproveGuest();
 
     // State
     const [filter, setFilter] = useState<GuestFilter>("todos");
@@ -389,7 +391,7 @@ export default function Guests() {
         <div className="min-h-screen bg-stone-50 pb-24">
             <div className="container mx-auto max-w-5xl p-4 space-y-6">
                 {/* Stats */}
-                <GuestStats guests={guests as any} />
+                <GuestStats guests={guests} />
 
                 {/* Main Content */}
                 <div className="space-y-4">
@@ -525,6 +527,7 @@ export default function Guests() {
                                                 {selectedGuest.rsvp_status === 'confirmado' ? 'Confirmado' :
                                                     selectedGuest.rsvp_status === 'recusado' ? 'Recusado' : 'Pendente'}
                                             </Badge>
+                                            {selectedGuest.source === "public_rsvp" && <Badge variant="outline" className="ml-2 mt-1 border-violet-200 bg-violet-100 text-violet-700">Novo pelo site</Badge>}
                                         </div>
                                     </div>
                                 </div>
@@ -567,6 +570,14 @@ export default function Guests() {
                                     </div>
                                 )}
 
+                                {selectedGuest.source === "public_rsvp" && <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
+                                    <div><p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Cadastro espontâneo</p><p className="mt-1 text-sm text-stone-700">{selectedGuest.review_status === "pending" ? "Aguardando revisão do casal." : "Cadastro revisado e aprovado."}</p></div>
+                                    <p className="text-sm text-stone-700"><strong>Pessoas informadas:</strong> {selectedGuest.rsvp_adults ?? 0} adulto(s) e {selectedGuest.rsvp_children ?? 0} criança(s).</p>
+                                    {selectedGuest.rsvp_message && <div className="rounded-lg bg-white p-3 text-sm text-stone-700"><span className="block text-xs font-medium text-stone-500">Mensagem privada</span>{selectedGuest.rsvp_message}</div>}
+                                    {selectedGuest.rsvp_responded_at && <p className="text-xs text-stone-500">Resposta em {new Date(selectedGuest.rsvp_responded_at).toLocaleString("pt-BR")}</p>}
+                                    {selectedGuest.review_status === "pending" && <Button type="button" disabled={isApproving} className="min-h-11 w-full bg-violet-700 text-white hover:bg-violet-800" onClick={() => approveGuest(selectedGuest.id, { onSuccess: () => setSelectedGuest({ ...selectedGuest, review_status: "approved" }) })}>{isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Aprovar cadastro</Button>}
+                                </div>}
+
                                 {/* Ações Rápidas */}
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium text-stone-500">Ações Rápidas</h3>
@@ -600,7 +611,9 @@ export default function Guests() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                                <details className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                                  <summary className="cursor-pointer text-sm font-medium text-stone-800">Opções avançadas de convite individual</summary>
+                                  <div className="mt-4 space-y-3">
                                     <div className="flex items-start gap-2 text-sm text-stone-700">
                                         {selectedGuest.invite?.active ? <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-green-700" /> : <Link2 className="mt-0.5 h-4 w-4 shrink-0" />}
                                         <div className="min-w-0 space-y-1">
@@ -651,7 +664,8 @@ export default function Guests() {
                                             <RefreshCw className="mr-2 h-4 w-4" />Gerar novo link
                                         </Button>
                                     )}
-                                </div>
+                                  </div>
+                                </details>
                             </div>
 
                             <DrawerFooter className="flex-row gap-2 border-t pt-4">

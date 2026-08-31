@@ -26,7 +26,19 @@ export type CelebrationConfig = {
 export type CelebrationLoaderData = {
   config: CelebrationConfig;
   events: CelebrationEvent[];
-  invitation: { active: boolean; displayName: string | null; responses: InvitationEvent[] };
+  invitation: {
+    active: boolean;
+    displayName: string | null;
+    responses: InvitationEvent[];
+    general: {
+      adult_limit: number;
+      child_limit: number;
+      confirmed_adults: number;
+      confirmed_children: number;
+      status: "pendente" | "confirmado" | "recusado";
+      private_message: string | null;
+    } | null;
+  };
   gifts: PublicGift[];
   giftCursor: string | null;
   categories: string[];
@@ -129,7 +141,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     return {
       config: defaultConfig,
       events: [],
-      invitation: { active: false, displayName: null, responses: [] },
+      invitation: { active: false, displayName: null, responses: [], general: null },
       gifts: [],
       giftCursor: null,
       categories: [],
@@ -161,12 +173,13 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
   const responses: InvitationEvent[] = [];
   const ownReservations = new Map<string, string>();
   let displayName: string | null = null;
+  let general: CelebrationLoaderData["invitation"]["general"] = null;
 
   if (guestId) {
     const [{ data: guest }, { data: rsvpRows }, { data: reservationRows }] = await Promise.all([
       supabase
         .from("guests")
-        .select("id,name")
+        .select("id,name,source,adults_count,children_count,rsvp_status,rsvp_adults,rsvp_children,rsvp_message")
         .eq("id", guestId)
         .maybeSingle(),
       supabase
@@ -182,6 +195,17 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     ]);
 
     displayName = guest?.id ? stringOrNull(guest.name) : null;
+    if (displayName && guest) {
+      const isPublicRegistration = guest.source === "public_rsvp";
+      general = {
+        adult_limit: isPublicRegistration ? 6 : Math.max(0, Number(guest.adults_count || 0)),
+        child_limit: isPublicRegistration ? 6 : Math.max(0, Number(guest.children_count || 0)),
+        confirmed_adults: Math.max(0, Number(guest.rsvp_adults || 0)),
+        confirmed_children: Math.max(0, Number(guest.rsvp_children || 0)),
+        status: (["confirmado", "recusado"] as const).includes(guest.rsvp_status) ? guest.rsvp_status : "pendente",
+        private_message: stringOrNull(guest.rsvp_message),
+      };
+    }
 
     for (const row of displayName ? rsvpRows || [] : []) {
       responses.push({
@@ -210,7 +234,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
   return {
     config,
     events: (eventRows || []) as CelebrationEvent[],
-    invitation: { active: Boolean(displayName), displayName, responses },
+    invitation: { active: Boolean(displayName), displayName, responses, general },
     gifts: pageRows.map((row) => publicGift(row, ownReservations)),
     giftCursor: rawGifts.length > 12 ? "12" : null,
     categories: [...new Set(rawGifts.map((row) => stringOrNull(row.category)).filter((value): value is string => Boolean(value)))].sort(),
