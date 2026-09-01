@@ -245,7 +245,7 @@ export default function Guests() {
             const totalChildren = guests.reduce((acc, curr) => acc + (curr.children_count || 0), 0);
             const totalGuests = totalAdults + totalChildren;
             const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
-            const confirmedTotal = confirmedGuests.reduce((acc, curr) => acc + (curr.adults_count || 0) + (curr.children_count || 0), 0);
+            const confirmedTotal = confirmedGuests.reduce((acc, curr) => { const counts = confirmedCounts(curr); return acc + counts.adults + counts.children; }, 0);
 
             // Cabeçalho
             const headerColumns: any[] = [];
@@ -291,8 +291,8 @@ export default function Guests() {
             // Listas por Grupo
             Object.keys(groupedGuests).sort().forEach(group => {
                 const groupGuests = groupedGuests[group];
-                const groupAdults = groupGuests.reduce((acc, g) => acc + (g.adults_count || 0), 0);
-                const groupChildren = groupGuests.reduce((acc, g) => acc + (g.children_count || 0), 0);
+                const groupAdults = groupGuests.reduce((acc, g) => acc + confirmedCounts(g).adults, 0);
+                const groupChildren = groupGuests.reduce((acc, g) => acc + confirmedCounts(g).children, 0);
 
                 content.push({
                     text: `${group} (${groupGuests.length} convites)`,
@@ -303,13 +303,14 @@ export default function Guests() {
                 const tableBody: any[] = [
                     [
                         { text: 'Nome', style: 'tableHeader' },
-                        { text: 'Adultos', style: 'tableHeader', alignment: 'center' },
-                        { text: 'Crianças', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Adultos confirmados', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Crianças confirmadas', style: 'tableHeader', alignment: 'center' },
                         { text: 'Status', style: 'tableHeader', alignment: 'center' }
                     ]
                 ];
 
                 groupGuests.forEach(guest => {
+                    const responseCounts = confirmedCounts(guest);
                     let statusColor = 'gray';
                     if (guest.rsvp_status === 'confirmado') statusColor = 'green';
                     if (guest.rsvp_status === 'recusado') statusColor = 'red';
@@ -317,8 +318,8 @@ export default function Guests() {
 
                     tableBody.push([
                         { text: guest.name, style: 'tableCell' },
-                        { text: guest.adults_count.toString(), style: 'tableCell', alignment: 'center' },
-                        { text: guest.children_count.toString(), style: 'tableCell', alignment: 'center' },
+                        { text: responseCounts.adults.toString(), style: 'tableCell', alignment: 'center' },
+                        { text: responseCounts.children.toString(), style: 'tableCell', alignment: 'center' },
                         { text: guest.rsvp_status.toUpperCase(), style: 'tableCell', alignment: 'center', color: statusColor, fontSize: 8, bold: true }
                     ]);
                 });
@@ -567,13 +568,20 @@ export default function Guests() {
                                     <div className="bg-stone-50 rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-stone-500 mb-1">
                                             <User className="h-4 w-4" />
-                                            <span className="text-xs">Resposta</span>
+                                            <span className="text-xs">{selectedGuest.source === "public_rsvp" ? "Resposta atual" : "Convite"}</span>
                                         </div>
                                         <p className="font-medium text-stone-900">
-                                            {selectedCounts?.adults ?? 0} adulto{selectedCounts?.adults !== 1 ? 's' : ''}, {selectedCounts?.children ?? 0} criança{selectedCounts?.children !== 1 ? 's' : ''}
+                                            {selectedGuest.source === "public_rsvp"
+                                                ? <>{selectedCounts?.adults ?? 0} adulto{selectedCounts?.adults !== 1 ? 's' : ''} · {selectedCounts?.children ?? 0} criança{selectedCounts?.children !== 1 ? 's' : ''}</>
+                                                : <>Até {selectedGuest.adults_count} adulto{selectedGuest.adults_count !== 1 ? 's' : ''} · {selectedGuest.children_count} criança{selectedGuest.children_count !== 1 ? 's' : ''}</>}
                                         </p>
                                     </div>
                                 </div>
+
+                                {selectedGuest.source !== "public_rsvp" && <div className="rounded-xl bg-stone-50 p-4">
+                                    <p className="text-xs text-stone-500">Resposta atual</p>
+                                    <p className="mt-1 font-medium text-stone-900">{selectedGuest.rsvp_status === "pendente" ? "Ainda sem resposta" : selectedGuest.rsvp_status === "recusado" ? "Não poderá comparecer" : `${selectedCounts?.adults ?? 0} adulto(s) · ${selectedCounts?.children ?? 0} criança(s)`}</p>
+                                </div>}
 
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <div className="rounded-xl bg-stone-50 p-4">
@@ -610,7 +618,7 @@ export default function Guests() {
                                     {selectedGuest.review_status === "pending" && <Button type="button" disabled={isApproving} className="min-h-11 w-full bg-violet-700 text-white hover:bg-violet-800" onClick={() => approveGuest(selectedGuest.id, { onSuccess: () => setSelectedGuest({ ...selectedGuest, review_status: "approved" }) })}>{isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Aprovar cadastro</Button>}
                                 </div>}
 
-                                {selectedGuest.rsvp_message && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm leading-relaxed text-stone-700"><span className="mb-1 block text-xs font-semibold text-rose-800">Mensagem privada geral</span>{selectedGuest.rsvp_message}</div>}
+                                {selectedGuest.rsvp_message && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm leading-relaxed text-rose-950"><span className="mb-1 block text-xs font-semibold text-rose-800">Mensagem privada geral</span>{selectedGuest.rsvp_message}</div>}
 
                                 {selectedGuest.event_responses && selectedGuest.event_responses.length > 0 && <section className="space-y-3" aria-labelledby="guest-event-responses"><h3 id="guest-event-responses" className="text-sm font-semibold text-stone-800">Respostas por evento</h3>{selectedGuest.event_responses.map((response) => <article key={response.id} className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-medium text-stone-900">{response.event_title}</h4>{response.event_starts_at && <p className="mt-1 text-xs text-stone-500">{formatCelebrationDate(response.event_starts_at)}</p>}</div><Badge variant="outline" className={response.status === "confirmado" ? "border-green-200 bg-green-50 text-green-800" : response.status === "recusado" ? "border-red-200 bg-red-50 text-red-800" : "border-yellow-200 bg-yellow-50 text-yellow-800"}>{response.status === "confirmado" ? "Confirmado" : response.status === "recusado" ? "Recusado" : "Pendente"}</Badge></div><p className="mt-3 text-sm text-stone-600">{response.status === "recusado" ? "Sem presença confirmada" : `${response.confirmed_adults} adulto(s) e ${response.confirmed_children} criança(s)`}</p>{response.private_message && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm leading-relaxed text-stone-700"><span className="block text-xs font-semibold text-rose-800">Mensagem privada</span>{response.private_message}</div>}{response.responded_at && <p className="mt-3 text-xs text-stone-500">Respondido em {formatRsvpTimestamp(response.responded_at)}</p>}</article>)}</section>}
 

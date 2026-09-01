@@ -51,9 +51,9 @@ describe("contratos públicos de presentes", () => {
     expect(RsvpRequestSchema.safeParse({ generalResponse: { status: "confirmado", confirmedAdults: 2, confirmedChildren: 0, message: "Vamos!" } }).success).toBe(true);
   });
 
-  it("limita cadastros espontâneos a seis adultos e seis crianças", () => {
-    expect(PublicRsvpRegistrationSchema.safeParse({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 6 }).success).toBe(true);
-    expect(PublicRsvpRegistrationSchema.safeParse({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 7, confirmedChildren: 0 }).success).toBe(false);
+  it("mantém o teto estrutural em vinte e exige um adulto ao confirmar", () => {
+    expect(PublicRsvpRegistrationSchema.safeParse({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 20 }).success).toBe(true);
+    expect(PublicRsvpRegistrationSchema.safeParse({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 21, confirmedChildren: 0 }).success).toBe(false);
     expect(PublicRsvpRegistrationSchema.safeParse({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 0, confirmedChildren: 1 }).success).toBe(false);
   });
 

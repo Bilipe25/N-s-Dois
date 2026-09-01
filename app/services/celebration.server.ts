@@ -13,6 +13,8 @@ export type CelebrationConfig = {
   heroFocalX: number;
   heroFocalY: number;
   rsvpEnabled: boolean;
+  publicRsvpAdultLimit: number;
+  publicRsvpChildLimit: number;
   giftsEnabled: boolean;
   giftSuggestionsEnabled: boolean;
   reservationsEnabled: boolean;
@@ -38,6 +40,7 @@ export type CelebrationLoaderData = {
       confirmed_children: number;
       status: "pendente" | "confirmado" | "recusado";
       private_message: string | null;
+      is_public_registration: boolean;
     } | null;
   };
   gifts: PublicGift[];
@@ -57,6 +60,8 @@ const defaultConfig: CelebrationConfig = {
   heroFocalX: 50,
   heroFocalY: 50,
   rsvpEnabled: false,
+  publicRsvpAdultLimit: 6,
+  publicRsvpChildLimit: 6,
   giftsEnabled: false,
   giftSuggestionsEnabled: true,
   reservationsEnabled: false,
@@ -101,6 +106,8 @@ function configFromRow(row: ConfigRow | null): CelebrationConfig {
     heroFocalX: numberOr(row.celebration_hero_focal_x, 50),
     heroFocalY: numberOr(row.celebration_hero_focal_y, 50),
     rsvpEnabled: row.celebration_rsvp_enabled === true,
+    publicRsvpAdultLimit: Math.min(20, Math.max(0, numberOr(row.celebration_public_rsvp_adult_limit, 6))),
+    publicRsvpChildLimit: Math.min(20, Math.max(0, numberOr(row.celebration_public_rsvp_child_limit, 6))),
     giftsEnabled: row.celebration_gifts_enabled === true,
     giftSuggestionsEnabled: row.bridal_shower_show_links !== false,
     reservationsEnabled: row.celebration_reservations_enabled === true,
@@ -133,11 +140,19 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
   const supabase = createServerAdminClient();
   const guestId = await getInviteGuestId(request).catch(() => null);
 
-  const { data: configRow, error: configError } = await supabase
+  let configResult = await supabase
     .from("app_config")
-    .select("celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_hero_url,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe")
+    .select("celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_public_rsvp_adult_limit,celebration_public_rsvp_child_limit,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_hero_url,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe")
     .limit(1)
     .maybeSingle();
+  if (configResult.error && /celebration_public_rsvp_(adult|child)_limit/i.test(configResult.error.message)) {
+    configResult = await supabase
+      .from("app_config")
+      .select("celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_hero_url,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe")
+      .limit(1)
+      .maybeSingle();
+  }
+  const { data: configRow, error: configError } = configResult;
 
   if (configError) {
     console.warn("Configuração da celebração ainda não migrada.", configError.message);
@@ -201,12 +216,13 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
     if (displayName && guest) {
       const isPublicRegistration = guest.source === "public_rsvp";
       general = {
-        adult_limit: isPublicRegistration ? 6 : Math.max(0, Number(guest.adults_count || 0)),
-        child_limit: isPublicRegistration ? 6 : Math.max(0, Number(guest.children_count || 0)),
+        adult_limit: isPublicRegistration ? config.publicRsvpAdultLimit : Math.max(0, Number(guest.adults_count || 0)),
+        child_limit: isPublicRegistration ? config.publicRsvpChildLimit : Math.max(0, Number(guest.children_count || 0)),
         confirmed_adults: Math.max(0, Number(guest.rsvp_adults || 0)),
         confirmed_children: Math.max(0, Number(guest.rsvp_children || 0)),
         status: (["confirmado", "recusado"] as const).includes(guest.rsvp_status) ? guest.rsvp_status : "pendente",
         private_message: stringOrNull(guest.rsvp_message),
+        is_public_registration: isPublicRegistration,
       };
     }
 

@@ -49,6 +49,8 @@ type PixPanelProps = {
   identificationContacts?: ReactNode;
   onIdentified?: () => void | Promise<void>;
   onGiftChange?: (giftId: string, patch: GiftPatch) => void;
+  publicAdultLimit?: number;
+  publicChildLimit?: number;
 };
 
 type PayloadState = "idle" | "loading" | "error" | "conflict";
@@ -87,6 +89,8 @@ export function PixPanel({
   identificationContacts,
   onIdentified,
   onGiftChange,
+  publicAdultLimit = 6,
+  publicChildLimit = 6,
 }: PixPanelProps) {
   const [payload, setPayload] = useState("");
   const [amountCents, setAmountCents] = useState<number | null>(null);
@@ -346,7 +350,7 @@ export function PixPanel({
       {reservationState === "identify" ? (
         <div className="mt-4">
           {reservationError && <p className="celebration-form-error" role="alert">{reservationError}</p>}
-          <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} />
+          <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />
         </div>
       ) : reservationState === "error" ? (
         <div className="mt-4 space-y-2 text-center" role="alert">
@@ -376,7 +380,7 @@ export function PixPanel({
     <section className="w-full" aria-labelledby="pix-recognition-title">
       <h3 id="pix-recognition-title" className="text-center font-serif text-xl font-semibold text-stone-800">Vamos encontrar seu nome</h3>
       {reservationError && <p className="celebration-form-error mt-3" role="alert">{reservationError}</p>}
-      <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} />
+      <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />
     </section>
   ) : null;
 

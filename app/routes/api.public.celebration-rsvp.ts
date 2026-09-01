@@ -4,6 +4,7 @@ import { createServerAdminClient } from "@/lib/supabase.server";
 import { getInviteGuestId } from "@/lib/celebration-session.server";
 import { assertSameOrigin, consumeRateLimit, noStoreHeaders, readJsonBody } from "@/lib/security.server";
 import { celebrationIsPast, getCelebrationConfig } from "@/services/celebration.server";
+import { guestLimitText } from "@/lib/guest-rsvp";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ error: "Método não permitido." }, { status: 405 });
@@ -30,12 +31,15 @@ export async function action({ request }: Route.ActionArgs) {
     if (guestError || !guest) return Response.json({ error: "Não foi possível validar sua identificação." }, { status: 403, headers: noStoreHeaders() });
 
     const response = parsed.data.generalResponse;
-    const adultLimit = guest.source === "public_rsvp" ? 6 : Math.max(0, Number(guest.adults_count || 0));
-    const childLimit = guest.source === "public_rsvp" ? 6 : Math.max(0, Number(guest.children_count || 0));
+    const adultLimit = guest.source === "public_rsvp" ? config.publicRsvpAdultLimit : Math.max(0, Number(guest.adults_count || 0));
+    const childLimit = guest.source === "public_rsvp" ? config.publicRsvpChildLimit : Math.max(0, Number(guest.children_count || 0));
     const adults = response.status === "recusado" ? 0 : response.confirmedAdults;
     const children = response.status === "recusado" ? 0 : response.confirmedChildren;
-    if (adults > adultLimit || children > childLimit || (response.status === "confirmado" && adults < 1)) {
-      return Response.json({ error: "A quantidade ultrapassa o limite permitido." }, { status: 400, headers: noStoreHeaders() });
+    if (response.status === "confirmado" && adults < 1) {
+      return Response.json({ error: "A confirmação precisa incluir pelo menos um adulto." }, { status: 400, headers: noStoreHeaders() });
+    }
+    if (adults > adultLimit || children > childLimit) {
+      return Response.json({ error: `Sua resposta permite até ${guestLimitText(adultLimit, childLimit)}.` }, { status: 400, headers: noStoreHeaders() });
     }
 
     const message = response.message || null;
@@ -81,8 +85,11 @@ export async function action({ request }: Route.ActionArgs) {
     const row = allowedByEvent.get(response.eventId)!;
     const adults = response.status === "recusado" ? 0 : response.confirmedAdults;
     const children = response.status === "recusado" ? 0 : response.confirmedChildren;
+    if (response.status === "confirmado" && adults < 1) {
+      return Response.json({ error: "A confirmação precisa incluir pelo menos um adulto." }, { status: 400, headers: noStoreHeaders() });
+    }
     if (adults > Number(row.adult_limit) || children > Number(row.child_limit)) {
-      return Response.json({ error: "A quantidade ultrapassa o limite do convite." }, { status: 400, headers: noStoreHeaders() });
+      return Response.json({ error: `Este convite permite até ${guestLimitText(Number(row.adult_limit), Number(row.child_limit))}.` }, { status: 400, headers: noStoreHeaders() });
     }
 
     const message = response.message || null;

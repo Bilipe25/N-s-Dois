@@ -51,8 +51,8 @@ export const EventRsvpRequestSchema = z.object({
   value.eventResponses.forEach((response, index) => {
     if (ids.has(response.eventId)) context.addIssue({ code: "custom", path: ["eventResponses", index, "eventId"], message: "Evento repetido." });
     ids.add(response.eventId);
-    if (response.status === "confirmado" && response.confirmedAdults + response.confirmedChildren < 1) {
-      context.addIssue({ code: "custom", path: ["eventResponses", index], message: "Informe ao menos uma pessoa." });
+    if (response.status === "confirmado" && response.confirmedAdults < 1) {
+      context.addIssue({ code: "custom", path: ["eventResponses", index, "confirmedAdults"], message: "Informe ao menos um adulto." });
     }
   });
 });
@@ -64,6 +64,10 @@ export const GeneralRsvpRequestSchema = z.object({
     confirmedChildren: z.number().int().min(0).max(20),
     message: z.string().trim().max(1000).optional().default(""),
   }),
+}).superRefine((value, context) => {
+  if (value.generalResponse.status === "confirmado" && value.generalResponse.confirmedAdults < 1) {
+    context.addIssue({ code: "custom", path: ["generalResponse", "confirmedAdults"], message: "Informe ao menos um adulto." });
+  }
 });
 
 export const RsvpRequestSchema = z.union([EventRsvpRequestSchema, GeneralRsvpRequestSchema]);
@@ -75,8 +79,8 @@ export const IdentifyGuestSchema = z.object({
 export const PublicRsvpRegistrationSchema = z.object({
   name: z.string().trim().min(3).max(120),
   status: z.enum(["confirmado", "recusado"]),
-  confirmedAdults: z.number().int().min(0).max(6),
-  confirmedChildren: z.number().int().min(0).max(6),
+  confirmedAdults: z.number().int().min(0).max(20),
+  confirmedChildren: z.number().int().min(0).max(20),
   message: z.string().trim().max(1000).optional().default(""),
   phone: z.string().trim().max(30).optional().default(""),
 }).superRefine((value, context) => {

@@ -49,7 +49,7 @@ export function CelebrationAdminControlPanel() {
       await send({
         intent: "update_page",
         title: text(form.get("title")), subtitle: text(form.get("subtitle")), story: text(form.get("story")), postEventMessage: text(form.get("postEventMessage")),
-        rsvpEnabled: bool(form, "rsvpEnabled"), giftsEnabled: bool(form, "giftsEnabled"), giftSuggestionsEnabled: bool(form, "giftSuggestionsEnabled"), reservationsEnabled: bool(form, "reservationsEnabled"), pixEnabled: bool(form, "pixEnabled"),
+        rsvpEnabled: bool(form, "rsvpEnabled"), publicRsvpAdultLimit: Number(form.get("publicRsvpAdultLimit")), publicRsvpChildLimit: Number(form.get("publicRsvpChildLimit")), giftsEnabled: bool(form, "giftsEnabled"), giftSuggestionsEnabled: bool(form, "giftSuggestionsEnabled"), reservationsEnabled: bool(form, "reservationsEnabled"), pixEnabled: bool(form, "pixEnabled"),
         pixKey: text(form.get("pixKey")), pixRecipientName: text(form.get("pixRecipientName")), pixCity: text(form.get("pixCity")), contactGabriel: text(form.get("contactGabriel")), contactRaabe: text(form.get("contactRaabe")),
       });
       toast.success("Página da celebração atualizada.");
@@ -113,6 +113,16 @@ export function CelebrationAdminControlPanel() {
               <Toggle name="reservationsEnabled" label="Reservas" checked={config.celebration_reservations_enabled === true} />
               <Toggle name="pixEnabled" label="PIX" checked={config.celebration_pix_enabled === true} />
             </div>
+            <section className="space-y-3 rounded-xl bg-stone-50 p-4">
+              <div>
+                <h3 className="font-serif text-lg font-semibold text-stone-900">RSVP de novos convidados</h3>
+                <p className="mt-1 text-sm leading-relaxed text-stone-600">Limites usados somente quando uma pessoa que não está na lista responde pelo site. Convites cadastrados mantêm seus próprios limites.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Máximo de adultos" name="publicRsvpAdultLimit" defaultValue={config.celebration_public_rsvp_adult_limit ?? 6} type="number" min={0} max={20} />
+                <Field label="Máximo de crianças" name="publicRsvpChildLimit" defaultValue={config.celebration_public_rsvp_child_limit ?? 6} type="number" min={0} max={20} />
+              </div>
+            </section>
             <section id="presentes" className="scroll-mt-24 space-y-3 rounded-xl bg-stone-50 p-4">
               <div>
                 <h3 className="font-serif text-lg font-semibold text-stone-900">Apresentação dos presentes</h3>
@@ -148,8 +158,8 @@ export function CelebrationAdminControlPanel() {
   );
 }
 
-function Field({ label, name, fieldId = name, defaultValue, type = "text", required = false }: { label: string; name: string; fieldId?: string; defaultValue: unknown; type?: string; required?: boolean }) {
-  return <div className="space-y-2"><Label htmlFor={fieldId}>{label}</Label><Input id={fieldId} name={name} type={type} defaultValue={String(defaultValue ?? "")} min={type === "number" ? 0 : undefined} max={type === "number" ? 100 : undefined} required={required} /></div>;
+function Field({ label, name, fieldId = name, defaultValue, type = "text", required = false, min, max }: { label: string; name: string; fieldId?: string; defaultValue: unknown; type?: string; required?: boolean; min?: number; max?: number }) {
+  return <div className="space-y-2"><Label htmlFor={fieldId}>{label}</Label><Input id={fieldId} name={name} type={type} defaultValue={String(defaultValue ?? "")} min={type === "number" ? min ?? 0 : undefined} max={type === "number" ? max ?? 100 : undefined} required={required} /></div>;
 }
 function TextArea({ label, name, defaultValue }: { label: string; name: string; defaultValue: unknown }) { return <div className="space-y-2"><Label htmlFor={name}>{label}</Label><textarea id={name} name={name} defaultValue={String(defaultValue ?? "")} rows={4} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" /></div>; }
 function Toggle({ name, label, description, checked }: { name: string; label: string; description?: string; checked: boolean }) { return <label className="flex min-h-12 items-start gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3"><input name={name} type="checkbox" defaultChecked={checked} className="mt-0.5 h-5 w-5 shrink-0 accent-rose-600" /><span><span className="block text-sm font-medium text-stone-900">{label}</span>{description && <span className="mt-1 block text-xs leading-relaxed text-stone-600">{description}</span>}</span></label>; }

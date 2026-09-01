@@ -5,6 +5,7 @@ import { assertSameOrigin, consumeRateLimit, noStoreHeaders, readJsonBody } from
 import { createServerAdminClient } from "@/lib/supabase.server";
 import { PublicRsvpRegistrationSchema } from "@/schemas/celebration";
 import { celebrationIsPast, getCelebrationConfig } from "@/services/celebration.server";
+import { guestLimitText } from "@/lib/guest-rsvp";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ error: "Método não permitido." }, { status: 405 });
@@ -19,6 +20,11 @@ export async function action({ request }: Route.ActionArgs) {
   if (!config.rsvpEnabled || await celebrationIsPast()) {
     return Response.json({ error: "As confirmações não estão disponíveis agora." }, { status: 403, headers: noStoreHeaders() });
   }
+  const adults = parsed.data.status === "recusado" ? 0 : parsed.data.confirmedAdults;
+  const children = parsed.data.status === "recusado" ? 0 : parsed.data.confirmedChildren;
+  if (adults > config.publicRsvpAdultLimit || children > config.publicRsvpChildLimit) {
+    return Response.json({ error: `Este cadastro permite até ${guestLimitText(config.publicRsvpAdultLimit, config.publicRsvpChildLimit)}.` }, { status: 400, headers: noStoreHeaders() });
+  }
 
   const supabase = createServerAdminClient();
   const key = normalizeGuestName(parsed.data.name);
@@ -30,8 +36,8 @@ export async function action({ request }: Route.ActionArgs) {
   const { data: guestId, error } = await supabase.rpc("create_public_rsvp_guest", {
     p_name: cleanGuestName(parsed.data.name),
     p_status: parsed.data.status,
-    p_adults: parsed.data.status === "recusado" ? 0 : parsed.data.confirmedAdults,
-    p_children: parsed.data.status === "recusado" ? 0 : parsed.data.confirmedChildren,
+    p_adults: adults,
+    p_children: children,
     p_message: parsed.data.message || null,
     p_phone: normalizeOptionalPhone(parsed.data.phone),
   });

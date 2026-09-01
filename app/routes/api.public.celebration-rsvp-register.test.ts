@@ -30,7 +30,7 @@ function client(existing: Array<{ id: string; name: string }> = [], rpcResult = 
 describe("cadastro espontâneo de RSVP", () => {
   beforeEach(() => {
     mocks.consumeRateLimit.mockResolvedValue(true);
-    mocks.getCelebrationConfig.mockResolvedValue({ rsvpEnabled: true });
+    mocks.getCelebrationConfig.mockResolvedValue({ rsvpEnabled: true, publicRsvpAdultLimit: 6, publicRsvpChildLimit: 6 });
     mocks.celebrationIsPast.mockResolvedValue(false);
     mocks.createInviteSession.mockResolvedValue("session=cookie");
   });
@@ -50,10 +50,18 @@ describe("cadastro espontâneo de RSVP", () => {
     expect(await response.json()).toEqual({ status: "already_exists" });
   });
 
-  it("rejeita limites públicos acima de seis antes de acessar o banco", async () => {
+  it("rejeita quantidades acima dos limites públicos configurados antes de acessar o banco", async () => {
     const db = client(); mocks.createServerAdminClient.mockReturnValue(db);
     const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 7, confirmedChildren: 0 }) } as never);
     expect(response.status).toBe(400);
     expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("aceita um limite público maior quando configurado pelo casal", async () => {
+    mocks.getCelebrationConfig.mockResolvedValue({ rsvpEnabled: true, publicRsvpAdultLimit: 8, publicRsvpChildLimit: 2 });
+    const db = client(); mocks.createServerAdminClient.mockReturnValue(db);
+    const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 7, confirmedChildren: 2 }) } as never);
+    expect(response.status).toBe(201);
+    expect(db.rpc).toHaveBeenCalledWith("create_public_rsvp_guest", expect.objectContaining({ p_adults: 7, p_children: 2 }));
   });
 });

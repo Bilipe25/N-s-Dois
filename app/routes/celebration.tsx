@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link, useLoaderData, useRevalidator, useSearchParams } from "react-router";
 import {
   CalendarDays, Check, ChevronUp, ExternalLink, Heart, Loader2,
-  MapPin, Minus, Navigation, PackageSearch, PartyPopper, Plus, QrCode,
+  MapPin, Navigation, PackageSearch, PartyPopper, QrCode,
   LogOut, Share2, Sparkles, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,9 @@ import { CelebrationGiftFilters } from "@/components/celebration/celebration-gif
 import { PublicGiftCard } from "@/components/celebration/public-gift-card";
 import { PixPanel } from "@/components/celebration/pix-panel";
 import { GuestIdentification, type IdentificationResult } from "@/components/celebration/guest-identification";
+import { GuestCountStepper } from "@/components/celebration/guest-count-stepper";
+import { derivePublicRsvpState, rsvpBlockCopy, rsvpCtaLabel, type PublicRsvpState } from "@/lib/public-rsvp-state";
+import { guestLimitText } from "@/lib/guest-rsvp";
 import { cancelGiftReservation, createGiftReservation } from "@/lib/gift-reservations";
 import { HttpRequestError, requestJson } from "@/lib/http.client";
 import { celebrationSocialImageMeta } from "@/lib/celebration-meta";
@@ -73,14 +76,6 @@ function useIsMobile() {
   return isMobile;
 }
 
-function Counter({ value, min, max, onChange, label }: { value: number; min: number; max: number; onChange: (value: number) => void; label: string }) {
-  return <div className="celebration-counter"><span>{label}</span><div className="celebration-counter-controls">
-    <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`Diminuir ${label.toLowerCase()}`}><Minus /></button>
-    <output aria-live="polite">{value}</output>
-    <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`Aumentar ${label.toLowerCase()}`}><Plus /></button>
-  </div></div>;
-}
-
 type ResponseDraft = InvitationEvent & { message: string };
 type ContactAction = { name: "Gabriel" | "Raabe"; href: string };
 
@@ -109,9 +104,10 @@ type GeneralResponse = NonNullable<Awaited<ReturnType<typeof loader>>["invitatio
 
 type SavedRsvpSummary = {
   title: string;
-  status: "confirmado" | "recusado";
+  status: "pendente" | "confirmado" | "recusado";
   adults: number;
   children: number;
+  message?: string | null;
 };
 
 function peopleSummary(adults: number, children: number) {
@@ -120,7 +116,14 @@ function peopleSummary(adults: number, children: number) {
   return children > 0 ? `${adultLabel} e ${childLabel}` : adultLabel;
 }
 
-function RsvpSuccess({ summaries, registered, onViewDetails, onEdit }: { summaries: SavedRsvpSummary[]; registered: boolean; onViewDetails: () => void; onEdit: () => void }) {
+function RsvpSummaryList({ summaries }: { summaries: SavedRsvpSummary[] }) {
+  return <div className="w-full space-y-2" aria-label="Resumo da resposta">{summaries.map((summary) => <div key={summary.title} className="rounded-xl bg-stone-50 px-4 py-3 text-sm">
+    <div className="flex items-start justify-between gap-4"><span className="font-medium text-stone-800">{summary.title}</span><span className="text-right text-stone-600">{summary.status === "recusado" ? "Não poderei ir" : summary.status === "pendente" ? "Resposta pendente" : peopleSummary(summary.adults, summary.children)}</span></div>
+    {summary.message && <p className="mt-2 border-t border-stone-200 pt-2 text-left text-xs leading-relaxed text-stone-600"><span className="font-medium text-stone-700">Mensagem privada:</span> {summary.message}</p>}
+  </div>)}</div>;
+}
+
+function RsvpSuccess({ summaries, registered, onViewDetails, onEdit, canEdit }: { summaries: SavedRsvpSummary[]; registered: boolean; onViewDetails: () => void; onEdit: () => void; canEdit: boolean }) {
   const allDeclined = summaries.length > 0 && summaries.every((summary) => summary.status === "recusado");
   const allConfirmed = summaries.length > 0 && summaries.every((summary) => summary.status === "confirmado");
   const title = allDeclined ? "Resposta registrada" : allConfirmed ? "Presença confirmada" : "Respostas salvas";
@@ -133,17 +136,29 @@ function RsvpSuccess({ summaries, registered, onViewDetails, onEdit }: { summari
   return <div className="celebration-rsvp-success-state" role="status" aria-live="polite">
     <div className="celebration-rsvp-success-icon" aria-hidden="true"><Check /></div>
     <div className="text-center"><h3 className="font-serif text-2xl font-semibold text-stone-800">{title}</h3><p className="mt-2 text-sm leading-relaxed text-stone-600">{description}</p></div>
-    <div className="w-full space-y-2" aria-label="Resumo da resposta">{summaries.map((summary) => <div key={summary.title} className="flex items-start justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm"><span className="font-medium text-stone-800">{summary.title}</span><span className="text-right text-stone-600">{summary.status === "recusado" ? "Não poderei ir" : peopleSummary(summary.adults, summary.children)}</span></div>)}</div>
-    <div className="grid w-full gap-2"><Button type="button" onClick={onViewDetails} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Ver detalhes da celebração</Button><Button type="button" variant="outline" onClick={onEdit} className="min-h-11 w-full rounded-full">Alterar resposta</Button></div>
+    <RsvpSummaryList summaries={summaries} />
+    <div className="grid w-full gap-2"><Button type="button" onClick={onViewDetails} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Ver detalhes da celebração</Button>{canEdit && <Button type="button" variant="outline" onClick={onEdit} className="min-h-11 w-full rounded-full">Alterar resposta</Button>}</div>
   </div>;
 }
 
-function RsvpContent({ events, responses, general, active, enabled, open, contacts, onRefresh, onViewDetails }: { events: CelebrationEvent[]; responses: InvitationEvent[]; general: GeneralResponse | null; active: boolean; enabled: boolean; open: boolean; contacts: ContactAction[]; onRefresh: () => void; onViewDetails: () => void }) {
+function RsvpReview({ state, summaries, canEdit, onEdit, onClose }: { state: PublicRsvpState; summaries: SavedRsvpSummary[]; canEdit: boolean; onEdit: () => void; onClose: () => void }) {
+  const allDeclined = state === "declined";
+  return <div className="space-y-5 py-2">
+    <div className="text-center"><div className="celebration-rsvp-success-icon mx-auto" aria-hidden="true"><Check /></div><h3 className="mt-3 font-serif text-2xl font-semibold text-stone-800">{allDeclined ? "Sua resposta foi recebida" : state === "mixed" ? "Suas respostas estão salvas" : "Sua presença está confirmada"}</h3><p className="mt-2 text-sm leading-relaxed text-stone-600">{allDeclined ? "Obrigado por nos avisar. Vamos sentir sua falta." : "Confira abaixo o que ficou registrado. Sua resposta continua privada."}</p></div>
+    <RsvpSummaryList summaries={summaries} />
+    <div className="grid gap-2">{canEdit && <Button type="button" onClick={onEdit} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Alterar resposta</Button>}<Button type="button" variant="outline" onClick={onClose} className="min-h-11 w-full rounded-full">Fechar</Button></div>
+  </div>;
+}
+
+function RsvpContent({ events, responses, general, active, enabled, open, contacts, publicAdultLimit, publicChildLimit, onRefresh, onViewDetails, onClose }: { events: CelebrationEvent[]; responses: InvitationEvent[]; general: GeneralResponse | null; active: boolean; enabled: boolean; open: boolean; contacts: ContactAction[]; publicAdultLimit: number; publicChildLimit: number; onRefresh: () => void; onViewDetails: () => void; onClose: () => void }) {
   const [drafts, setDrafts] = useState<ResponseDraft[]>(() => responses.map(responseDraft));
   const [generalDraft, setGeneralDraft] = useState(() => generalResponseDraft(general));
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
   const [registeredSummary, setRegisteredSummary] = useState<SavedRsvpSummary[] | null>(null);
+  const persistedState = derivePublicRsvpState({ active, responses, general });
+  const summaryFirst = ["confirmed", "declined", "mixed"].includes(persistedState) || (persistedState === "partial" && !enabled);
+  const [mode, setMode] = useState<"summary" | "edit">(() => summaryFirst ? "summary" : "edit");
   const submittingRef = useRef(false);
   const eventById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
   useEffect(() => {
@@ -155,9 +170,10 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
       setState("idle");
       setError("");
       setRegisteredSummary(null);
+      setMode(summaryFirst ? "summary" : "edit");
       submittingRef.current = false;
     }
-  }, [open]);
+  }, [open, summaryFirst]);
 
   const handleIdentified = (result: IdentificationResult) => {
     if (result.kind === "registered") {
@@ -168,11 +184,12 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
   };
 
   const savedSummaries: SavedRsvpSummary[] = registeredSummary || (drafts.length
-    ? drafts.map((draft) => ({ title: eventById.get(draft.event_id)?.title || "Celebração", status: draft.status === "recusado" ? "recusado" as const : "confirmado" as const, adults: draft.status === "recusado" ? 0 : draft.confirmed_adults, children: draft.status === "recusado" ? 0 : draft.confirmed_children }))
-    : generalDraft ? [{ title: "Celebração", status: generalDraft.status === "recusado" ? "recusado" as const : "confirmado" as const, adults: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_adults, children: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_children }] : []);
+    ? drafts.map((draft) => ({ title: eventById.get(draft.event_id)?.title || "Celebração", status: draft.status, adults: draft.status === "recusado" ? 0 : draft.confirmed_adults, children: draft.status === "recusado" ? 0 : draft.confirmed_children, message: draft.message }))
+    : generalDraft ? [{ title: "Celebração", status: generalDraft.status, adults: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_adults, children: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_children, message: generalDraft.message }] : []);
 
-  if (state === "saved" && savedSummaries.length) return <RsvpSuccess summaries={savedSummaries} registered={Boolean(registeredSummary)} onViewDetails={onViewDetails} onEdit={() => { setRegisteredSummary(null); setState("idle"); }} />;
-  if (!active) return <GuestIdentification onIdentified={handleIdentified} contacts={<ContactActions contacts={contacts} />} />;
+  if (state === "saved" && savedSummaries.length) return <RsvpSuccess summaries={savedSummaries} registered={Boolean(registeredSummary)} onViewDetails={onViewDetails} canEdit={enabled} onEdit={() => { setRegisteredSummary(null); setState("idle"); setMode("edit"); }} />;
+  if (!active) return <GuestIdentification onIdentified={handleIdentified} contacts={<ContactActions contacts={contacts} />} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />;
+  if (mode === "summary" && savedSummaries.length) return <RsvpReview state={persistedState} summaries={savedSummaries} canEdit={enabled} onEdit={() => setMode("edit")} onClose={onClose} />;
   if (!enabled) return <div className="celebration-panel-empty"><Heart /><p>As confirmações ainda não estão abertas.</p></div>;
   if (!responses.length && !generalDraft) return <div className="celebration-panel-empty"><Heart /><p>Não há uma confirmação disponível agora.</p></div>;
 
@@ -201,7 +218,7 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
       <button type="button" aria-pressed={generalDraft.status !== "recusado"} className={generalDraft.status !== "recusado" ? "is-active" : ""} onClick={() => { setGeneralDraft({ ...generalDraft, status: "confirmado", confirmed_adults: Math.max(1, generalDraft.confirmed_adults) }); setState("idle"); }}>Estarei presente</button>
       <button type="button" aria-pressed={generalDraft.status === "recusado"} className={generalDraft.status === "recusado" ? "is-active" : ""} onClick={() => { setGeneralDraft({ ...generalDraft, status: "recusado", confirmed_adults: 0, confirmed_children: 0 }); setState("idle"); }}>Não poderei ir</button>
     </div>
-    {generalDraft.status !== "recusado" && <div className="celebration-counters"><Counter label="Adultos" value={generalDraft.confirmed_adults} min={generalDraft.adult_limit > 0 ? 1 : 0} max={generalDraft.adult_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_adults: value })} />{generalDraft.child_limit > 0 && <Counter label="Crianças" value={generalDraft.confirmed_children} min={0} max={generalDraft.child_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_children: value })} />}</div>}
+    {generalDraft.status !== "recusado" && <><p className="text-xs leading-relaxed text-stone-500">{generalDraft.is_public_registration ? `Este cadastro permite até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.` : `Seu convite está preparado para até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.`}</p><div className="celebration-counters"><GuestCountStepper label="Adultos" value={generalDraft.confirmed_adults} min={1} max={generalDraft.adult_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_adults: value })} helperText="Inclua você nesta quantidade." />{generalDraft.child_limit > 0 && <GuestCountStepper label="Crianças" value={generalDraft.confirmed_children} min={0} max={generalDraft.child_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_children: value })} />}</div></>}
     <label className="celebration-message"><span>Mensagem para o casal <small>opcional e privada</small></span><textarea value={generalDraft.message} maxLength={1000} rows={3} onChange={(event) => setGeneralDraft({ ...generalDraft, message: event.target.value })} placeholder="Escreva somente se quiser." /></label>
   </fieldset>}{drafts.map((draft) => {
     const event = eventById.get(draft.event_id); if (!event) return null;
@@ -211,7 +228,7 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
         <button type="button" aria-pressed={accepted} className={accepted ? "is-active" : ""} onClick={() => update(draft.id, { status: "confirmado", confirmed_adults: Math.max(1, draft.confirmed_adults) })}>Estarei presente</button>
         <button type="button" aria-pressed={!accepted} className={!accepted ? "is-active" : ""} onClick={() => update(draft.id, { status: "recusado", confirmed_adults: 0, confirmed_children: 0 })}>Não poderei ir</button>
       </div>
-      {accepted && <div className="celebration-counters"><Counter label="Adultos" value={draft.confirmed_adults} min={draft.adult_limit > 0 ? 1 : 0} max={draft.adult_limit} onChange={(value) => update(draft.id, { confirmed_adults: value })} />{draft.child_limit > 0 && <Counter label="Crianças" value={draft.confirmed_children} min={0} max={draft.child_limit} onChange={(value) => update(draft.id, { confirmed_children: value })} />}</div>}
+      {accepted && <><p className="text-xs leading-relaxed text-stone-500">Seu convite para este evento está preparado para até {guestLimitText(draft.adult_limit, draft.child_limit)}.</p><div className="celebration-counters"><GuestCountStepper label="Adultos" value={draft.confirmed_adults} min={1} max={draft.adult_limit} onChange={(value) => update(draft.id, { confirmed_adults: value })} helperText="Inclua você nesta quantidade." />{draft.child_limit > 0 && <GuestCountStepper label="Crianças" value={draft.confirmed_children} min={0} max={draft.child_limit} onChange={(value) => update(draft.id, { confirmed_children: value })} />}</div></>}
       <label className="celebration-message"><span>Mensagem para o casal <small>opcional e privada</small></span><textarea value={draft.message} maxLength={1000} rows={3} onChange={(event) => update(draft.id, { message: event.target.value })} placeholder="Escreva somente se quiser." /></label>
     </fieldset>;
   })}
@@ -220,14 +237,15 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
   </div>;
 }
 
-function RsvpPanel({ open, onOpenChange, children, isMobile, active }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode; isMobile: boolean; active: boolean }) {
+function RsvpPanel({ open, onOpenChange, children, isMobile, active, state }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode; isMobile: boolean; active: boolean; state: PublicRsvpState }) {
   const description = active ? "Sua resposta é privada e pode ser alterada depois." : "Digite seu nome completo para começar.";
-  const heading = <><DialogTitle className="font-serif text-2xl text-stone-800">Confirmação de presença</DialogTitle><DialogDescription>{description}</DialogDescription></>;
-  if (isMobile) return <Drawer open={open} onOpenChange={onOpenChange}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">Confirmação de presença</DrawerTitle><DrawerDescription>{description}</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{children}</div></DrawerContent></Drawer>;
+  const title = ["confirmed", "declined", "mixed"].includes(state) ? "Minha resposta" : state === "partial" ? "Concluir confirmação" : "Confirmação de presença";
+  const heading = <><DialogTitle className="font-serif text-2xl text-stone-800">{title}</DialogTitle><DialogDescription>{description}</DialogDescription></>;
+  if (isMobile) return <Drawer open={open} onOpenChange={onOpenChange}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">{title}</DrawerTitle><DrawerDescription>{description}</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{children}</div></DrawerContent></Drawer>;
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl"><DialogHeader>{heading}</DialogHeader>{children}</DialogContent></Dialog>;
 }
 
-function GiftSection({ initialGifts, initialCursor, categories, stats, canReserve, reservationsAvailable, invitationActive, pixEnabled, giftSuggestionsEnabled, contacts, onIdentified }: { initialGifts: PublicGift[]; initialCursor: string | null; categories: string[]; stats: { total: number; reserved: number }; canReserve: boolean; reservationsAvailable: boolean; invitationActive: boolean; pixEnabled: boolean; giftSuggestionsEnabled: boolean; contacts: ContactAction[]; onIdentified: () => void | Promise<void> }) {
+function GiftSection({ initialGifts, initialCursor, categories, stats, canReserve, reservationsAvailable, invitationActive, pixEnabled, giftSuggestionsEnabled, publicAdultLimit, publicChildLimit, contacts, onIdentified }: { initialGifts: PublicGift[]; initialCursor: string | null; categories: string[]; stats: { total: number; reserved: number }; canReserve: boolean; reservationsAvailable: boolean; invitationActive: boolean; pixEnabled: boolean; giftSuggestionsEnabled: boolean; publicAdultLimit: number; publicChildLimit: number; contacts: ContactAction[]; onIdentified: () => void | Promise<void> }) {
   const [gifts, setGifts] = useState(initialGifts); const [cursor, setCursor] = useState(initialCursor);
   const [query, setQuery] = useState(""); const [category, setCategory] = useState<string | null>(null); const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [busy, setBusy] = useState<string | null>(null);
@@ -314,7 +332,7 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
     {reservationFeedback === "conflict" ? <div className="space-y-4 text-center" role="alert"><h3 className="font-serif text-xl font-semibold text-stone-800">Este presente acabou de ser escolhido</h3><p className="text-sm leading-relaxed text-stone-600">Outra pessoa concluiu a reserva primeiro. A lista já foi atualizada para você.</p><Button type="button" onClick={closeReservationPanel} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Ver outros presentes</Button></div>
       : reservationFeedback && selected ? <div className="space-y-4 text-center" role="status" aria-live="polite"><div className="celebration-rsvp-success-icon mx-auto" aria-hidden="true"><Check /></div><div><h3 className="font-serif text-xl font-semibold text-stone-800">{reservationFeedback === "reserved" ? "Presente escolhido com carinho" : "Reserva cancelada"}</h3><p className="mt-2 text-sm leading-relaxed text-stone-600">{reservationFeedback === "reserved" ? "Guardamos este item como a sua escolha. A reserva não confirma compra, pagamento nem presença." : "O presente voltou a ficar disponível para outra pessoa escolher. Isso não cancela nenhum PIX já realizado."}</p></div><Button type="button" onClick={closeReservationPanel} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Continuar vendo presentes</Button>{reservationFeedback === "reserved" && <Button type="button" variant="outline" onClick={() => void applyReservation()} disabled={busy === selected.id} className="min-h-11 w-full rounded-full">{busy ? "Atualizando…" : "Cancelar minha reserva"}</Button>}</div>
         : canReserve ? <><p className="text-sm leading-relaxed text-stone-600">{selected?.reservation_id ? "Você pode desfazer esta escolha. O presente voltará a aparecer como disponível. Isso não cancela nenhuma transferência." : "Vamos marcar este presente como a sua escolha para evitar itens repetidos. Reservar não confirma compra, pagamento ou presença."}</p><Button onClick={applyReservation} disabled={busy === selected?.id} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? "Atualizando…" : selected?.reservation_id ? "Cancelar minha reserva" : "Confirmar escolha"}</Button></>
-          : !invitationActive ? <GuestIdentification context="gift" onIdentified={() => onIdentified()} contacts={<ContactActions contacts={contacts} />} />
+          : !invitationActive ? <GuestIdentification context="gift" onIdentified={() => onIdentified()} contacts={<ContactActions contacts={contacts} />} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />
             : <p className="text-sm leading-relaxed text-stone-600">As reservas não estão disponíveis agora. A lista e o PIX continuam públicos quando habilitados.</p>}
   </div>;
 
@@ -326,7 +344,7 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
     {cursor && <div className="text-center"><Button variant="outline" className="min-h-11 rounded-full bg-white" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Carregando…" : "Ver mais presentes"}</Button></div>}
     <div ref={giftSectionEndRef} className="h-px" aria-hidden="true" />
     {isMobile ? <Drawer open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DrawerTitle><DrawerDescription>Uma escolha feita com carinho.</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{panel}</div></DrawerContent></Drawer> : <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DialogTitle><DialogDescription>Uma escolha feita com carinho.</DialogDescription></DialogHeader>{panel}</DialogContent></Dialog>}
-    <PixPanel open={pixOpen} onOpenChange={(open) => { setPixOpen(open); if (!open) setPixGift(null); }} gift={pixGift} isMobile={isMobile} invitationActive={invitationActive} reservationAvailable={reservationsAvailable} identificationContacts={<ContactActions contacts={contacts} />} onIdentified={onIdentified} onGiftChange={updateGift} />
+    <PixPanel open={pixOpen} onOpenChange={(open) => { setPixOpen(open); if (!open) setPixGift(null); }} gift={pixGift} isMobile={isMobile} invitationActive={invitationActive} reservationAvailable={reservationsAvailable} identificationContacts={<ContactActions contacts={contacts} />} onIdentified={onIdentified} onGiftChange={updateGift} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />
   </div>;
 }
 
@@ -343,6 +361,16 @@ export default function CelebrationPage() {
     data.config.contactRaabe ? { name: "Raabe" as const, href: `https://wa.me/${data.config.contactRaabe.replace(/\D/g, "")}` } : null,
   ].filter((value): value is ContactAction => Boolean(value));
   const guidance = data.events.filter((event) => event.dress_code || event.schedule_note);
+  const rsvpState = derivePublicRsvpState({ active: data.invitation.active, responses: data.invitation.responses, general: data.invitation.general });
+  const rsvpAvailable = data.config.rsvpEnabled && phase !== "past";
+  const hasSavedResponse = !["unidentified", "pending"].includes(rsvpState);
+  const canOpenRsvp = rsvpAvailable || hasSavedResponse;
+  const rsvpLabel = canOpenRsvp ? rsvpCtaLabel(rsvpState) : "Confirmações encerradas";
+  const rsvpCopy = rsvpBlockCopy(rsvpState, data.invitation.displayName);
+  const confirmedResponseCounts = (data.invitation.responses.length ? data.invitation.responses : data.invitation.general ? [data.invitation.general] : [])
+    .filter((response) => response.status === "confirmado")
+    .reduce((counts, response) => ({ adults: Math.max(counts.adults, response.confirmed_adults), children: Math.max(counts.children, response.confirmed_children) }), { adults: 0, children: 0 });
+  const confirmedPeopleText = confirmedResponseCounts.adults > 0 ? peopleSummary(confirmedResponseCounts.adults, confirmedResponseCounts.children) : null;
 
   useEffect(() => { document.documentElement.dataset.celebration = "active"; const onScroll = () => setShowScrollTop(window.scrollY > 500); window.addEventListener("scroll", onScroll, { passive: true }); return () => { delete document.documentElement.dataset.celebration; window.removeEventListener("scroll", onScroll); }; }, []);
   useEffect(() => { setHeroFailed(false); const image = heroImageRef.current; if (image?.complete && image.naturalWidth === 0) setHeroFailed(true); }, [data.config.heroUrl]);
@@ -382,7 +410,7 @@ export default function CelebrationPage() {
         <p className="max-w-2xl text-base leading-relaxed text-stone-100 drop-shadow sm:text-lg">{data.config.story || "Estamos construindo nosso lar com muito amor. Sua presença é o nosso maior presente."}</p>
         <div className="w-full max-w-2xl space-y-3 pt-2">
           {data.invitation.active && data.invitation.displayName && <div className="mx-auto flex max-w-full items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-sm"><Heart className="h-4 w-4 shrink-0 fill-rose-300 text-rose-300" /><span className="max-w-full break-words font-medium">Que bom ter você por aqui, {data.invitation.displayName}.</span></div>}
-          <Button onClick={() => setRsvpOpen(true)} className="min-h-14 w-full rounded-full bg-rose-500 px-8 text-base font-semibold text-white shadow-lg hover:-translate-y-0.5 hover:bg-rose-600"><Heart className="mr-2 h-5 w-5 fill-current" />Confirmar presença</Button>
+          <Button onClick={() => setRsvpOpen(true)} disabled={!canOpenRsvp} className="min-h-14 w-full rounded-full bg-rose-500 px-8 text-base font-semibold text-white shadow-lg hover:-translate-y-0.5 hover:bg-rose-600 disabled:bg-stone-500 disabled:text-white"><>{hasSavedResponse ? <Check className="mr-2 h-5 w-5" /> : <Heart className="mr-2 h-5 w-5 fill-current" />}{rsvpLabel}</></Button>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {data.config.pixEnabled && <Button variant="outline" onClick={() => setGeneralPixOpen(true)} className="min-h-12 rounded-full border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"><QrCode className="mr-1.5 h-4 w-4" />PIX</Button>}
             <Button variant="outline" onClick={() => scrollTo("locais")} className="min-h-12 rounded-full border-white/30 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"><MapPin className="mr-1.5 h-4 w-4" />Locais</Button>
@@ -406,9 +434,9 @@ export default function CelebrationPage() {
 
       {guidance.length > 0 && <section id="orientacoes" className="scroll-mt-24"><div className="mx-auto max-w-3xl rounded-2xl bg-white p-7 text-center shadow-sm"><h2 className="font-serif text-2xl text-stone-800">Detalhes preparados com carinho</h2><div className="mx-auto my-5 flex w-fit gap-4" aria-hidden="true"><span className="h-10 w-10 rounded-full bg-stone-900 ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full border border-stone-200 bg-white ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full bg-stone-400 ring-4 ring-stone-50" /><span className="h-10 w-10 rounded-full bg-[#d4c4b7] ring-4 ring-stone-50" /></div><div className="space-y-3 text-sm leading-relaxed text-stone-600">{guidance.map((event) => <div key={event.id}>{guidance.length > 1 && <h3 className="font-semibold text-stone-800">{event.title}</h3>}{event.dress_code && <p><strong>Orientação:</strong> {event.dress_code}</p>}{event.schedule_note && <p>{event.schedule_note}</p>}</div>)}</div></div></section>}
 
-      <section id="rsvp" className="rounded-3xl bg-rose-50 px-5 py-7 text-center sm:px-10 sm:py-10"><Heart className="mx-auto h-7 w-7 fill-rose-400 text-rose-400" /><h2 className="celebration-section-heading mt-3 font-serif text-stone-800">Sua presença é o melhor presente</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-stone-600">{data.invitation.active && data.invitation.displayName ? `Que bom ter você por aqui, ${data.invitation.displayName}. Conte pra gente se você vem celebrar conosco.` : "Conte pra gente seu nome completo para responder de forma privada."}</p><Button onClick={() => setRsvpOpen(true)} className="mt-5 min-h-12 rounded-full bg-rose-500 px-8 text-white hover:bg-rose-600 sm:mt-6">Confirmar presença</Button>{data.invitation.active && <Form method="post" action="/celebracao/sair" className="mt-4"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-stone-600 underline decoration-stone-300 underline-offset-4 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"><LogOut className="h-4 w-4" />Não é você? Trocar nome</button></Form>}</section>
+      <section id="rsvp" className="rounded-3xl bg-rose-50 px-5 py-7 text-center sm:px-10 sm:py-10"><Heart className="mx-auto h-7 w-7 fill-rose-400 text-rose-400" /><h2 className="celebration-section-heading mt-3 font-serif text-rose-950">{rsvpCopy.title}</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-rose-900/75">{rsvpCopy.description}</p>{confirmedPeopleText && <p className="mt-2 text-sm font-semibold text-rose-950">{confirmedPeopleText}</p>}<Button onClick={() => setRsvpOpen(true)} disabled={!canOpenRsvp} className="mt-5 min-h-12 rounded-full bg-rose-500 px-8 text-white hover:bg-rose-600 disabled:bg-stone-400 sm:mt-6">{canOpenRsvp ? rsvpCopy.action : "Confirmações encerradas"}</Button>{data.invitation.active && <Form method="post" action="/celebracao/sair" className="mt-4"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-rose-900/75 underline decoration-rose-300 underline-offset-4 hover:text-rose-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"><LogOut className="h-4 w-4" />Não é você? Trocar nome</button></Form>}</section>
 
-      {data.config.giftsEnabled && <section id="lista-presentes" className="scroll-mt-24 space-y-7 sm:space-y-8"><div className="text-center"><h2 className="celebration-section-heading font-serif text-stone-800">Lista de presentes</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-stone-600 sm:text-base">Escolha um item se quiser nos ajudar a construir esse novo lar.</p></div><GiftSection initialGifts={data.gifts} initialCursor={data.giftCursor} categories={data.categories} stats={data.giftStats} canReserve={data.invitation.active && data.config.reservationsEnabled && phase !== "past"} reservationsAvailable={data.config.reservationsEnabled && phase !== "past"} invitationActive={data.invitation.active} pixEnabled={data.config.pixEnabled} giftSuggestionsEnabled={data.config.giftSuggestionsEnabled} contacts={contactActions} onIdentified={refreshIdentity} /></section>}
+      {data.config.giftsEnabled && <section id="lista-presentes" className="scroll-mt-24 space-y-7 sm:space-y-8"><div className="text-center"><h2 className="celebration-section-heading font-serif text-stone-800">Lista de presentes</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-stone-600 sm:text-base">Escolha um item se quiser nos ajudar a construir esse novo lar.</p></div><GiftSection initialGifts={data.gifts} initialCursor={data.giftCursor} categories={data.categories} stats={data.giftStats} canReserve={data.invitation.active && data.config.reservationsEnabled && phase !== "past"} reservationsAvailable={data.config.reservationsEnabled && phase !== "past"} invitationActive={data.invitation.active} pixEnabled={data.config.pixEnabled} giftSuggestionsEnabled={data.config.giftSuggestionsEnabled} publicAdultLimit={data.config.publicRsvpAdultLimit} publicChildLimit={data.config.publicRsvpChildLimit} contacts={contactActions} onIdentified={refreshIdentity} /></section>}
 
       {data.config.pixEnabled && <section className="rounded-3xl bg-emerald-50 px-6 py-8 text-center sm:py-10"><QrCode className="mx-auto h-8 w-8 text-emerald-700" /><h2 className="celebration-section-heading mt-3 font-serif text-stone-800">Uma contribuição livre</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-stone-600">Se fizer sentido para você, gere um PIX seguro. Ele é opcional, não escolhe nenhum presente e é independente do RSVP.</p><Button onClick={() => setGeneralPixOpen(true)} className="mt-5 min-h-12 rounded-full bg-emerald-700 px-8 text-white hover:bg-emerald-800 sm:mt-6">Abrir PIX livre</Button></section>}
 
@@ -416,7 +444,7 @@ export default function CelebrationPage() {
     </div>
 
     <footer className="celebration-footer border-t border-stone-200 pt-8 text-center text-xs text-stone-500"><p>Feito com <Heart className="mx-1 inline h-3.5 w-3.5 fill-rose-400 text-rose-400" /> por Nós Dois</p></footer>
-    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile} active={data.invitation.active}><RsvpContent events={data.events} responses={data.invitation.responses} general={data.invitation.general} active={data.invitation.active} enabled={data.config.rsvpEnabled && phase !== "past"} open={rsvpOpen} contacts={contactActions} onRefresh={refreshIdentity} onViewDetails={closeRsvpAndViewDetails} /></RsvpPanel>
+    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile} active={data.invitation.active} state={rsvpState}><RsvpContent events={data.events} responses={data.invitation.responses} general={data.invitation.general} active={data.invitation.active} enabled={rsvpAvailable} open={rsvpOpen} contacts={contactActions} publicAdultLimit={data.config.publicRsvpAdultLimit} publicChildLimit={data.config.publicRsvpChildLimit} onRefresh={refreshIdentity} onViewDetails={closeRsvpAndViewDetails} onClose={() => setRsvpOpen(false)} /></RsvpPanel>
     <PixPanel open={generalPixOpen} onOpenChange={setGeneralPixOpen} gift={null} isMobile={isMobile} />
   </main>;
 }

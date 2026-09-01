@@ -48,3 +48,9 @@ export function confirmedCounts(guest: Pick<Guest, "rsvp_status" | "rsvp_adults"
     children: guest.rsvp_children ?? guest.children_count ?? 0,
   };
 }
+
+export function guestLimitText(adults: number, children: number) {
+  const adultLabel = adults === 1 ? "adulto" : "adultos";
+  const childLabel = children === 1 ? "criança" : "crianças";
+  return `${adults} ${adultLabel} e ${children} ${childLabel}`;
+}

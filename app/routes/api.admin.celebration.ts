@@ -12,6 +12,8 @@ const PageSchema = z.object({
   story: nullableText,
   postEventMessage: nullableText,
   rsvpEnabled: z.boolean(),
+  publicRsvpAdultLimit: z.number().int().min(0).max(20),
+  publicRsvpChildLimit: z.number().int().min(0).max(20),
   giftsEnabled: z.boolean(),
   giftSuggestionsEnabled: z.boolean(),
   reservationsEnabled: z.boolean(),
@@ -43,7 +45,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserSession(request);
   const supabase = createServerAdminClient();
   const [config, events] = await Promise.all([
-    supabase.from("app_config").select("id,celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe").limit(1).maybeSingle(),
+    supabase.from("app_config").select("id,celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_public_rsvp_adult_limit,celebration_public_rsvp_child_limit,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe").limit(1).maybeSingle(),
     supabase.from("celebration_events").select("*").order("sort_order").order("starts_at"),
   ]);
   if (config.error || events.error) return Response.json({ error: "Administração da celebração indisponível até a migração aditiva." }, { status: 503, headers: noStoreHeaders() });
@@ -66,6 +68,8 @@ export async function action({ request }: ActionFunctionArgs) {
       celebration_story: payload.story,
       celebration_post_event_message: payload.postEventMessage,
       celebration_rsvp_enabled: payload.rsvpEnabled,
+      celebration_public_rsvp_adult_limit: payload.publicRsvpAdultLimit,
+      celebration_public_rsvp_child_limit: payload.publicRsvpChildLimit,
       celebration_gifts_enabled: payload.giftsEnabled,
       bridal_shower_show_links: payload.giftSuggestionsEnabled,
       celebration_reservations_enabled: payload.reservationsEnabled,

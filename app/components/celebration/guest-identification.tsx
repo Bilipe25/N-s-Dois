@@ -3,6 +3,8 @@ import { Check, Loader2, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HttpRequestError, requestJson } from "@/lib/http.client";
+import { GuestCountStepper } from "@/components/celebration/guest-count-stepper";
+import { guestLimitText } from "@/lib/guest-rsvp";
 
 export type IdentificationResult =
   | { kind: "identified" }
@@ -19,12 +21,14 @@ type Props = {
   context?: "rsvp" | "gift";
   onIdentified: (result: IdentificationResult) => void | Promise<void>;
   contacts?: React.ReactNode;
+  publicAdultLimit?: number;
+  publicChildLimit?: number;
 };
 
-export function GuestIdentification({ context = "rsvp", onIdentified, contacts }: Props) {
+export function GuestIdentification({ context = "rsvp", onIdentified, contacts, publicAdultLimit = 6, publicChildLimit = 6 }: Props) {
   const [name, setName] = useState("");
   const [step, setStep] = useState<"identify" | "not_found" | "register" | "ambiguous">("identify");
-  const [status, setStatus] = useState<"confirmado" | "recusado">("confirmado");
+  const [status, setStatus] = useState<"confirmado" | "recusado">(publicAdultLimit > 0 ? "confirmado" : "recusado");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [message, setMessage] = useState("");
@@ -87,12 +91,12 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
   if (step === "register") return <form onSubmit={register} className="space-y-4 py-2">
     <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-900"><strong className="block text-rose-950">{name}</strong>Seu cadastro ficará sinalizado para revisão do casal.</div>
     <fieldset className="space-y-2"><legend className="text-sm font-medium text-stone-800">Você estará presente?</legend><div className="grid grid-cols-2 gap-2">
-      <Button type="button" variant={status === "confirmado" ? "default" : "outline"} className={status === "confirmado" ? "min-h-11 bg-rose-500 hover:bg-rose-600" : "min-h-11"} onClick={() => setStatus("confirmado")}>Sim</Button>
+      <Button type="button" disabled={publicAdultLimit < 1} variant={status === "confirmado" ? "default" : "outline"} className={status === "confirmado" ? "min-h-11 bg-rose-500 hover:bg-rose-600" : "min-h-11"} onClick={() => setStatus("confirmado")}>Sim</Button>
       <Button type="button" variant={status === "recusado" ? "default" : "outline"} className={status === "recusado" ? "min-h-11 bg-stone-800 hover:bg-stone-900" : "min-h-11"} onClick={() => setStatus("recusado")}>Não poderei ir</Button>
     </div></fieldset>
-    {status === "confirmado" && <><p className="text-left text-xs leading-relaxed text-stone-500">Para este cadastro inicial, você pode informar até 6 adultos e 6 crianças. O casal poderá revisar os dados depois.</p><div className="grid grid-cols-2 gap-3">
-      <label className="space-y-1 text-sm font-medium text-stone-700">Adultos<Input type="number" min={1} max={6} value={adults} onChange={(event) => setAdults(Number(event.target.value))} className="h-11 text-base" /></label>
-      <label className="space-y-1 text-sm font-medium text-stone-700">Crianças<Input type="number" min={0} max={6} value={children} onChange={(event) => setChildren(Number(event.target.value))} className="h-11 text-base" /></label>
+    {status === "confirmado" && <><p className="text-left text-xs leading-relaxed text-stone-500">Você pode informar até {guestLimitText(publicAdultLimit, publicChildLimit)}. O casal poderá revisar os dados depois.</p><div className="celebration-counters">
+      <GuestCountStepper label="Adultos" value={Math.min(adults, publicAdultLimit)} min={1} max={publicAdultLimit} onChange={setAdults} helperText="Inclua você nesta quantidade." />
+      {publicChildLimit > 0 && <GuestCountStepper label="Crianças" value={Math.min(children, publicChildLimit)} min={0} max={publicChildLimit} onChange={setChildren} />}
     </div></>}
     <label className="block space-y-1 text-sm font-medium text-stone-700">WhatsApp <span className="font-normal text-stone-500">opcional e privado</span><Input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={30} inputMode="tel" className="h-11 text-base" /></label>
     <label className="block space-y-1 text-sm font-medium text-stone-700">Mensagem <span className="font-normal text-stone-500">opcional e privada</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={1000} rows={3} className="w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500" /></label>
