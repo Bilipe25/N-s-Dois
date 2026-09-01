@@ -53,12 +53,16 @@ export function useNotifications(initialData?: Notification[]) {
         queryKey: ["notifications"],
         queryFn: fetchNotifications,
         initialData,
+        refetchInterval: 25_000,
+        refetchIntervalInBackground: false,
+        refetchOnWindowFocus: true,
+        staleTime: 10_000,
     });
 }
 
 export function useUnreadNotificationsCount(initialData?: Notification[]) {
     const { data: notifications } = useNotifications(initialData);
-    return notifications?.filter((n) => !n.read).length || 0;
+    return notifications ? notifications.filter((n) => !n.read).length : undefined;
 }
 
 export function useMarkNotificationRead() {

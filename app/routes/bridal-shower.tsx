@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import QRCode from "react-qr-code";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
     useCreateGift,
     useUpdateGift,
     useDeleteGift,
-    useToggleGiftStatus,
+    useCancelGiftReservation,
     useBulkUpdateCategory,
     useImportGifts
 } from "@/hooks/useBridalShower";
@@ -45,7 +45,7 @@ export default function BridalShower() {
     const createGift = useCreateGift();
     const updateGift = useUpdateGift();
     const deleteGift = useDeleteGift();
-    const toggleGiftStatus = useToggleGiftStatus();
+    const cancelGiftReservation = useCancelGiftReservation();
     const bulkUpdateCategory = useBulkUpdateCategory();
     const importGifts = useImportGifts();
 
@@ -63,11 +63,33 @@ export default function BridalShower() {
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
     const [selectedGiftDetails, setSelectedGiftDetails] = useState<Gift | null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Import Text State
     const [importGiftsText, setImportGiftsText] = useState("");
 
     const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/celebracao` : "";
+
+    useEffect(() => {
+        const giftId = searchParams.get("gift");
+        if (!giftId || gifts.length === 0) return;
+        const gift = gifts.find((item) => item.id === giftId);
+        if (gift) setSelectedGiftDetails(gift);
+    }, [gifts, searchParams]);
+
+    const openGiftDetails = (gift: Gift) => {
+        setSelectedGiftDetails(gift);
+        const next = new URLSearchParams(searchParams);
+        next.set("gift", gift.id);
+        setSearchParams(next, { replace: true });
+    };
+
+    const closeGiftDetails = () => {
+        setSelectedGiftDetails(null);
+        const next = new URLSearchParams(searchParams);
+        next.delete("gift");
+        setSearchParams(next, { replace: true });
+    };
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(publicUrl);
@@ -78,7 +100,8 @@ export default function BridalShower() {
         const matchesSearch = g.item_name.toLowerCase().includes(giftSearch.toLowerCase()) ||
             (g.suggested_store && g.suggested_store.toLowerCase().includes(giftSearch.toLowerCase()));
         const matchesCategory = giftCategory ? g.category === giftCategory : true;
-        const matchesStatus = giftStatus === "all" ? true : g.status === giftStatus;
+        const isReserved = Boolean(g.active_reservation);
+        const matchesStatus = giftStatus === "all" ? true : giftStatus === "comprado" ? isReserved : !isReserved;
         return matchesSearch && matchesCategory && matchesStatus;
     });
 
@@ -126,9 +149,9 @@ export default function BridalShower() {
             `"${g.item_name.replace(/"/g, '""')}"`,
             `"${g.category || ''}"`,
             `"${g.price_range || ''}"`,
-            `"${g.status}"`,
-            `"${g.reserved_by || ''}"`,
-            `"${g.reserved_at ? new Date(g.reserved_at).toLocaleDateString('pt-BR') : ''}"`
+            `"${g.active_reservation ? "Reservado" : "Disponível"}"`,
+            `"${(g.active_reservation?.guest_name || '').replace(/"/g, '""')}"`,
+            `"${g.active_reservation?.reserved_at ? new Date(g.active_reservation.reserved_at).toLocaleString('pt-BR', { timeZone: 'America/Fortaleza' }) : ''}"`
         ]);
         
         const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
@@ -227,11 +250,13 @@ export default function BridalShower() {
                                 {gifts.length === 0 ? "Lista vazia." : "Nenhum presente encontrado."}
                             </p>
                         ) : (
-                            filteredGifts.map((gift) => (
+                            filteredGifts.map((gift) => {
+                                const isReserved = Boolean(gift.active_reservation);
+                                return (
                                 <div
                                     key={gift.id}
-                                    className={`p-3 border rounded-lg flex gap-3 items-start cursor-pointer transition-all hover:shadow-md active:scale-[0.99] ${gift.status === 'comprado' ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm hover:border-stone-300'}`}
-                                    onClick={() => setSelectedGiftDetails(gift)}
+                                    className={`p-3 border rounded-lg flex gap-3 items-start cursor-pointer transition-all hover:shadow-md active:scale-[0.99] ${isReserved ? 'bg-green-50/50 border-green-200' : 'bg-white shadow-sm hover:border-stone-300'}`}
+                                    onClick={() => openGiftDetails(gift)}
                                 >
                                     <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                                         <Checkbox
@@ -242,18 +267,23 @@ export default function BridalShower() {
                                     <div className="flex-1">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className={`font-medium ${gift.status === 'comprado' ? 'text-green-800' : ''}`}>
+                                                <p className={`font-medium ${isReserved ? 'text-green-800' : ''}`}>
                                                     {gift.item_name}
                                                 </p>
                                                 <div className="flex flex-wrap gap-2 mt-1">
-                                                    {gift.category && <Badge variant="secondary" className="text-[10px]">{gift.category}</Badge>}
-                                                    {gift.suggested_store && <Badge variant="outline" className="text-[10px]">{gift.suggested_store}</Badge>}
-                                                    {gift.price_range && <Badge variant="outline" className="text-[10px]">{gift.price_range}</Badge>}
+                                                    {gift.category && <Badge variant="secondary" className="text-xs">{gift.category}</Badge>}
+                                                    {gift.suggested_store && <Badge variant="outline" className="text-xs">{gift.suggested_store}</Badge>}
+                                                    {gift.price_range && <Badge variant="outline" className="text-xs">{gift.price_range}</Badge>}
                                                 </div>
-                                                {gift.reserved_by && (
-                                                    <p className="text-xs text-green-600 mt-1 font-medium flex items-center gap-1">
-                                                        <Check className="h-3 w-3" /> Reservado por {gift.reserved_by}
-                                                    </p>
+                                                {gift.active_reservation && (
+                                                    <div className="mt-1 space-y-0.5 text-xs text-green-700">
+                                                        <p className="font-medium flex items-center gap-1">
+                                                            <Check className="h-3 w-3" /> Reservado por {gift.active_reservation.guest_name}
+                                                        </p>
+                                                        <time dateTime={gift.active_reservation.reserved_at} className="block text-stone-500">
+                                                            {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Fortaleza" }).format(new Date(gift.active_reservation.reserved_at))}
+                                                        </time>
+                                                    </div>
                                                 )}
                                             </div>
 
@@ -270,16 +300,16 @@ export default function BridalShower() {
                                                             <Edit className="mr-2 h-4 w-4" /> Editar
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <button
-                                                            onClick={() => toggleGiftStatus.mutate({ id: gift.id, currentStatus: gift.status })}
-                                                            className="w-full flex items-center px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                                        {gift.active_reservation && <button
+                                                            onClick={() => {
+                                                                if (confirm(`Cancelar a reserva de ${gift.item_name}? O presente voltará a ficar disponível.`)) {
+                                                                    cancelGiftReservation.mutate(gift.active_reservation!.id);
+                                                                }
+                                                            }}
+                                                            className="w-full flex items-center px-2 py-1.5 text-sm text-amber-700 outline-none hover:bg-amber-50 cursor-pointer"
                                                         >
-                                                            {gift.status === 'comprado' ? (
-                                                                <><X className="mr-2 h-4 w-4" /> Marcar Disponível</>
-                                                            ) : (
-                                                                <><Check className="mr-2 h-4 w-4" /> Marcar Comprado</>
-                                                            )}
-                                                        </button>
+                                                            <X className="mr-2 h-4 w-4" /> Cancelar reserva
+                                                        </button>}
                                                         <button
                                                             onClick={() => deleteGift.mutate(gift.id)}
                                                             className="w-full flex items-center px-2 py-1.5 text-sm text-red-600 outline-none hover:bg-red-50 cursor-pointer"
@@ -297,7 +327,8 @@ export default function BridalShower() {
                                         )}
                                     </div>
                                 </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
 
@@ -337,7 +368,7 @@ export default function BridalShower() {
             {/* Modals & Drawers */}
             <AdminAddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
             <AdminEditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
-            <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={() => setSelectedGiftDetails(null)} onEdit={handleEditGift} toggleStatus={toggleGiftStatus} />
+            <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={closeGiftDetails} onEdit={handleEditGift} cancelReservation={cancelGiftReservation} />
 
             {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>

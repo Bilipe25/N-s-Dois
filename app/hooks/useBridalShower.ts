@@ -25,7 +25,10 @@ export const useBridalData = () => {
             const response = await fetch("/api/admin/celebracao/gifts");
             if (!response.ok) throw new Error("Erro ao carregar dados");
             return await response.json() as { gifts: Gift[], guests: Guest[], config: Config };
-        }
+        },
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
+        refetchOnWindowFocus: true,
     });
 };
 
@@ -155,22 +158,24 @@ export const useDeleteGift = () => {
     });
 };
 
-export const useToggleGiftStatus = () => {
+export const useCancelGiftReservation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, currentStatus }: { id: string, currentStatus: string }) => {
-            const response = await fetch("/api/admin/celebracao/gifts?intent=toggle_gift_status", {
+        mutationFn: async (reservationId: string) => {
+            const response = await fetch("/api/admin/celebracao/gifts?intent=cancel_gift_reservation", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, currentStatus })
+                body: JSON.stringify({ reservationId })
             });
-            if (!response.ok) throw new Error("Erro ao alterar status");
-            return await response.json();
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.error || "Erro ao cancelar reserva");
+            return body;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["bridal_data"] });
+            toast.success("Reserva cancelada. O presente voltou a ficar disponível.");
         },
-        onError: (error: any) => toast.error(error.message)
+        onError: (error: Error) => toast.error(error.message)
     });
 };
 

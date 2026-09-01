@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(40);
 
 select ok(
   (select public from storage.buckets where id = 'celebration-media'),
@@ -34,6 +34,7 @@ select throws_ok('select * from public.security_rate_limits', '42501', null, 'an
 select throws_ok('select * from public.message_wall', '42501', null, 'anon cannot read legacy public messages');
 select throws_ok('select * from public.pix_confirmations', '42501', null, 'anon cannot read legacy PIX confirmations');
 select ok(not has_function_privilege('anon', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'anon cannot rotate invite tokens');
+select ok(not has_function_privilege('anon', 'public.create_public_rsvp_guest(text,text,integer,integer,text,text)', 'execute'), 'anon cannot create public RSVP guests directly');
 
 reset role;
 set local role authenticated;
@@ -57,9 +58,11 @@ select throws_ok('select * from public.security_rate_limits', '42501', null, 'au
 select throws_ok('select * from public.message_wall', '42501', null, 'authenticated cannot read legacy public messages');
 select throws_ok('select * from public.pix_confirmations', '42501', null, 'authenticated cannot read legacy PIX confirmations');
 select ok(not has_function_privilege('authenticated', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'authenticated cannot rotate invite tokens');
+select ok(not has_function_privilege('authenticated', 'public.create_public_rsvp_guest(text,text,integer,integer,text,text)', 'execute'), 'authenticated cannot create public RSVP guests directly');
 
 reset role;
 select ok(has_function_privilege('service_role', 'public.rotate_guest_invite_token(uuid,text)', 'execute'), 'service role can rotate invite tokens');
+select ok(has_function_privilege('service_role', 'public.create_public_rsvp_guest(text,text,integer,integer,text,text)', 'execute'), 'service role can create public RSVP guests');
 
 insert into public.guests (id, name, group_name, adults_count, children_count, rsvp_status)
 values ('00000000-0000-4000-8000-000000000001', 'Convite de teste', 'Outros', 1, 0, 'pendente');

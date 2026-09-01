@@ -1,17 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Check, X, Gift as GiftIcon, Tag, DollarSign, Store, User, Clock, ExternalLink } from "lucide-react";
+import { Edit, X, Gift as GiftIcon, Tag, DollarSign, Store, User, Clock, ExternalLink, History } from "lucide-react";
 import type { Gift } from "@/schemas/bridal-shower";
 
 interface AdminGiftDetailsDrawerProps {
     gift: Gift | null;
     onClose: () => void;
     onEdit: (gift: Gift) => void;
-    toggleStatus: any;
+    cancelReservation: { mutate: (reservationId: string) => void; isPending: boolean };
 }
 
-export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: AdminGiftDetailsDrawerProps) {
+export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, cancelReservation }: AdminGiftDetailsDrawerProps) {
+    const reservation = gift?.active_reservation || null;
     return (
         <Drawer open={!!gift} onOpenChange={(open) => !open && onClose()}>
             <DrawerContent className="max-h-[90vh]">
@@ -20,16 +21,16 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: 
                         <DrawerHeader className="text-left border-b pb-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-3 rounded-xl ${gift.status === 'comprado' ? 'bg-green-100' : 'bg-stone-100'}`}>
-                                        <GiftIcon className={`h-6 w-6 ${gift.status === 'comprado' ? 'text-green-600' : 'text-stone-600'}`} />
+                                    <div className={`p-3 rounded-xl ${reservation ? 'bg-green-100' : 'bg-stone-100'}`}>
+                                        <GiftIcon className={`h-6 w-6 ${reservation ? 'text-green-600' : 'text-stone-600'}`} />
                                     </div>
                                     <div>
                                         <DrawerTitle className="text-xl">{gift.item_name}</DrawerTitle>
                                         <Badge
-                                            variant={gift.status === 'comprado' ? 'default' : 'secondary'}
-                                            className={gift.status === 'comprado' ? 'bg-green-500 mt-1' : 'mt-1'}
+                                            variant={reservation ? 'default' : 'secondary'}
+                                            className={reservation ? 'bg-green-600 mt-1' : 'mt-1'}
                                         >
-                                            {gift.status === 'comprado' ? '✓ Reservado' : 'Disponível'}
+                                            {reservation ? 'Reservado' : 'Disponível'}
                                         </Badge>
                                     </div>
                                 </div>
@@ -56,7 +57,7 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: 
                                             <Tag className="h-4 w-4 text-stone-500" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-stone-400 uppercase tracking-wide">Categoria</p>
+                                            <p className="text-xs text-stone-500 uppercase tracking-wide">Categoria</p>
                                             <p className="text-sm font-medium text-stone-700">{gift.category}</p>
                                         </div>
                                     </div>
@@ -68,7 +69,7 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: 
                                             <DollarSign className="h-4 w-4 text-stone-500" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-stone-400 uppercase tracking-wide">Faixa de Preço</p>
+                                            <p className="text-xs text-stone-500 uppercase tracking-wide">Faixa de Preço</p>
                                             <p className="text-sm font-medium text-stone-700">{gift.price_range}</p>
                                         </div>
                                     </div>
@@ -80,37 +81,52 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: 
                                             <Store className="h-4 w-4 text-stone-500" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-stone-400 uppercase tracking-wide">Loja Sugerida</p>
+                                            <p className="text-xs text-stone-500 uppercase tracking-wide">Loja Sugerida</p>
                                             <p className="text-sm font-medium text-stone-700">{gift.suggested_store}</p>
                                         </div>
                                     </div>
                                 )}
 
-                                {gift.reserved_by && (
+                                {reservation && (
                                     <div className="bg-green-50 rounded-xl p-3 flex items-center gap-3">
                                         <div className="bg-white p-2 rounded-lg shadow-sm">
                                             <User className="h-4 w-4 text-green-500" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-green-600 uppercase tracking-wide">Reservado por</p>
-                                            <p className="text-sm font-medium text-green-700">{gift.reserved_by}</p>
+                                            <p className="text-xs text-green-700 uppercase tracking-wide">Reservado por</p>
+                                            <p className="text-sm font-medium text-green-700">{reservation.guest_name}</p>
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {gift.reserved_at && (
+                            {reservation && (
                                 <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
                                     <div className="bg-white p-2 rounded-lg shadow-sm">
                                         <Clock className="h-4 w-4 text-stone-500" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] text-stone-400 uppercase tracking-wide">Data da Reserva</p>
+                                        <p className="text-xs text-stone-500 uppercase tracking-wide">Data da Reserva</p>
                                         <p className="text-sm font-medium text-stone-700">
-                                            {new Date(gift.reserved_at).toLocaleString('pt-BR', {
+                                            {new Date(reservation.reserved_at).toLocaleString('pt-BR', {
                                                 dateStyle: 'long',
-                                                timeStyle: 'short'
+                                                timeStyle: 'short',
+                                                timeZone: 'America/Fortaleza'
                                             })}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {reservation && (
+                                <div className="bg-stone-50 rounded-xl p-3 flex items-center gap-3">
+                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                        <History className="h-4 w-4 text-stone-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-stone-500 uppercase tracking-wide">Origem</p>
+                                        <p className="text-sm font-medium text-stone-700">
+                                            {reservation.legacy_source ? "Importada do histórico" : "Reserva feita pela celebração"}
                                         </p>
                                     </div>
                                 </div>
@@ -146,20 +162,18 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, toggleStatus }: 
                             >
                                 <Edit className="h-4 w-4 mr-2" /> Editar
                             </Button>
-                            <Button
-                                variant={gift.status === 'comprado' ? 'outline' : 'default'}
-                                className={`flex-1 ${gift.status !== 'comprado' ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                            {reservation && <Button
+                                variant="outline"
+                                className="flex-1 border-amber-300 text-amber-800 hover:bg-amber-50"
+                                disabled={cancelReservation.isPending}
                                 onClick={() => {
-                                    toggleStatus.mutate({ id: gift.id, currentStatus: gift.status });
+                                    if (!confirm(`Cancelar a reserva de ${gift.item_name}? O presente voltará a ficar disponível.`)) return;
+                                    cancelReservation.mutate(reservation.id);
                                     onClose();
                                 }}
                             >
-                                {gift.status === 'comprado' ? (
-                                    <><X className="h-4 w-4 mr-2" /> Disponível</>
-                                ) : (
-                                    <><Check className="h-4 w-4 mr-2" /> Reservado</>
-                                )}
-                            </Button>
+                                <X className="h-4 w-4 mr-2" /> {cancelReservation.isPending ? "Cancelando..." : "Cancelar reserva"}
+                            </Button>}
                         </DrawerFooter>
                     </>
                 )}

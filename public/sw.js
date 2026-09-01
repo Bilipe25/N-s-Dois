@@ -99,7 +99,7 @@ self.addEventListener("push", (event) => {
         icon: data.icon || "/favicon.ico",
         badge: data.icon || "/favicon.ico",
         image: data.image,
-        tag: "nos-dois-notification",
+        tag: data.tag || "nos-dois-notification",
         renotify: true,
         vibrate: [100, 50, 100],
         requireInteraction: true,

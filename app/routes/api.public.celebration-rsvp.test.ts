@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   createServerAdminClient: vi.fn(),
   getCelebrationConfig: vi.fn(),
   getInviteGuestId: vi.fn(),
+  notifyAdminsBestEffort: vi.fn(),
 }));
 
 vi.mock("@/lib/celebration-session.server", () => ({ getInviteGuestId: mocks.getInviteGuestId }));
@@ -19,6 +20,10 @@ vi.mock("@/lib/security.server", () => ({
 vi.mock("@/services/celebration.server", () => ({
   celebrationIsPast: mocks.celebrationIsPast,
   getCelebrationConfig: mocks.getCelebrationConfig,
+}));
+vi.mock("@/services/admin-notifications.server", () => ({
+  buildRsvpNotification: ({ name, status }: { name: string; status: string }) => ({ title: status, message: name }),
+  notifyAdminsBestEffort: mocks.notifyAdminsBestEffort,
 }));
 
 import { action } from "./api.public.celebration-rsvp";
@@ -49,11 +54,13 @@ describe("RSVP individual", () => {
   const updates: Array<Record<string, unknown>> = [];
 
   beforeEach(() => {
+    vi.clearAllMocks();
     updates.length = 0;
     mocks.consumeRateLimit.mockResolvedValue(true);
     mocks.getInviteGuestId.mockResolvedValue(guestId);
     mocks.getCelebrationConfig.mockResolvedValue({ rsvpEnabled: true, publicRsvpAdultLimit: 6, publicRsvpChildLimit: 6 });
     mocks.celebrationIsPast.mockResolvedValue(false);
+    mocks.notifyAdminsBestEffort.mockResolvedValue({ notificationId: "notification-id", pushDelivered: true });
     mocks.createServerAdminClient.mockReturnValue({
       from: (table: string) => {
         if (table === "guest_event_rsvps") {
@@ -65,10 +72,11 @@ describe("RSVP individual", () => {
             },
           };
         }
-        return {
+        if (table === "guests") return {
           update: () => thenable({ error: null }),
-          insert: () => thenable({ error: null }),
+          select: () => thenable({ data: { name: "Maria da Silva", source: "admin" }, error: null }),
         };
+        return { insert: () => thenable({ error: null }) };
       },
     });
   });
@@ -88,6 +96,7 @@ describe("RSVP individual", () => {
     expect(updates).toHaveLength(2);
     expect(updates[0]).toMatchObject({ status: "confirmado", confirmed_adults: 2, confirmed_children: 1, private_message: "Até lá" });
     expect(updates[1]).toMatchObject({ status: "confirmado", confirmed_adults: 1, confirmed_children: 0, private_message: "Atualizado" });
+    expect(mocks.notifyAdminsBestEffort).toHaveBeenCalledTimes(2);
   });
 
   it("zera acompanhantes ao recusar", async () => {
@@ -138,6 +147,7 @@ describe("RSVP individual", () => {
     const response = await action({ request: request({ eventResponses: [{ eventId, status: "confirmado", confirmedAdults: 1, confirmedChildren: 0, message: "Até lá" }] }) } as never);
     expect(await response.json()).toEqual({ success: true, updated: false });
     expect(updates).toHaveLength(0);
+    expect(mocks.notifyAdminsBestEffort).not.toHaveBeenCalled();
   });
 
   it("preserva respostas por evento e consolida pessoas pelo maior valor, sem somar", async () => {
@@ -151,7 +161,10 @@ describe("RSVP individual", () => {
           ], error: null }),
           update: (values: Record<string, unknown>) => { updates.push(values); return thenable({ error: null }); },
         };
-        if (table === "guests") return { update: (values: Record<string, unknown>) => { guestUpdates.push(values); return thenable({ error: null }); } };
+        if (table === "guests") return {
+          update: (values: Record<string, unknown>) => { guestUpdates.push(values); return thenable({ error: null }); },
+          select: () => thenable({ data: { name: "Maria da Silva", source: "admin" }, error: null }),
+        };
         return { insert: () => thenable({ error: null }) };
       },
     });

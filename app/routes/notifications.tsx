@@ -28,7 +28,7 @@ export const loader = async ({ request }: Route.LoaderArgs) => {
 
 export default function Notifications() {
     const { notifications: initialNotifications } = useLoaderData<typeof loader>();
-    const { data: notifications = [] } = useNotifications(initialNotifications as any);
+    const { data: notifications = [] } = useNotifications(initialNotifications as Notification[]);
     const markAllRead = useMarkAllNotificationsRead();
 
     const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -97,7 +97,7 @@ export default function Notifications() {
                     >
                         Não lidas
                         {unreadCount > 0 && (
-                            <span className="ml-2 bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                            <span className="ml-2 bg-rose-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
                                 {unreadCount}
                             </span>
                         )}

@@ -12,6 +12,14 @@ export const GIFT_CATEGORIES = [
 
 export type GiftCategory = typeof GIFT_CATEGORIES[number];
 
+export const ActiveGiftReservationSchema = z.object({
+    id: z.string().uuid(),
+    guest_id: z.string().uuid().nullable(),
+    guest_name: z.string().min(1),
+    reserved_at: z.string(),
+    legacy_source: z.boolean(),
+});
+
 // --- DOMAIN SCHEMAS (OUTPUT) ---
 
 export const GiftSchema = z.object({
@@ -25,6 +33,7 @@ export const GiftSchema = z.object({
     image_url: z.string().url().nullable().optional().or(z.literal("")),
     reserved_by: z.string().nullable().optional(),
     reserved_at: z.string().nullable().optional(),
+    active_reservation: ActiveGiftReservationSchema.nullable().default(null),
     created_at: z.string()
 });
 
@@ -133,6 +142,7 @@ export const MessageWallSchema = z.object({
 // --- TYPES ---
 
 export type Gift = z.infer<typeof GiftSchema>;
+export type ActiveGiftReservation = z.infer<typeof ActiveGiftReservationSchema>;
 export type Guest = z.infer<typeof GuestSchema>;
 export type Config = z.infer<typeof ConfigSchema>;
 export type PixConfirmation = z.infer<typeof PixConfirmationSchema>;

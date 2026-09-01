@@ -10,7 +10,7 @@ interface StatsDashboardProps {
 
 export function StatsDashboard({ gifts, guests }: StatsDashboardProps) {
     const totalGifts = gifts.length;
-    const boughtGifts = gifts.filter(g => g.status === 'comprado').length;
+    const boughtGifts = gifts.filter(g => Boolean(g.active_reservation)).length;
     const progressGifts = totalGifts > 0 ? (boughtGifts / totalGifts) * 100 : 0;
 
     const totalGuests = guests.length;

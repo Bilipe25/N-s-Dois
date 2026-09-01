@@ -6,6 +6,7 @@ import { createServerAdminClient } from "@/lib/supabase.server";
 import { PublicRsvpRegistrationSchema } from "@/schemas/celebration";
 import { celebrationIsPast, getCelebrationConfig } from "@/services/celebration.server";
 import { guestLimitText } from "@/lib/guest-rsvp";
+import { buildRsvpNotification, notifyAdminsBestEffort } from "@/services/admin-notifications.server";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ error: "Método não permitido." }, { status: 405 });
@@ -49,9 +50,19 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  const displayName = cleanGuestName(parsed.data.name);
+  const notification = buildRsvpNotification({
+    name: displayName,
+    status: parsed.data.status,
+    adults,
+    children,
+    publicRegistration: true,
+  });
+  await notifyAdminsBestEffort({ request, type: "public_rsvp", ...notification, link: "/guests" });
+
   const cookie = await createInviteSession(request, String(guestId));
   return Response.json(
-    { status: "registered", displayName: cleanGuestName(parsed.data.name) },
+    { status: "registered", displayName },
     { status: 201, headers: noStoreHeaders({ "Set-Cookie": cookie }) },
   );
 }

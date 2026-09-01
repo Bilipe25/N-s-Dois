@@ -5,6 +5,7 @@ import { getInviteGuestId } from "@/lib/celebration-session.server";
 import { assertSameOrigin, consumeRateLimit, noStoreHeaders, readJsonBody } from "@/lib/security.server";
 import { celebrationIsPast, getCelebrationConfig } from "@/services/celebration.server";
 import { guestLimitText } from "@/lib/guest-rsvp";
+import { buildRsvpNotification, notifyAdminsBestEffort } from "@/services/admin-notifications.server";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") return Response.json({ error: "Método não permitido." }, { status: 405 });
@@ -25,7 +26,7 @@ export async function action({ request }: Route.ActionArgs) {
   if ("generalResponse" in parsed.data) {
     const { data: guest, error: guestError } = await supabase
       .from("guests")
-      .select("id,source,adults_count,children_count,rsvp_status,rsvp_adults,rsvp_children,rsvp_message")
+      .select("id,name,source,adults_count,children_count,rsvp_status,rsvp_adults,rsvp_children,rsvp_message,rsvp_responded_at")
       .eq("id", guestId)
       .maybeSingle();
     if (guestError || !guest) return Response.json({ error: "Não foi possível validar sua identificação." }, { status: 403, headers: noStoreHeaders() });
@@ -57,10 +58,17 @@ export async function action({ request }: Route.ActionArgs) {
     }).eq("id", guestId);
     if (updateError) return Response.json({ error: "Não foi possível salvar a resposta." }, { status: 500, headers: noStoreHeaders() });
 
-    await supabase.from("notifications").insert({
-      type: "rsvp",
-      title: "Resposta de presença recebida",
-      message: "Uma resposta de presença foi atualizada.",
+    const notification = buildRsvpNotification({
+      name: guest.name,
+      status: response.status,
+      adults,
+      children,
+      changed: Boolean(guest.rsvp_responded_at && guest.rsvp_status !== "pendente"),
+    });
+    await notifyAdminsBestEffort({
+      request,
+      type: guest.source === "public_rsvp" ? "public_rsvp" : "rsvp",
+      ...notification,
       link: "/guests",
     });
     return Response.json({ success: true }, { headers: noStoreHeaders() });
@@ -69,7 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
   const eventIds = parsed.data.eventResponses.map((response) => response.eventId);
   const { data: allowedRows, error } = await supabase
     .from("guest_event_rsvps")
-    .select("id,event_id,adult_limit,child_limit,status,confirmed_adults,confirmed_children,private_message,celebration_events!inner(state)")
+    .select("id,event_id,adult_limit,child_limit,status,confirmed_adults,confirmed_children,private_message,responded_at,celebration_events!inner(state)")
     .eq("guest_id", guestId)
     .in("event_id", eventIds)
     .eq("celebration_events.state", "published");
@@ -125,12 +133,18 @@ export async function action({ request }: Route.ActionArgs) {
     rsvp_message: firstMessage,
     rsvp_responded_at: new Date().toISOString(),
   }).eq("id", guestId);
-  await supabase.from("notifications").insert({
-    type: "rsvp",
-    title: "Resposta de convite recebida",
-    message: "Um convite individual foi atualizado.",
-    link: "/guests",
-  });
+  const { data: guest } = await supabase.from("guests").select("name,source").eq("id", guestId).maybeSingle();
+  if (guest) {
+    const changed = (allowedRows || []).some((row) => row.status !== "pendente" || Boolean(row.responded_at));
+    const notification = buildRsvpNotification({
+      name: guest.name,
+      status: legacyStatus,
+      adults: maxAdults,
+      children: maxChildren,
+      changed,
+    });
+    await notifyAdminsBestEffort({ request, type: "rsvp", ...notification, link: "/guests" });
+  }
 
   return Response.json({ success: true, updated: true }, { headers: noStoreHeaders() });
 }

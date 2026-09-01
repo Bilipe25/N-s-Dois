@@ -12,7 +12,8 @@ export async function sendPushToUser(
     title: string,
     body: string,
     url: string = "/",
-    image?: string
+    image?: string,
+    tag?: string
 ) {
     void request;
 
@@ -47,6 +48,7 @@ export async function sendPushToUser(
         body,
         url,
         image,
+        tag: tag || "nos-dois-notification",
         icon: appConfig?.logo_url || "/favicon.ico",
     });
 

@@ -24,7 +24,8 @@ interface NotificationCardProps {
 const getIcon = (type: string) => {
     switch (type) {
         case "gift": return <Gift className="h-5 w-5 text-pink-500" />;
-        case "rsvp": return <Users className="h-5 w-5 text-blue-500" />;
+        case "rsvp":
+        case "public_rsvp": return <Users className="h-5 w-5 text-blue-500" />;
         case "task": return <Check className="h-5 w-5 text-green-500" />;
         case "budget": return <DollarSign className="h-5 w-5 text-yellow-500" />;
         default: return <Bell className="h-5 w-5 text-gray-500" />;

@@ -7,7 +7,7 @@ export function TopNav({ unreadCount: initialUnreadCount = 0, action }: { unread
     const location = useLocation();
     const navigate = useNavigate();
     const liveUnreadCount = useUnreadNotificationsCount();
-    const unreadCount = liveUnreadCount || initialUnreadCount;
+    const unreadCount = liveUnreadCount ?? initialUnreadCount;
 
     // Mapa de títulos baseado na rota
     const getTitle = (pathname: string) => {

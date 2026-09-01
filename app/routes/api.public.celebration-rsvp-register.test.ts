@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   celebrationIsPast: vi.fn(), consumeRateLimit: vi.fn(), createInviteSession: vi.fn(),
   createServerAdminClient: vi.fn(), getCelebrationConfig: vi.fn(),
+  notifyAdminsBestEffort: vi.fn(),
 }));
 
 vi.mock("@/lib/celebration-session.server", () => ({ createInviteSession: mocks.createInviteSession }));
@@ -13,6 +14,10 @@ vi.mock("@/lib/security.server", () => ({
   readJsonBody: (request: Request) => request.json(),
 }));
 vi.mock("@/services/celebration.server", () => ({ celebrationIsPast: mocks.celebrationIsPast, getCelebrationConfig: mocks.getCelebrationConfig }));
+vi.mock("@/services/admin-notifications.server", () => ({
+  buildRsvpNotification: ({ name }: { name: string }) => ({ title: "Nova RSVP pelo site", message: name }),
+  notifyAdminsBestEffort: mocks.notifyAdminsBestEffort,
+}));
 
 import { action } from "./api.public.celebration-rsvp-register";
 
@@ -32,10 +37,12 @@ function client(
 
 describe("cadastro espontâneo de RSVP", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mocks.consumeRateLimit.mockResolvedValue(true);
     mocks.getCelebrationConfig.mockResolvedValue({ rsvpEnabled: true, publicRsvpAdultLimit: 6, publicRsvpChildLimit: 6 });
     mocks.celebrationIsPast.mockResolvedValue(false);
     mocks.createInviteSession.mockResolvedValue("session=cookie");
+    mocks.notifyAdminsBestEffort.mockResolvedValue({ notificationId: "notification-id", pushDelivered: true });
   });
 
   it("cria o cadastro marcado e inicia uma sessão privada", async () => {
@@ -44,6 +51,7 @@ describe("cadastro espontâneo de RSVP", () => {
     expect(response.status).toBe(201);
     expect(response.headers.get("set-cookie")).toBe("session=cookie");
     expect(db.rpc).toHaveBeenCalledWith("create_public_rsvp_guest", expect.objectContaining({ p_name: "Maria da Silva", p_adults: 2, p_children: 1, p_phone: "79999999999" }));
+    expect(mocks.notifyAdminsBestEffort).toHaveBeenCalledWith(expect.objectContaining({ type: "public_rsvp", link: "/guests" }));
   });
 
   it("impede duplicidade sem expor o cadastro encontrado", async () => {
@@ -51,6 +59,7 @@ describe("cadastro espontâneo de RSVP", () => {
     const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 0 }) } as never);
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ status: "already_exists" });
+    expect(mocks.notifyAdminsBestEffort).not.toHaveBeenCalled();
   });
 
   it("mantém a resposta neutra quando uma corrida cria o nome antes do RPC", async () => {

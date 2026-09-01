@@ -16,23 +16,47 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     await requireUserSession(request);
     const supabase = createServerAdminClient();
 
-    // Fetch Gifts
-    const { data: gifts, error: giftsError } = await supabase
-        .from("bridal_shower_gifts")
-        .select("*")
-        .order("item_name");
+    const [giftsResult, configResult, reservationsResult] = await Promise.all([
+        supabase.from("bridal_shower_gifts").select("*").order("item_name"),
+        supabase.from("app_config").select("*").single(),
+        supabase
+            .from("gift_reservations")
+            .select("id,gift_id,guest_id,reserved_by_name_snapshot,reserved_at,legacy_source")
+            .eq("status", "active")
+            .order("reserved_at", { ascending: false }),
+    ]);
 
-    if (giftsError) throw data({ error: giftsError.message }, { status: 500 });
+    if (giftsResult.error) throw data({ error: giftsResult.error.message }, { status: 500 });
+    if (configResult.error) throw data({ error: configResult.error.message }, { status: 500 });
+    if (reservationsResult.error) throw data({ error: reservationsResult.error.message }, { status: 500 });
 
-    // Fetch Config
-    const { data: config, error: configError } = await supabase
-        .from("app_config")
-        .select("*")
-        .single();
+    const reservations = reservationsResult.data || [];
+    const guestIds = Array.from(new Set(reservations.flatMap((reservation) => reservation.guest_id ? [reservation.guest_id] : [])));
+    const guestNames = new Map<string, string>();
+    if (guestIds.length > 0) {
+        const { data: guests, error: guestsError } = await supabase.from("guests").select("id,name").in("id", guestIds);
+        if (guestsError) throw data({ error: guestsError.message }, { status: 500 });
+        for (const guest of guests || []) guestNames.set(String(guest.id), String(guest.name));
+    }
 
-    if (configError) throw data({ error: configError.message }, { status: 500 });
+    const reservationByGift = new Map(reservations.map((reservation) => [String(reservation.gift_id), reservation]));
+    const gifts = (giftsResult.data || []).map((gift) => {
+        const reservation = reservationByGift.get(String(gift.id));
+        return {
+            ...gift,
+            active_reservation: reservation ? {
+                id: reservation.id,
+                guest_id: reservation.guest_id,
+                guest_name: (reservation.guest_id ? guestNames.get(String(reservation.guest_id)) : null)
+                    || reservation.reserved_by_name_snapshot
+                    || "Identificação legada indisponível",
+                reserved_at: reservation.reserved_at,
+                legacy_source: reservation.legacy_source,
+            } : null,
+        };
+    });
 
-    return { gifts, guests: [], config };
+    return { gifts, guests: [], config: configResult.data };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -126,10 +150,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             }
 
             if (intent === "toggle_gift_status") {
-                const { id, currentStatus } = z.object({ id: z.string().uuid(), currentStatus: z.enum(["disponivel", "comprado"]) }).parse(jsonData);
-                const newStatus = currentStatus === 'comprado' ? 'disponivel' : 'comprado';
-                const { error } = await supabase.from("bridal_shower_gifts").update({ status: newStatus }).eq("id", id);
+                return data({ error: "O status de reserva agora é controlado pela reserva ativa." }, { status: 410 });
+            }
+
+            if (intent === "cancel_gift_reservation") {
+                const { reservationId } = z.object({ reservationId: z.string().uuid() }).parse(jsonData);
+                const { data: cancelled, error } = await supabase
+                    .from("gift_reservations")
+                    .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+                    .eq("id", reservationId)
+                    .eq("status", "active")
+                    .select("id")
+                    .maybeSingle();
                 if (error) throw error;
+                if (!cancelled) return data({ error: "A reserva já foi cancelada ou não existe." }, { status: 404 });
                 return { success: true };
             }
 

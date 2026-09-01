@@ -2,6 +2,7 @@ import type { Route } from "./+types/api.public.celebration-gift-reservations.$i
 import { createServerAdminClient } from "@/lib/supabase.server";
 import { getInviteGuestId } from "@/lib/celebration-session.server";
 import { assertSameOrigin, consumeRateLimit, noStoreHeaders } from "@/lib/security.server";
+import { buildGiftNotification, notifyAdminsBestEffort } from "@/services/admin-notifications.server";
 
 export async function action({ request, params }: Route.ActionArgs) {
   if (request.method !== "DELETE") return Response.json({ error: "Método não permitido." }, { status: 405 });
@@ -18,8 +19,22 @@ export async function action({ request, params }: Route.ActionArgs) {
     .eq("id", params.id || "")
     .eq("guest_id", guestId)
     .eq("status", "active")
-    .select("id")
+    .select("id,gift_id")
     .maybeSingle();
   if (error || !data) return Response.json({ error: "Reserva não encontrada." }, { status: 404, headers: noStoreHeaders() });
+  const [{ data: gift }, { data: guest }] = await Promise.all([
+    supabase.from("bridal_shower_gifts").select("id,item_name,image_url").eq("id", data.gift_id).maybeSingle(),
+    supabase.from("guests").select("id,name").eq("id", guestId).maybeSingle(),
+  ]);
+  if (gift && guest) {
+    const notification = buildGiftNotification({ action: "cancelled", guestName: guest.name, giftName: gift.item_name });
+    await notifyAdminsBestEffort({
+      request,
+      type: "gift",
+      ...notification,
+      link: `/celebracao/admin?gift=${gift.id}`,
+      imageUrl: gift.image_url,
+    });
+  }
   return Response.json({ success: true }, { headers: noStoreHeaders() });
 }
