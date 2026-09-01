@@ -374,7 +374,7 @@ export default function CelebrationPage() {
     {showScrollTop && <Button variant="outline" size="icon" className="celebration-scroll-top fixed right-5 z-50 h-12 w-12 rounded-full border-stone-200 bg-white/95 shadow-lg" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })} aria-label="Voltar ao topo"><ChevronUp className="h-5 w-5" /></Button>}
 
     <header className={`celebration-romantic-hero ${data.config.heroUrl && !heroFailed ? "has-photo" : ""}`}>
-      {data.config.heroUrl && !heroFailed && <img ref={heroImageRef} src={data.config.heroUrl} alt="" width={1600} height={900} sizes="100vw" fetchPriority="high" decoding="async" className="celebration-hero-photo" style={{ objectPosition: `${data.config.heroFocalX}% ${data.config.heroFocalY}%` }} onLoad={(event) => { event.currentTarget.style.opacity = "1"; }} onError={() => setHeroFailed(true)} />}
+      {data.config.heroUrl && !heroFailed && <img ref={heroImageRef} src={data.config.heroUrl} alt="" width={1600} height={900} sizes="100vw" fetchPriority="high" decoding="async" className="celebration-hero-photo" style={{ objectPosition: `${data.config.heroFocalX}% ${data.config.heroFocalY}%` }} onError={() => setHeroFailed(true)} />}
       <div className="celebration-hero-overlay" />
       <div className="celebration-hero-content relative z-10 mx-auto flex min-h-[82svh] max-w-4xl flex-col items-center justify-center space-y-7 px-5 py-12 text-center text-white">
         <span className="rounded-full border border-white/30 bg-black/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] backdrop-blur-sm">Celebrando o amor e o novo lar</span>
