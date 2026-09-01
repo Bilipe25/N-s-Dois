@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Check, Copy, Loader2, QrCode, RotateCcw, X } from "lucide-react";
+import { Check, Copy, Heart, Loader2, QrCode, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,10 @@ import {
 import { GuestIdentification } from "@/components/celebration/guest-identification";
 import {
   createGiftReservation,
+  giftPixActionAfterIdentification,
   pixReferenceForGift,
+  shouldGenerateGiftPix,
+  type GiftPixIdentificationIntent,
 } from "@/lib/gift-reservations";
 import { HttpRequestError, requestJson } from "@/lib/http.client";
 import type { PublicGift } from "@/schemas/celebration";
@@ -91,12 +94,15 @@ export function PixPanel({
   const [payloadError, setPayloadError] = useState("");
   const [reservationState, setReservationState] = useState<ReservationState>("idle");
   const [reservationError, setReservationError] = useState("");
+  const [identificationIntent, setIdentificationIntent] = useState<GiftPixIdentificationIntent>(null);
+  const [continueWithoutReservation, setContinueWithoutReservation] = useState(false);
   const [copied, setCopied] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
   const copyTimer = useRef<number | null>(null);
 
   const ownReservation = Boolean(gift?.reservation_id);
   const unavailableForSpecificPix = Boolean(gift && !gift.available && !gift.reservation_id);
+  const canGeneratePix = shouldGenerateGiftPix({ gift, reservationAvailable, continueWithoutReservation });
   const shownAmount = amountCents ?? gift?.price_cents ?? null;
 
   useEffect(() => {
@@ -107,6 +113,8 @@ export function PixPanel({
       setPayloadError("");
       setReservationState("idle");
       setReservationError("");
+      setIdentificationIntent(null);
+      setContinueWithoutReservation(false);
       setCopied(false);
     }
   }, [open]);
@@ -115,6 +123,8 @@ export function PixPanel({
     if (!open) return;
     setReservationState("idle");
     setReservationError("");
+    setIdentificationIntent(null);
+    setContinueWithoutReservation(false);
   }, [open, gift?.id]);
 
   useEffect(() => {
@@ -123,6 +133,13 @@ export function PixPanel({
       setPayload("");
       setAmountCents(null);
       setPayloadState("conflict");
+      return;
+    }
+    if (!canGeneratePix) {
+      setPayload("");
+      setAmountCents(null);
+      setPayloadError("");
+      setPayloadState("idle");
       return;
     }
 
@@ -148,6 +165,14 @@ export function PixPanel({
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof HttpRequestError && error.status === 401 && gift?.reservation_id) {
+          setPayload("");
+          setPayloadState("idle");
+          setReservationError("Precisamos reconhecer você novamente para continuar com este presente.");
+          setIdentificationIntent("pix");
+          setReservationState("identify");
+          return;
+        }
         if (error instanceof HttpRequestError && error.status === 409 && gift) {
           setPayloadState("conflict");
           onGiftChange?.(gift.id, { available: false, reservation_id: null });
@@ -162,7 +187,7 @@ export function PixPanel({
       });
 
     return () => controller.abort();
-  }, [gift?.available, gift?.id, gift?.reservation_id, onGiftChange, open, retryToken, unavailableForSpecificPix]);
+  }, [canGeneratePix, gift?.available, gift?.id, gift?.reservation_id, onGiftChange, open, retryToken, unavailableForSpecificPix]);
 
   useEffect(() => () => {
     if (copyTimer.current) window.clearTimeout(copyTimer.current);
@@ -181,37 +206,49 @@ export function PixPanel({
   }
 
   async function reserveCurrentGift() {
-    if (!gift || !reservationAvailable || gift.reservation_id) return;
+    if (!gift || !reservationAvailable || gift.reservation_id) return false;
     setReservationState("saving");
     setReservationError("");
     try {
       const response = await createGiftReservation(gift.id);
       onGiftChange?.(gift.id, { available: false, reservation_id: response.reservationId });
+      setIdentificationIntent(null);
       setReservationState("success");
+      return true;
     } catch (error) {
       if (error instanceof HttpRequestError && error.status === 401) {
-        setReservationError("Sua identificação expirou. Digite seu nome novamente para continuar.");
+        setReservationError("Precisamos reconhecer você novamente para continuar com este presente.");
+        setIdentificationIntent("reserve");
         setReservationState("identify");
-        return;
+        return false;
       }
       if (error instanceof HttpRequestError && error.status === 409) {
         setPayload("");
         setPayloadState("conflict");
         setReservationState("conflict");
         onGiftChange?.(gift.id, { available: false, reservation_id: null });
-        return;
+        return false;
       }
-      setReservationError(error instanceof Error ? error.message : "Não foi possível reservar este presente agora.");
+      setReservationError("Não conseguimos reservar este presente agora.");
       setReservationState("error");
+      return false;
     }
   }
 
   async function continueAfterIdentification() {
     await onIdentified?.();
+    if (giftPixActionAfterIdentification(identificationIntent) === "generate-pix") {
+      setReservationState("idle");
+      setReservationError("");
+      setIdentificationIntent(null);
+      setRetryToken((value) => value + 1);
+      return;
+    }
     await reserveCurrentGift();
   }
 
   function beginReservation() {
+    setIdentificationIntent("reserve");
     if (invitationActive) {
       void reserveCurrentGift();
       return;
@@ -220,26 +257,27 @@ export function PixPanel({
     setReservationState("identify");
   }
 
-  const conflict = payloadState === "conflict" || reservationState === "conflict";
+  function continueOnlyWithPix() {
+    setReservationState("idle");
+    setReservationError("");
+    setIdentificationIntent(null);
+    setContinueWithoutReservation(true);
+  }
+
+  const conflict = unavailableForSpecificPix || payloadState === "conflict" || reservationState === "conflict";
 
   const giftSummary = gift ? (
-    <section className="w-full rounded-2xl bg-rose-50 p-4 text-center" aria-labelledby="pix-gift-name">
+    <section className="w-full rounded-2xl bg-rose-50 px-4 py-3 text-center" aria-labelledby="pix-gift-name">
       <p className="text-sm text-rose-800">Você está contribuindo para</p>
       <h3 id="pix-gift-name" className="mt-1 break-words font-serif text-xl font-semibold text-stone-800">
         {gift.item_name}
       </h3>
       {shownAmount !== null ? (
-        <div className="mt-3">
-          <p className="text-xs font-semibold text-rose-800">Valor incluído no código</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-stone-900">{formatCurrency(shownAmount)}</p>
-          <p className="mt-1 text-xs leading-relaxed text-rose-900">Confirme o valor no aplicativo do seu banco antes de transferir.</p>
-        </div>
+        <p className="mt-2 text-lg font-semibold tabular-nums text-rose-950">{formatCurrency(shownAmount)}</p>
       ) : (
-        <div className="mt-3">
-          <p className="text-base font-semibold text-stone-900">Valor livre</p>
-          <p className="mt-1 text-xs leading-relaxed text-rose-900">
-            {gift.price_range ? `A faixa “${gift.price_range}” é apenas uma referência. Escolha o valor no seu banco.` : "Escolha o valor no aplicativo do seu banco."}
-          </p>
+        <div className="mt-2">
+          <p className="text-base font-semibold text-rose-950">Valor livre</p>
+          {gift.price_range && <p className="mt-1 text-xs leading-relaxed text-rose-900">Faixa sugerida: {gift.price_range}.</p>}
         </div>
       )}
     </section>
@@ -252,13 +290,11 @@ export function PixPanel({
 
   const ownReservationNotice = gift && ownReservation ? (
     <div className="w-full rounded-2xl bg-emerald-50 p-4 text-center" role="status" aria-live="polite">
-      <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-white text-emerald-700 shadow-sm" aria-hidden="true">
-        <Check className="h-5 w-5" />
-      </div>
-      <p className="mt-3 font-semibold text-emerald-900">
-        {reservationState === "success" ? "Presente reservado" : "Este presente já está reservado por você"}
+      <p className="flex items-center justify-center gap-2 font-semibold text-emerald-900">
+        {reservationState === "success" ? "Presente reservado para você" : "Este presente já está reservado por você"}
+        <Heart className="h-4 w-4 fill-amber-400 text-amber-500" aria-hidden="true" />
       </p>
-      <p className="mt-1 text-sm leading-relaxed text-emerald-900">Agora ele aparece como sua escolha. O PIX continua disponível abaixo.</p>
+      <p className="mt-1 text-sm leading-relaxed text-emerald-900">Agora ele aparece como sua escolha.</p>
     </div>
   ) : null;
 
@@ -294,36 +330,53 @@ export function PixPanel({
             {copied ? "Código copiado" : "Copiar PIX Copia e Cola"}
           </Button>
           <span className="sr-only" role="status" aria-live="polite">{copied ? "Código PIX copiado para a área de transferência." : ""}</span>
-          <p className="text-center text-xs leading-relaxed text-stone-500">O site gera o código, mas não processa nem confirma automaticamente a transferência.</p>
+          <p className="text-center text-xs leading-relaxed text-stone-500">O site não confirma automaticamente a transferência.</p>
         </div>
       )}
     </>
   );
 
-  const reservationContent = gift && !ownReservation && !conflict ? (
-    <section className="w-full border-t border-stone-200 pt-5" aria-labelledby="pix-reservation-title">
+  const reservationContent = gift && !ownReservation && !conflict && reservationAvailable && !continueWithoutReservation ? (
+    <section className="w-full" aria-labelledby="pix-reservation-title">
       <div className="text-center">
-        <h3 id="pix-reservation-title" className="font-serif text-lg font-semibold text-stone-800">Quer deixar este presente marcado como sua escolha?</h3>
-        <p className="mt-2 text-sm leading-relaxed text-stone-600">Assim outras pessoas saberão que ele já foi escolhido. A reserva não confirma a transferência.</p>
+        <h3 id="pix-reservation-title" className="font-serif text-xl font-semibold text-stone-800">Quer deixar este presente como sua escolha?</h3>
+        <p className="mt-2 text-sm leading-relaxed text-stone-600">Assim outras pessoas saberão que ele já foi escolhido. O PIX é apenas a forma de contribuir.</p>
       </div>
 
-      {!reservationAvailable ? (
-        <p className="mt-4 rounded-xl bg-stone-50 p-3 text-center text-sm leading-relaxed text-stone-600">As reservas estão pausadas agora. Você ainda pode usar o PIX sem marcar este item.</p>
-      ) : reservationState === "identify" ? (
+      {reservationState === "identify" ? (
         <div className="mt-4">
           {reservationError && <p className="celebration-form-error" role="alert">{reservationError}</p>}
           <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} />
         </div>
       ) : reservationState === "error" ? (
-        <div className="mt-4 space-y-3 text-center" role="alert">
-          <p className="text-sm leading-relaxed text-rose-800">{reservationError}</p>
-          <Button type="button" variant="outline" onClick={() => void reserveCurrentGift()} className="min-h-11 w-full rounded-full">Tentar reservar novamente</Button>
+        <div className="mt-4 space-y-2 text-center" role="alert">
+          <p className="font-semibold text-rose-900">{reservationError}</p>
+          <Button type="button" variant="outline" onClick={() => void reserveCurrentGift()} className="min-h-11 w-full rounded-full">Tentar novamente</Button>
+          <Button type="button" variant="ghost" onClick={continueOnlyWithPix} className="min-h-11 w-full rounded-full text-stone-700">Continuar somente com PIX</Button>
         </div>
       ) : (
-        <Button type="button" onClick={beginReservation} disabled={reservationState === "saving"} className="mt-4 min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">
-          {reservationState === "saving" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reservando…</> : "Reservar este presente para mim"}
-        </Button>
+        <div className="mt-4 space-y-2">
+          <Button type="button" onClick={beginReservation} disabled={reservationState === "saving"} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">
+            {reservationState === "saving" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reservando…</> : "Reservar e continuar com PIX"}
+          </Button>
+          {reservationState !== "saving" && <Button type="button" variant="ghost" onClick={continueOnlyWithPix} className="min-h-11 w-full rounded-full text-stone-700">Continuar somente com PIX</Button>}
+        </div>
       )}
+    </section>
+  ) : null;
+
+  const pausedReservationNotice = gift && !ownReservation && !reservationAvailable ? (
+    <div className="w-full rounded-xl bg-stone-100 p-3 text-center">
+      <p className="font-semibold text-stone-800">Reservas pausadas</p>
+      <p className="mt-1 text-sm leading-relaxed text-stone-600">As reservas estão pausadas agora. Você ainda pode presentear por PIX.</p>
+    </div>
+  ) : null;
+
+  const pixRecognitionContent = gift && ownReservation && reservationState === "identify" && identificationIntent === "pix" ? (
+    <section className="w-full" aria-labelledby="pix-recognition-title">
+      <h3 id="pix-recognition-title" className="text-center font-serif text-xl font-semibold text-stone-800">Vamos encontrar seu nome</h3>
+      {reservationError && <p className="celebration-form-error mt-3" role="alert">{reservationError}</p>}
+      <GuestIdentification context="gift" onIdentified={continueAfterIdentification} contacts={identificationContacts} />
     </section>
   ) : null;
 
@@ -339,28 +392,24 @@ export function PixPanel({
   ) : (
     <div className="flex flex-col items-center gap-5 py-2">
       {giftSummary}
-      {gift && (
-        <div className="w-full rounded-xl bg-stone-100 p-3 text-sm leading-relaxed text-stone-700">
-          <p className="font-semibold text-stone-900">PIX e escolha são passos diferentes</p>
-          <p className="mt-1">O PIX cria o código de transferência. A reserva marca este item como sua escolha.</p>
-        </div>
-      )}
       {ownReservationNotice}
-      {payloadContent}
       {reservationContent}
+      {pausedReservationNotice}
+      {pixRecognitionContent}
+      {canGeneratePix && !pixRecognitionContent && payloadContent}
     </div>
   );
 
   const title = gift ? "Presentear por PIX" : "Presente livre por PIX";
   const description = gift
-    ? "Contribua usando este presente como referência."
+    ? "Veja o presente e escolha como deseja continuar."
     : "Gere um código PIX sem escolher um item da lista.";
 
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="celebration-drawer">
-          <DrawerHeader className="relative px-16">
+          <DrawerHeader className="relative pr-16 text-left">
             <DrawerTitle className="font-serif text-2xl">{title}</DrawerTitle>
             <DrawerDescription>{description}</DrawerDescription>
             <DrawerCloseControl />

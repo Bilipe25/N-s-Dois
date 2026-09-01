@@ -107,6 +107,7 @@ describe("payload PIX público", () => {
     mocks.getInviteGuestId.mockResolvedValueOnce(null);
     const response = await action({ request: post({ reservationId }) } as never);
     expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Precisamos reconhecer você novamente." });
   });
 
   it("não revela se a reserva é inexistente ou pertence a outra pessoa", async () => {

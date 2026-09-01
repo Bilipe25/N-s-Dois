@@ -12,7 +12,7 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429, headers: noStoreHeaders() });
   }
   const guestId = await getInviteGuestId(request);
-  if (!guestId) return Response.json({ error: "Abra o link individual do seu convite." }, { status: 401, headers: noStoreHeaders() });
+  if (!guestId) return Response.json({ error: "Precisamos reconhecer você novamente." }, { status: 401, headers: noStoreHeaders() });
   const config = await getCelebrationConfig();
   if (!config.giftsEnabled || !config.reservationsEnabled) {
     return Response.json({ error: "Reservas não estão disponíveis agora." }, { status: 403, headers: noStoreHeaders() });

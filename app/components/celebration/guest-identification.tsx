@@ -106,6 +106,6 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
     <label className="block space-y-2 text-sm font-medium text-stone-800">Nome completo<Input autoFocus name="name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={120} required className="h-12 text-base" placeholder="Seu nome e sobrenome" /></label>
     {error && <p className="celebration-form-error" role="alert">{error}</p>}
     <Button type="submit" disabled={busy || name.trim().length < 3} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procurando…</> : "Continuar"}</Button>
-    <p className="text-center text-xs leading-relaxed text-stone-500">Seu nome é usado apenas para encontrar ou registrar sua resposta. A lista de convidados não é exibida.</p>
+    <p className="text-center text-xs leading-relaxed text-stone-500">{context === "gift" ? "Usamos seu nome apenas para guardar esta escolha com segurança. A lista de convidados não é exibida." : "Seu nome é usado apenas para encontrar ou registrar sua resposta. A lista de convidados não é exibida."}</p>
   </form>;
 }

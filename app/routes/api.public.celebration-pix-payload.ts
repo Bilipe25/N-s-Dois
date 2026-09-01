@@ -23,7 +23,7 @@ export async function action({ request }: Route.ActionArgs) {
   let transactionId = "***";
   if (parsed.data.reservationId) {
     const guestId = await getInviteGuestId(request);
-    if (!guestId) return Response.json({ error: "Convite necessário." }, { status: 401, headers: noStoreHeaders() });
+    if (!guestId) return Response.json({ error: "Precisamos reconhecer você novamente." }, { status: 401, headers: noStoreHeaders() });
     const supabase = createServerAdminClient();
     const { data } = await supabase
       .from("gift_reservations")

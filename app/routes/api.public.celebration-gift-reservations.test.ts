@@ -76,6 +76,7 @@ describe("reservas individuais de presentes", () => {
     mocks.getInviteGuestId.mockResolvedValueOnce(null);
     const response = await reserveGift({ request: postRequest() } as never);
     expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Precisamos reconhecer você novamente." });
   });
 
   it("reserva para o convidado e retorna o identificador privado", async () => {
