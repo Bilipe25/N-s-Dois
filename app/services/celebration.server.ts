@@ -14,6 +14,7 @@ export type CelebrationConfig = {
   heroFocalY: number;
   rsvpEnabled: boolean;
   giftsEnabled: boolean;
+  giftSuggestionsEnabled: boolean;
   reservationsEnabled: boolean;
   pixEnabled: boolean;
   pixKey: string | null;
@@ -57,6 +58,7 @@ const defaultConfig: CelebrationConfig = {
   heroFocalY: 50,
   rsvpEnabled: false,
   giftsEnabled: false,
+  giftSuggestionsEnabled: true,
   reservationsEnabled: false,
   pixEnabled: false,
   pixKey: null,
@@ -100,6 +102,7 @@ function configFromRow(row: ConfigRow | null): CelebrationConfig {
     heroFocalY: numberOr(row.celebration_hero_focal_y, 50),
     rsvpEnabled: row.celebration_rsvp_enabled === true,
     giftsEnabled: row.celebration_gifts_enabled === true,
+    giftSuggestionsEnabled: row.bridal_shower_show_links !== false,
     reservationsEnabled: row.celebration_reservations_enabled === true,
     pixEnabled: row.celebration_pix_enabled === true,
     pixKey: stringOrNull(row.pix_key),
@@ -132,7 +135,7 @@ export async function loadCelebration(request: Request): Promise<CelebrationLoad
 
   const { data: configRow, error: configError } = await supabase
     .from("app_config")
-    .select("celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_hero_url,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe")
+    .select("celebration_title,celebration_subtitle,celebration_story,celebration_post_event_message,celebration_hero_url,celebration_og_url,celebration_hero_focal_x,celebration_hero_focal_y,celebration_rsvp_enabled,celebration_gifts_enabled,celebration_reservations_enabled,celebration_pix_enabled,bridal_shower_hero_url,bridal_shower_show_links,pix_key,pix_recipient_name,pix_city,contact_phone_gabriel,contact_phone_raabe")
     .limit(1)
     .maybeSingle();
 

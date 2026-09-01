@@ -49,7 +49,7 @@ export function CelebrationAdminControlPanel() {
       await send({
         intent: "update_page",
         title: text(form.get("title")), subtitle: text(form.get("subtitle")), story: text(form.get("story")), postEventMessage: text(form.get("postEventMessage")),
-        rsvpEnabled: bool(form, "rsvpEnabled"), giftsEnabled: bool(form, "giftsEnabled"), reservationsEnabled: bool(form, "reservationsEnabled"), pixEnabled: bool(form, "pixEnabled"),
+        rsvpEnabled: bool(form, "rsvpEnabled"), giftsEnabled: bool(form, "giftsEnabled"), giftSuggestionsEnabled: bool(form, "giftSuggestionsEnabled"), reservationsEnabled: bool(form, "reservationsEnabled"), pixEnabled: bool(form, "pixEnabled"),
         pixKey: text(form.get("pixKey")), pixRecipientName: text(form.get("pixRecipientName")), pixCity: text(form.get("pixCity")), contactGabriel: text(form.get("contactGabriel")), contactRaabe: text(form.get("contactRaabe")),
       });
       toast.success("Página da celebração atualizada.");
@@ -113,6 +113,18 @@ export function CelebrationAdminControlPanel() {
               <Toggle name="reservationsEnabled" label="Reservas" checked={config.celebration_reservations_enabled === true} />
               <Toggle name="pixEnabled" label="PIX" checked={config.celebration_pix_enabled === true} />
             </div>
+            <section id="presentes" className="scroll-mt-24 space-y-3 rounded-xl bg-stone-50 p-4">
+              <div>
+                <h3 className="font-serif text-lg font-semibold text-stone-900">Apresentação dos presentes</h3>
+                <p className="mt-1 text-sm leading-relaxed text-stone-600">Controle o que aparece nos cards sem alterar os links cadastrados.</p>
+              </div>
+              <Toggle
+                name="giftSuggestionsEnabled"
+                label="Exibir sugestão online"
+                description="Mostra o link externo “Ver sugestão online”. Ao ocultar, os cards ficam mais compactos automaticamente."
+                checked={config.bridal_shower_show_links !== false}
+              />
+            </section>
             <div className="grid gap-4 md:grid-cols-3">
               <Field label="Chave PIX" name="pixKey" defaultValue={config.pix_key} />
               <Field label="Nome do recebedor" name="pixRecipientName" defaultValue={config.pix_recipient_name} />
@@ -140,7 +152,7 @@ function Field({ label, name, fieldId = name, defaultValue, type = "text", requi
   return <div className="space-y-2"><Label htmlFor={fieldId}>{label}</Label><Input id={fieldId} name={name} type={type} defaultValue={String(defaultValue ?? "")} min={type === "number" ? 0 : undefined} max={type === "number" ? 100 : undefined} required={required} /></div>;
 }
 function TextArea({ label, name, defaultValue }: { label: string; name: string; defaultValue: unknown }) { return <div className="space-y-2"><Label htmlFor={name}>{label}</Label><textarea id={name} name={name} defaultValue={String(defaultValue ?? "")} rows={4} className="w-full rounded-md border bg-transparent px-3 py-2 text-sm" /></div>; }
-function Toggle({ name, label, checked }: { name: string; label: string; checked: boolean }) { return <label className="flex min-h-12 items-center gap-3 rounded-lg border px-4"><input name={name} type="checkbox" defaultChecked={checked} className="h-5 w-5" /><span className="text-sm font-medium">{label}</span></label>; }
+function Toggle({ name, label, description, checked }: { name: string; label: string; description?: string; checked: boolean }) { return <label className="flex min-h-12 items-start gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3"><input name={name} type="checkbox" defaultChecked={checked} className="mt-0.5 h-5 w-5 shrink-0 accent-rose-600" /><span><span className="block text-sm font-medium text-stone-900">{label}</span>{description && <span className="mt-1 block text-xs leading-relaxed text-stone-600">{description}</span>}</span></label>; }
 
 function EventForm({ item, saving, onSubmit, onDelete }: { item?: AdminEvent; saving: boolean; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void; onDelete?: () => void }) {
   const localDate = item?.starts_at ? new Date(new Date(item.starts_at).getTime() - new Date(item.starts_at).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";

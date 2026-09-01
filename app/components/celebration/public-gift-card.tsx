@@ -8,11 +8,12 @@ import { useEffect, useState } from "react";
 type PublicGiftCardProps = {
   gift: PublicGift;
   busy?: boolean;
+  showOnlineSuggestion?: boolean;
   onReserve: (gift: PublicGift) => void;
   onPix?: (gift: PublicGift) => void;
 };
 
-export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicGiftCardProps) {
+export function PublicGiftCard({ gift, busy = false, showOnlineSuggestion = true, onReserve, onPix }: PublicGiftCardProps) {
   const reservedBySomeoneElse = !gift.available && !gift.reservation_id;
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -44,7 +45,7 @@ export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicG
               {gift.suggested_store && <Badge variant="secondary" className="bg-stone-100 px-1.5 py-0 text-[10px] font-normal text-stone-700"><ShoppingBag className="mr-1 h-3 w-3" />{gift.suggested_store}</Badge>}
               {gift.price_range && <Badge variant="outline" className="border-stone-200 px-1.5 py-0 text-[10px] font-normal text-stone-700">{gift.price_range}</Badge>}
             </div>
-            {gift.link && <a href={gift.link} target="_blank" rel="noopener noreferrer" aria-label={`Ver sugestão online para ${gift.item_name}`} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-rose-700 underline-offset-4 hover:underline"><ExternalLink className="h-3.5 w-3.5" />Ver sugestão online</a>}
+            {showOnlineSuggestion && gift.link && <a href={gift.link} target="_blank" rel="noopener noreferrer" aria-label={`Ver sugestão online para ${gift.item_name}`} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-rose-700 underline-offset-4 hover:underline"><ExternalLink className="h-3.5 w-3.5" />Ver sugestão online</a>}
           </div>
 
           <div className="mt-2 grid grid-cols-1 gap-2 pt-2 min-[360px]:grid-cols-2">
