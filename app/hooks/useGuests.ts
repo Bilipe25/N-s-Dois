@@ -10,7 +10,13 @@ async function api<T>(body?: object): Promise<T> {
   return data as T;
 }
 
-export const useGuests = () => useQuery({ queryKey: ["guests"], queryFn: async () => (await api<{ guests: Guest[] }>()).guests });
+export const useGuests = () => useQuery({
+  queryKey: ["guests"],
+  queryFn: async () => (await api<{ guests: Guest[] }>()).guests,
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: false,
+  refetchOnWindowFocus: true,
+});
 export const useGuest = (id: string) => useQuery({ queryKey: ["guests", id], queryFn: async () => (await api<{ guests: Guest[] }>()).guests.find((guest) => guest.id === id)!, enabled: Boolean(id) });
 export const useAppConfig = () => useQuery({ queryKey: ["app_config"], queryFn: async () => {
   const response = await fetch("/api/settings");

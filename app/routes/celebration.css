@@ -146,6 +146,9 @@ html[data-celebration="active"] body {
 .celebration-form-error { background: #fff1f2; color: #9f1239; }
 .celebration-form-success { background: #ecfdf5; color: #065f46; }
 .celebration-form-success svg { width: 1rem; }
+.celebration-rsvp-success-state { display: grid; justify-items: center; gap: 1.25rem; padding: .75rem 0 1rem; animation: celebration-success-arrive 320ms cubic-bezier(.16, 1, .3, 1) both; }
+.celebration-rsvp-success-icon { display: grid; width: 3.5rem; height: 3.5rem; place-items: center; border-radius: 999px; background: #ecfdf5; color: #047857; box-shadow: 0 10px 24px rgba(4, 120, 87, .12); }
+.celebration-rsvp-success-icon svg { width: 1.5rem; height: 1.5rem; stroke-width: 2.5; }
 .celebration-panel-empty { display: grid; justify-items: center; gap: .75rem; padding: 2rem .75rem; text-align: center; color: #57534e; }
 .celebration-panel-empty > svg { width: 2rem; height: 2rem; color: #f43f5e; }
 .celebration-panel-empty a { min-height: 2.75rem; display: inline-flex; align-items: center; color: #9f1239; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
@@ -153,6 +156,11 @@ html[data-celebration="active"] body {
 @keyframes celebration-hero-reveal {
   from { filter: saturate(.75) brightness(.82); }
   to { filter: saturate(1) brightness(1); }
+}
+
+@keyframes celebration-success-arrive {
+  from { opacity: .72; transform: translateY(.5rem) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @media (max-width: 359px) {
@@ -180,6 +188,7 @@ html[data-celebration="active"] body {
 
 @media (prefers-reduced-motion: reduce) {
   html[data-celebration="active"] { scroll-behavior: auto; }
+  .celebration-rsvp-success-state { animation: none; }
   .celebration-page *, .celebration-page *::before, .celebration-page *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;

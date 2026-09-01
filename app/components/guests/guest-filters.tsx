@@ -36,6 +36,16 @@ export function GuestFilters({
     onBulkDelete,
     onClearSelection
 }: GuestFiltersProps) {
+    const filters: Array<{ value: GuestFilter; label: string }> = [
+        { value: "todos", label: "Todos" },
+        { value: "confirmado", label: "Confirmados" },
+        { value: "pendente", label: "Pendentes" },
+        { value: "recusado", label: "Recusados" },
+        { value: "public_rsvp", label: "Novos pelo site" },
+        { value: "confirmed_today", label: "Confirmados hoje" },
+        { value: "with_message", label: "Com mensagem" },
+    ];
+
     return (
         <div className="sticky top-14 z-30 bg-stone-50/95 backdrop-blur supports-[backdrop-filter]:bg-stone-50/60 pb-4 pt-2 space-y-3">
             {/* Search and Group Filter Row */}
@@ -51,7 +61,7 @@ export function GuestFilters({
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className={`shrink-0 ${groupFilter !== 'todos' ? 'border-primary text-primary bg-primary/5' : ''}`}>
+                        <Button variant="outline" size="icon" aria-label="Filtrar por grupo" className={`min-h-11 min-w-11 shrink-0 ${groupFilter !== 'todos' ? 'border-primary text-primary bg-primary/5' : ''}`}>
                             <Filter className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -75,30 +85,32 @@ export function GuestFilters({
                         <span className="text-sm font-medium text-primary mr-auto">
                             {selectedCount} selecionado{selectedCount > 1 ? 's' : ''}
                         </span>
-                        <Button size="sm" variant="ghost" onClick={onClearSelection} className="h-8 text-muted-foreground">
+                        <Button size="sm" variant="ghost" onClick={onClearSelection} className="min-h-11 text-muted-foreground">
                             Cancelar
                         </Button>
-                        <Button size="sm" onClick={onBulkConfirm} className="h-8 gap-1 bg-green-600 hover:bg-green-700 text-white border-0">
+                        <Button size="sm" onClick={onBulkConfirm} className="min-h-11 gap-1 bg-green-600 hover:bg-green-700 text-white border-0">
                             <Check className="h-3 w-3" />
                             Confirmar
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={onBulkDelete} className="h-8 gap-1">
+                        <Button size="sm" variant="destructive" onClick={onBulkDelete} className="min-h-11 gap-1">
                             <Trash2 className="h-3 w-3" />
                             Excluir
                         </Button>
                     </div>
                 ) : (
                     <div className="flex gap-2 overflow-x-auto no-scrollbar w-full animate-in fade-in slide-in-from-bottom-2 duration-200">
-                        {(["todos", "confirmado", "pendente", "recusado"] as const).map((f) => (
+                        {filters.map((option) => (
                             <button
-                                key={f}
-                                onClick={() => onFilterChange(f)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all whitespace-nowrap border ${filter === f
+                                type="button"
+                                key={option.value}
+                                onClick={() => onFilterChange(option.value)}
+                                aria-pressed={filter === option.value}
+                                className={`min-h-11 px-3 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${filter === option.value
                                     ? "bg-stone-900 text-white border-stone-900 shadow-sm"
                                     : "bg-white text-stone-600 border-stone-200 hover:border-stone-300 hover:bg-stone-50"
                                     }`}
                             >
-                                {f}
+                                {option.label}
                             </button>
                         ))}
                     </div>

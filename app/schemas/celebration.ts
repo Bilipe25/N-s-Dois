@@ -46,6 +46,15 @@ export const EventRsvpRequestSchema = z.object({
     confirmedChildren: z.number().int().min(0).max(20),
     message: z.string().trim().max(1000).optional().default(""),
   })).min(1).max(10),
+}).superRefine((value, context) => {
+  const ids = new Set<string>();
+  value.eventResponses.forEach((response, index) => {
+    if (ids.has(response.eventId)) context.addIssue({ code: "custom", path: ["eventResponses", index, "eventId"], message: "Evento repetido." });
+    ids.add(response.eventId);
+    if (response.status === "confirmado" && response.confirmedAdults + response.confirmedChildren < 1) {
+      context.addIssue({ code: "custom", path: ["eventResponses", index], message: "Informe ao menos uma pessoa." });
+    }
+  });
 });
 
 export const GeneralRsvpRequestSchema = z.object({

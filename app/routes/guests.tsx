@@ -46,6 +46,8 @@ import {
     createGuestInviteLink
 } from "@/hooks/useGuests";
 import type { Guest } from "@/schemas/guest";
+import { CELEBRATION_TIME_ZONE, formatCelebrationDate } from "@/lib/celebration-time";
+import { confirmedCounts, formatRsvpTimestamp, guestHasPrivateMessage, latestResponseAt, respondedToday } from "@/lib/guest-rsvp";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Convidados - Nós Dois" }];
@@ -87,7 +89,7 @@ export default function Guests() {
     const { user } = useLoaderData<typeof loader>();
 
     // React Query Hooks
-    const { data: guests = [], isLoading } = useGuests();
+    const { data: guests = [], isLoading, isFetching, refetch } = useGuests();
     const { data: config } = useAppConfig();
 
     const { mutate: addGuest, isPending: isAdding } = useAddGuest(user);
@@ -113,12 +115,23 @@ export default function Guests() {
     const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
 
     const filteredGuests = guests.filter((guest) => {
-        const matchesStatus = filter === "todos" ? true : guest.rsvp_status === filter;
+        const lastResponse = latestResponseAt(guest);
+        const matchesStatus = filter === "todos" ? true
+            : filter === "public_rsvp" ? guest.source === "public_rsvp"
+                : filter === "confirmed_today" ? guest.rsvp_status === "confirmado" && respondedToday(lastResponse)
+                    : filter === "with_message" ? guestHasPrivateMessage(guest)
+                        : guest.rsvp_status === filter;
         const matchesGroup = groupFilter === "todos" ? true : guest.group_name === groupFilter;
         const matchesSearch = guest.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             guest.group_name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesStatus && matchesGroup && matchesSearch;
     });
+
+    useEffect(() => {
+        if (!selectedGuest) return;
+        const current = guests.find((guest) => guest.id === selectedGuest.id);
+        if (current) setSelectedGuest(current);
+    }, [guests, selectedGuest?.id]);
 
     // Handlers
     const handleToggleSelect = (id: string) => {
@@ -386,6 +399,8 @@ export default function Guests() {
         recusado: "bg-red-100 text-red-700",
         pendente: "bg-yellow-100 text-yellow-700",
     };
+    const selectedCounts = selectedGuest ? confirmedCounts(selectedGuest) : null;
+    const selectedLastResponse = selectedGuest ? formatRsvpTimestamp(latestResponseAt(selectedGuest)) : null;
 
     return (
         <div className="min-h-screen bg-stone-50 pb-24">
@@ -395,6 +410,12 @@ export default function Guests() {
 
                 {/* Main Content */}
                 <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500">
+                        <span>Horários em {CELEBRATION_TIME_ZONE}</span>
+                        <Button type="button" variant="outline" size="sm" disabled={isFetching} onClick={() => void refetch()} className="min-h-11 rounded-full">
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />Atualizar respostas
+                        </Button>
+                    </div>
                     <GuestFilters
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
@@ -410,7 +431,7 @@ export default function Guests() {
                     />
 
                     <GuestList
-                        guests={filteredGuests as any}
+                        guests={filteredGuests}
                         selectedIds={selectedIds}
                         onToggleSelect={handleToggleSelect}
                         onUpdateRSVP={(id, status) => updateRSVP({ id, status })}
@@ -546,13 +567,26 @@ export default function Guests() {
                                     <div className="bg-stone-50 rounded-xl p-4">
                                         <div className="flex items-center gap-2 text-stone-500 mb-1">
                                             <User className="h-4 w-4" />
-                                            <span className="text-xs">Pessoas</span>
+                                            <span className="text-xs">Resposta</span>
                                         </div>
                                         <p className="font-medium text-stone-900">
-                                            {selectedGuest.adults_count} adulto{selectedGuest.adults_count !== 1 ? 's' : ''}, {selectedGuest.children_count} criança{selectedGuest.children_count !== 1 ? 's' : ''}
+                                            {selectedCounts?.adults ?? 0} adulto{selectedCounts?.adults !== 1 ? 's' : ''}, {selectedCounts?.children ?? 0} criança{selectedCounts?.children !== 1 ? 's' : ''}
                                         </p>
                                     </div>
                                 </div>
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl bg-stone-50 p-4">
+                                        <p className="text-xs text-stone-500">Origem</p>
+                                        <p className="mt-1 font-medium text-stone-900">{selectedGuest.source === "public_rsvp" ? "Novo pelo site" : "Lista do casal"}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-stone-50 p-4">
+                                        <p className="text-xs text-stone-500">Última resposta</p>
+                                        <p className="mt-1 font-medium text-stone-900">{selectedLastResponse || "Ainda sem resposta"}</p>
+                                    </div>
+                                </div>
+
+                                {selectedGuest.phone && <div className="rounded-xl bg-stone-50 p-4"><p className="text-xs text-stone-500">Telefone privado</p><p className="mt-1 font-medium text-stone-900">{selectedGuest.phone}</p></div>}
 
                                 {selectedGuest.created_at && (
                                     <div className="bg-stone-50 rounded-xl p-4">
@@ -573,10 +607,12 @@ export default function Guests() {
                                 {selectedGuest.source === "public_rsvp" && <div className="space-y-3 rounded-xl border border-violet-200 bg-violet-50 p-4">
                                     <div><p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Cadastro espontâneo</p><p className="mt-1 text-sm text-stone-700">{selectedGuest.review_status === "pending" ? "Aguardando revisão do casal." : "Cadastro revisado e aprovado."}</p></div>
                                     <p className="text-sm text-stone-700"><strong>Pessoas informadas:</strong> {selectedGuest.rsvp_adults ?? 0} adulto(s) e {selectedGuest.rsvp_children ?? 0} criança(s).</p>
-                                    {selectedGuest.rsvp_message && <div className="rounded-lg bg-white p-3 text-sm text-stone-700"><span className="block text-xs font-medium text-stone-500">Mensagem privada</span>{selectedGuest.rsvp_message}</div>}
-                                    {selectedGuest.rsvp_responded_at && <p className="text-xs text-stone-500">Resposta em {new Date(selectedGuest.rsvp_responded_at).toLocaleString("pt-BR")}</p>}
                                     {selectedGuest.review_status === "pending" && <Button type="button" disabled={isApproving} className="min-h-11 w-full bg-violet-700 text-white hover:bg-violet-800" onClick={() => approveGuest(selectedGuest.id, { onSuccess: () => setSelectedGuest({ ...selectedGuest, review_status: "approved" }) })}>{isApproving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Aprovar cadastro</Button>}
                                 </div>}
+
+                                {selectedGuest.rsvp_message && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm leading-relaxed text-stone-700"><span className="mb-1 block text-xs font-semibold text-rose-800">Mensagem privada geral</span>{selectedGuest.rsvp_message}</div>}
+
+                                {selectedGuest.event_responses && selectedGuest.event_responses.length > 0 && <section className="space-y-3" aria-labelledby="guest-event-responses"><h3 id="guest-event-responses" className="text-sm font-semibold text-stone-800">Respostas por evento</h3>{selectedGuest.event_responses.map((response) => <article key={response.id} className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-medium text-stone-900">{response.event_title}</h4>{response.event_starts_at && <p className="mt-1 text-xs text-stone-500">{formatCelebrationDate(response.event_starts_at)}</p>}</div><Badge variant="outline" className={response.status === "confirmado" ? "border-green-200 bg-green-50 text-green-800" : response.status === "recusado" ? "border-red-200 bg-red-50 text-red-800" : "border-yellow-200 bg-yellow-50 text-yellow-800"}>{response.status === "confirmado" ? "Confirmado" : response.status === "recusado" ? "Recusado" : "Pendente"}</Badge></div><p className="mt-3 text-sm text-stone-600">{response.status === "recusado" ? "Sem presença confirmada" : `${response.confirmed_adults} adulto(s) e ${response.confirmed_children} criança(s)`}</p>{response.private_message && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm leading-relaxed text-stone-700"><span className="block text-xs font-semibold text-rose-800">Mensagem privada</span>{response.private_message}</div>}{response.responded_at && <p className="mt-3 text-xs text-stone-500">Respondido em {formatRsvpTimestamp(response.responded_at)}</p>}</article>)}</section>}
 
                                 {/* Ações Rápidas */}
                                 <div className="space-y-2">

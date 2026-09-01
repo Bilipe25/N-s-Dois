@@ -18,7 +18,8 @@ import { Countdown } from "@/components/bridal-shower/countdown";
 import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { GiftProgressBar } from "@/components/bridal-shower/gift-progress-bar";
 import { PublicGiftCard } from "@/components/celebration/public-gift-card";
-import { GuestIdentification } from "@/components/celebration/guest-identification";
+import { GuestIdentification, type IdentificationResult } from "@/components/celebration/guest-identification";
+import { requestJson } from "@/lib/http.client";
 import "./celebration.css";
 
 const CelebrationQRCode = lazy(() => import("react-qr-code"));
@@ -32,16 +33,21 @@ SOURCE: app/routes/public.bridal-shower.tsx e app/components/bridal-shower no co
 
 export const meta: Route.MetaFunction = ({ data }) => {
   const loaderData = data as Awaited<ReturnType<typeof loader>> | undefined;
-  const title = `${loaderData?.config.title || "Celebrando o Amor e o Novo Lar"} | Gabriel & Raabe`;
-  const description = loaderData?.config.subtitle || "Celebre com Gabriel e Raabe e conheça os detalhes preparados com carinho.";
-  const image = loaderData?.config.ogUrl || loaderData?.config.heroUrl || undefined;
+  const title = "Gabriel & Raabe — Celebrando o Amor";
+  const description = loaderData?.config.subtitle || "Celebre o amor e o novo lar de Gabriel e Raabe. Veja os detalhes e confirme sua presença.";
+  const canonical = loaderData?.canonical || "/celebracao";
+  const image = loaderData?.canonical ? new URL("/celebration-og.png", loaderData.canonical).href : "/celebration-og.png";
   return [
-    { title }, { name: "description", content: description }, { name: "theme-color", content: "#f43f5e" },
+    { title }, { name: "description", content: description },
     { property: "og:type", content: "website" }, { property: "og:title", content: title },
-    { property: "og:description", content: description }, { property: "og:url", content: loaderData?.canonical || "/celebracao" },
-    ...(image ? [{ property: "og:image", content: image }, { property: "og:image:alt", content: "Gabriel e Raabe" }] : []),
-    { name: "twitter:card", content: image ? "summary_large_image" : "summary" },
-    { tagName: "link", rel: "canonical", href: loaderData?.canonical || "/celebracao" },
+    { property: "og:description", content: description }, { property: "og:url", content: canonical },
+    { property: "og:site_name", content: "Nós Dois" }, { property: "og:locale", content: "pt_BR" },
+    { property: "og:image", content: image }, { property: "og:image:type", content: "image/png" },
+    { property: "og:image:width", content: "1200" }, { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: "Gabriel e Raabe — Celebrando o Amor e o Novo Lar" },
+    { name: "twitter:card", content: "summary_large_image" }, { name: "twitter:url", content: canonical },
+    { name: "twitter:title", content: title }, { name: "twitter:description", content: description }, { name: "twitter:image", content: image },
+    { tagName: "link", rel: "canonical", href: canonical },
   ];
 };
 
@@ -102,30 +108,93 @@ function DrawerCloseControl() {
 
 type GeneralResponse = NonNullable<Awaited<ReturnType<typeof loader>>["invitation"]["general"]>;
 
-function RsvpContent({ events, responses, general, active, enabled, contacts, onIdentified }: { events: CelebrationEvent[]; responses: InvitationEvent[]; general: GeneralResponse | null; active: boolean; enabled: boolean; contacts: ContactAction[]; onIdentified: () => void }) {
+type SavedRsvpSummary = {
+  title: string;
+  status: "confirmado" | "recusado";
+  adults: number;
+  children: number;
+};
+
+function peopleSummary(adults: number, children: number) {
+  const adultLabel = `${adults} ${adults === 1 ? "adulto" : "adultos"}`;
+  const childLabel = `${children} ${children === 1 ? "criança" : "crianças"}`;
+  return children > 0 ? `${adultLabel} e ${childLabel}` : adultLabel;
+}
+
+function RsvpSuccess({ summaries, registered, onViewDetails, onEdit }: { summaries: SavedRsvpSummary[]; registered: boolean; onViewDetails: () => void; onEdit: () => void }) {
+  const allDeclined = summaries.length > 0 && summaries.every((summary) => summary.status === "recusado");
+  const allConfirmed = summaries.length > 0 && summaries.every((summary) => summary.status === "confirmado");
+  const title = allDeclined ? "Resposta registrada" : allConfirmed ? "Presença confirmada" : "Respostas salvas";
+  const description = allDeclined
+    ? "Obrigado por nos avisar com carinho. Sua resposta pode ser alterada depois."
+    : registered
+      ? "Que alegria receber sua resposta. Seu cadastro ficou sinalizado para o casal revisar com tranquilidade."
+      : "Que alegria saber que você vem celebrar com a gente. Você pode alterar sua resposta depois.";
+
+  return <div className="celebration-rsvp-success-state" role="status" aria-live="polite">
+    <div className="celebration-rsvp-success-icon" aria-hidden="true"><Check /></div>
+    <div className="text-center"><h3 className="font-serif text-2xl font-semibold text-stone-800">{title}</h3><p className="mt-2 text-sm leading-relaxed text-stone-600">{description}</p></div>
+    <div className="w-full space-y-2" aria-label="Resumo da resposta">{summaries.map((summary) => <div key={summary.title} className="flex items-start justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3 text-sm"><span className="font-medium text-stone-800">{summary.title}</span><span className="text-right text-stone-600">{summary.status === "recusado" ? "Não poderei ir" : peopleSummary(summary.adults, summary.children)}</span></div>)}</div>
+    <div className="grid w-full gap-2"><Button type="button" onClick={onViewDetails} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Ver detalhes da celebração</Button><Button type="button" variant="outline" onClick={onEdit} className="min-h-11 w-full rounded-full">Alterar resposta</Button></div>
+  </div>;
+}
+
+function RsvpContent({ events, responses, general, active, enabled, open, contacts, onRefresh, onViewDetails }: { events: CelebrationEvent[]; responses: InvitationEvent[]; general: GeneralResponse | null; active: boolean; enabled: boolean; open: boolean; contacts: ContactAction[]; onRefresh: () => void; onViewDetails: () => void }) {
   const [drafts, setDrafts] = useState<ResponseDraft[]>(() => responses.map(responseDraft));
   const [generalDraft, setGeneralDraft] = useState(() => generalResponseDraft(general));
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
+  const [registeredSummary, setRegisteredSummary] = useState<SavedRsvpSummary[] | null>(null);
+  const submittingRef = useRef(false);
   const eventById = useMemo(() => new Map(events.map((event) => [event.id, event])), [events]);
   useEffect(() => {
     setDrafts(responses.map(responseDraft));
     setGeneralDraft(generalResponseDraft(general));
   }, [responses, general]);
-  if (!active) return <GuestIdentification onIdentified={onIdentified} contacts={<ContactActions contacts={contacts} />} />;
+  useEffect(() => {
+    if (!open) {
+      setState("idle");
+      setError("");
+      setRegisteredSummary(null);
+      submittingRef.current = false;
+    }
+  }, [open]);
+
+  const handleIdentified = (result: IdentificationResult) => {
+    if (result.kind === "registered") {
+      setRegisteredSummary([{ title: "Celebração", status: result.response.status, adults: result.response.confirmedAdults, children: result.response.confirmedChildren }]);
+      setState("saved");
+    }
+    onRefresh();
+  };
+
+  const savedSummaries: SavedRsvpSummary[] = registeredSummary || (drafts.length
+    ? drafts.map((draft) => ({ title: eventById.get(draft.event_id)?.title || "Celebração", status: draft.status === "recusado" ? "recusado" as const : "confirmado" as const, adults: draft.status === "recusado" ? 0 : draft.confirmed_adults, children: draft.status === "recusado" ? 0 : draft.confirmed_children }))
+    : generalDraft ? [{ title: "Celebração", status: generalDraft.status === "recusado" ? "recusado" as const : "confirmado" as const, adults: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_adults, children: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_children }] : []);
+
+  if (state === "saved" && savedSummaries.length) return <RsvpSuccess summaries={savedSummaries} registered={Boolean(registeredSummary)} onViewDetails={onViewDetails} onEdit={() => { setRegisteredSummary(null); setState("idle"); }} />;
+  if (!active) return <GuestIdentification onIdentified={handleIdentified} contacts={<ContactActions contacts={contacts} />} />;
   if (!enabled) return <div className="celebration-panel-empty"><Heart /><p>As confirmações ainda não estão abertas.</p></div>;
   if (!responses.length && !generalDraft) return <div className="celebration-panel-empty"><Heart /><p>Não há uma confirmação disponível agora.</p></div>;
 
   const update = (id: string, values: Partial<ResponseDraft>) => { setDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, ...values } : draft)); setState("idle"); };
   const submit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setState("saving"); setError("");
     const payload = drafts.length
       ? { eventResponses: drafts.map((draft) => ({ eventId: draft.event_id, status: draft.status === "recusado" ? "recusado" : "confirmado", confirmedAdults: draft.status === "recusado" ? 0 : draft.confirmed_adults, confirmedChildren: draft.status === "recusado" ? 0 : draft.confirmed_children, message: draft.message })) }
       : { generalResponse: { status: generalDraft?.status === "recusado" ? "recusado" : "confirmado", confirmedAdults: generalDraft?.status === "recusado" ? 0 : generalDraft?.confirmed_adults || 0, confirmedChildren: generalDraft?.status === "recusado" ? 0 : generalDraft?.confirmed_children || 0, message: generalDraft?.message || "" } };
-    const response = await fetch("/api/public/celebracao/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) { setError(body.error || "Não foi possível salvar. Tente novamente."); setState("error"); return; }
-    setState("saved");
+    try {
+      await requestJson("/api/public/celebracao/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      setState("saved");
+      onRefresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Não foi possível salvar. Tente novamente.");
+      setState("error");
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   return <div className="celebration-rsvp-form">{!drafts.length && generalDraft && <fieldset className="celebration-rsvp-event"><legend>Celebração</legend>
@@ -148,7 +217,6 @@ function RsvpContent({ events, responses, general, active, enabled, contacts, on
     </fieldset>;
   })}
     {error && <p className="celebration-form-error" role="alert">{error}</p>}
-    {state === "saved" && <p className="celebration-form-success" role="status"><Check /> {((drafts[0]?.status || generalDraft?.status) === "recusado") ? "Resposta registrada com carinho. Você pode alterá-la depois." : "Presença confirmada! Sua resposta pode ser alterada depois."}</p>}
     <Button type="button" onClick={submit} disabled={state === "saving"} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{state === "saving" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando…</> : "Salvar minha resposta"}</Button>
   </div>;
 }
@@ -166,15 +234,14 @@ function PixPanel({ open, onOpenChange, gift, isMobile }: { open: boolean; onOpe
   useEffect(() => {
     if (!open) { setPayload(""); setAmountCents(null); setState("idle"); setCopied(false); return; }
     const controller = new AbortController(); setState("loading");
-    fetch("/api/public/celebracao/pix-payload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gift ? { giftId: gift.id } : {}), signal: controller.signal })
-      .then(async (response) => ({ response, body: await response.json().catch(() => ({})) }))
-      .then(({ response, body }) => { if (!response.ok) throw new Error(); setPayload(body.payload); setAmountCents(body.amountCents ?? null); setState("idle"); })
+    requestJson<{ payload: string; amountCents?: number | null }>("/api/public/celebracao/pix-payload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(gift ? { giftId: gift.id } : {}), signal: controller.signal })
+      .then((body) => { setPayload(body.payload); setAmountCents(body.amountCents ?? null); setState("idle"); })
       .catch((error) => { if (error.name !== "AbortError") setState("error"); });
     return () => controller.abort();
   }, [open, gift]);
   const copy = async () => { try { await navigator.clipboard.writeText(payload); setCopied(true); } catch { toast.error("Não foi possível copiar o código."); } };
   const content = <div className="flex flex-col items-center gap-4 py-2">
-    {gift && <div className="w-full rounded-xl border border-rose-100 bg-rose-50 p-3 text-center"><span className="text-xs font-semibold uppercase tracking-wide text-rose-600">Presente selecionado</span><p className="mt-1 font-medium text-stone-800">{gift.item_name}</p></div>}
+    {gift && <div className="w-full rounded-xl border border-rose-100 bg-rose-50 p-3 text-center"><span className="text-xs font-semibold uppercase tracking-wide text-rose-600">Contribuição para este presente</span><p className="mt-1 font-medium text-stone-800">{gift.item_name}</p><p className="mt-2 text-xs leading-relaxed text-stone-600">Gerar ou pagar este PIX não reserva o item. Para isso, use a ação “Escolher” na lista.</p></div>}
     {state === "loading" && <div className="flex min-h-56 items-center gap-2 text-stone-600"><Loader2 className="h-5 w-5 animate-spin" />Gerando BR Code…</div>}
     {state === "error" && <div className="celebration-panel-empty"><QrCode /><p>O PIX não está disponível agora. Tente novamente mais tarde.</p></div>}
     {payload && <><div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm"><Suspense fallback={<div className="h-[180px] w-[180px] animate-pulse rounded-xl bg-stone-100" aria-label="Carregando QR Code" />}><CelebrationQRCode value={payload} size={180} bgColor="#ffffff" fgColor="#1c1917" level="M" /></Suspense></div>{amountCents ? <p className="text-sm font-semibold text-stone-700">Valor configurado: {(amountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p> : <p className="text-center text-sm text-stone-600">Contribuição livre: informe o valor no aplicativo do seu banco.</p>}<Button onClick={copy} className="min-h-12 w-full rounded-full bg-stone-900 text-white hover:bg-stone-800"><Copy className="mr-2 h-4 w-4" />{copied ? "Código copiado" : "Copiar PIX Copia e Cola"}</Button><p className="text-center text-xs leading-relaxed text-stone-500">O código facilita a transferência, mas o site não processa nem confirma pagamentos.</p></>}
@@ -188,14 +255,14 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
   const [query, setQuery] = useState(""); const [category, setCategory] = useState<string | null>(null); const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [busy, setBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<PublicGift | null>(null); const [message, setMessage] = useState("");
+  const [reservationFeedback, setReservationFeedback] = useState<"reserved" | "cancelled" | null>(null);
   const [reservedCount, setReservedCount] = useState(stats.reserved);
   const didInitializeFilters = useRef(false);
   const isMobile = useIsMobile();
 
   const requestPage = useCallback(async (nextCursor?: string | null, signal?: AbortSignal) => {
     const params = new URLSearchParams(); if (query.trim()) params.set("q", query.trim()); if (category) params.set("category", category); if (price) params.set("price", price); if (nextCursor) params.set("cursor", nextCursor);
-    const response = await fetch(`/api/public/celebracao/gifts?${params}`, { signal }); const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || "Não foi possível carregar os presentes."); return body as { gifts: PublicGift[]; nextCursor: string | null };
+    return requestJson<{ gifts: PublicGift[]; nextCursor: string | null }>(`/api/public/celebracao/gifts?${params}`, { signal });
   }, [query, category, price]);
 
   useEffect(() => {
@@ -209,18 +276,22 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
   const loadMore = async () => { if (!cursor) return; setLoadingMore(true); try { const body = await requestPage(cursor); setGifts((current) => [...current, ...body.gifts]); setCursor(body.nextCursor); } catch (error) { setMessage((error as Error).message); } finally { setLoadingMore(false); } };
   const applyReservation = async () => {
     if (!selected || !canReserve) return;
-    setBusy(selected.id); setMessage(""); const cancelling = Boolean(selected.reservation_id);
-    const response = await fetch(cancelling ? `/api/public/celebracao/gift-reservations/${selected.reservation_id}` : "/api/public/celebracao/gift-reservations", { method: cancelling ? "DELETE" : "POST", headers: { "Content-Type": "application/json" }, body: cancelling ? undefined : JSON.stringify({ giftId: selected.id }) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) setMessage(body.error || "Não foi possível atualizar a reserva."); else {
+    setBusy(selected.id); setMessage(""); setReservationFeedback(null); const cancelling = Boolean(selected.reservation_id);
+    try {
+      const body = await requestJson<{ reservationId?: string }>(cancelling ? `/api/public/celebracao/gift-reservations/${selected.reservation_id}` : "/api/public/celebracao/gift-reservations", { method: cancelling ? "DELETE" : "POST", headers: { "Content-Type": "application/json" }, body: cancelling ? undefined : JSON.stringify({ giftId: selected.id }) });
       const patch = { available: cancelling, reservation_id: cancelling ? null : body.reservationId };
       setGifts((current) => current.map((gift) => gift.id === selected.id ? { ...gift, ...patch } : gift));
+      setSelected((current) => current ? { ...current, ...patch } : current);
       setReservedCount((current) => Math.max(0, current + (cancelling ? -1 : 1)));
-      setMessage(cancelling ? "Sua reserva foi cancelada." : "Presente reservado. Isso não confirma presença nem pagamento."); setSelected(null);
+      setReservationFeedback(cancelling ? "cancelled" : "reserved");
+    } catch (requestError) {
+      setMessage(requestError instanceof Error ? requestError.message : "Não foi possível atualizar a reserva.");
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
-  const panel = <div className="space-y-5 py-2">{selected && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-center"><PartyPopper className="mx-auto mb-2 h-7 w-7 text-rose-500" /><p className="font-serif text-lg text-stone-800">{selected.item_name}</p></div>}{canReserve ? <><p className="text-sm leading-relaxed text-stone-600">{selected?.reservation_id ? "Você pode desfazer esta escolha. O presente voltará a aparecer como disponível." : "Vamos guardar este presente como a sua escolha. Reservar não confirma compra, pagamento ou presença."}</p><Button onClick={applyReservation} disabled={busy === selected?.id} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? "Atualizando…" : selected?.reservation_id ? "Cancelar minha reserva" : "Confirmar reserva"}</Button></> : !invitationActive ? <GuestIdentification context="gift" onIdentified={onIdentified} contacts={<ContactActions contacts={contacts} />} /> : <p className="text-sm leading-relaxed text-stone-600">As reservas não estão disponíveis agora. A lista e o PIX continuam públicos quando habilitados.</p>}</div>;
+  const closeReservationPanel = () => { setSelected(null); setReservationFeedback(null); };
+  const panel = <div className="space-y-5 py-2">{selected && <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-center"><PartyPopper className="mx-auto mb-2 h-7 w-7 text-rose-500" /><p className="font-serif text-lg text-stone-800">{selected.item_name}</p></div>}{reservationFeedback && selected ? <div className="space-y-4 text-center" role="status" aria-live="polite"><div className="celebration-rsvp-success-icon mx-auto" aria-hidden="true"><Check /></div><div><h3 className="font-serif text-xl font-semibold text-stone-800">{reservationFeedback === "reserved" ? "Presente escolhido com carinho" : "Reserva cancelada"}</h3><p className="mt-2 text-sm leading-relaxed text-stone-600">{reservationFeedback === "reserved" ? "Guardamos este item como a sua escolha. A reserva não confirma compra, pagamento nem presença." : "O presente voltou a ficar disponível para outra pessoa escolher."}</p></div><Button type="button" onClick={closeReservationPanel} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">Continuar vendo presentes</Button>{reservationFeedback === "reserved" && <Button type="button" variant="outline" onClick={() => void applyReservation()} disabled={busy === selected.id} className="min-h-11 w-full rounded-full">{busy ? "Atualizando…" : "Cancelar minha reserva"}</Button>}</div> : canReserve ? <><p className="text-sm leading-relaxed text-stone-600">{selected?.reservation_id ? "Você pode desfazer esta escolha. O presente voltará a aparecer como disponível." : "Vamos guardar este presente como a sua escolha. Reservar não confirma compra, pagamento ou presença."}</p><Button onClick={applyReservation} disabled={busy === selected?.id} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? "Atualizando…" : selected?.reservation_id ? "Cancelar minha reserva" : "Confirmar reserva"}</Button></> : !invitationActive ? <GuestIdentification context="gift" onIdentified={() => onIdentified()} contacts={<ContactActions contacts={contacts} />} /> : <p className="text-sm leading-relaxed text-stone-600">As reservas não estão disponíveis agora. A lista e o PIX continuam públicos quando habilitados.</p>}</div>;
 
   return <div className="space-y-7">
     <GiftProgressBar total={stats.total} reserved={reservedCount} />
@@ -228,9 +299,9 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
       <GiftFilter categories={categories} searchTerm={query} onSearchChange={setQuery} selectedCategory={category} onCategorySelect={setCategory} selectedPriceRange={price} onPriceRangeSelect={setPrice} />
     </div>
     {message && <p className="rounded-xl bg-white p-3 text-center text-sm text-stone-700 shadow-sm" role="status">{message}</p>}
-    {loading ? <div className="grid gap-3 sm:grid-cols-2"><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /></div> : gifts.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gifts.map((gift) => <PublicGiftCard key={gift.id} gift={gift} busy={busy === gift.id} onReserve={setSelected} onPix={pixEnabled ? onPix : undefined} />)}</div> : <div className="rounded-2xl border border-stone-100 bg-white px-4 py-14 text-center shadow-sm"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-rose-50"><PackageSearch className="h-10 w-10 text-rose-300" /></div><h3 className="font-serif text-xl text-stone-800">Nenhum presente encontrado</h3><p className="mx-auto mt-2 max-w-md text-sm text-stone-600">{query || category || price ? "Tente outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}</p>{(query || category || price) && <Button variant="outline" className="mt-5 min-h-11 rounded-full" onClick={() => { setQuery(""); setCategory(null); setPrice(""); }}>Limpar filtros</Button>}</div>}
+    {loading ? <div className="grid gap-3 sm:grid-cols-2"><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /></div> : gifts.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gifts.map((gift) => <PublicGiftCard key={gift.id} gift={gift} busy={busy === gift.id} onReserve={(chosenGift) => { setReservationFeedback(null); setSelected(chosenGift); }} onPix={pixEnabled ? onPix : undefined} />)}</div> : <div className="rounded-2xl border border-stone-100 bg-white px-4 py-14 text-center shadow-sm"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-rose-50"><PackageSearch className="h-10 w-10 text-rose-300" /></div><h3 className="font-serif text-xl text-stone-800">Nenhum presente encontrado</h3><p className="mx-auto mt-2 max-w-md text-sm text-stone-600">{query || category || price ? "Tente outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}</p>{(query || category || price) && <Button variant="outline" className="mt-5 min-h-11 rounded-full" onClick={() => { setQuery(""); setCategory(null); setPrice(""); }}>Limpar filtros</Button>}</div>}
     {cursor && <div className="text-center"><Button variant="outline" className="min-h-11 rounded-full bg-white" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Carregando…" : "Ver mais presentes"}</Button></div>}
-    {isMobile ? <Drawer open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">{selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DrawerTitle><DrawerDescription>Uma escolha feita com carinho.</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{panel}</div></DrawerContent></Drawer> : <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="font-serif text-2xl">{selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DialogTitle><DialogDescription>Uma escolha feita com carinho.</DialogDescription></DialogHeader>{panel}</DialogContent></Dialog>}
+    {isMobile ? <Drawer open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DrawerTitle><DrawerDescription>Uma escolha feita com carinho.</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{panel}</div></DrawerContent></Drawer> : <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DialogTitle><DialogDescription>Uma escolha feita com carinho.</DialogDescription></DialogHeader>{panel}</DialogContent></Dialog>}
   </div>;
 }
 
@@ -251,8 +322,28 @@ export default function CelebrationPage() {
   useEffect(() => { document.documentElement.dataset.celebration = "active"; const onScroll = () => setShowScrollTop(window.scrollY > 500); window.addEventListener("scroll", onScroll, { passive: true }); return () => { delete document.documentElement.dataset.celebration; window.removeEventListener("scroll", onScroll); }; }, []);
   useEffect(() => { setHeroFailed(false); const image = heroImageRef.current; if (image?.complete && image.naturalWidth === 0) setHeroFailed(true); }, [data.config.heroUrl]);
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  const share = async () => { try { if (navigator.share) await navigator.share({ title: data.config.title, url: data.canonical }); else { await navigator.clipboard.writeText(data.canonical); toast.success("Link da celebração copiado!"); } } catch { /* cancelamento do compartilhamento */ } };
+  const share = async () => {
+    const shareData = { title: "Gabriel & Raabe — Celebrando o Amor", text: "Celebrando o amor e o novo lar com Gabriel e Raabe. Veja os detalhes e confirme sua presença.", url: data.canonical };
+    try {
+      if (navigator.share) { await navigator.share(shareData); return; }
+      await navigator.clipboard.writeText(data.canonical);
+      toast.success("Link da celebração copiado!");
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(data.canonical);
+        toast.success("Não foi possível abrir o compartilhamento. O link foi copiado.");
+      } catch {
+        toast.error("Não foi possível compartilhar agora. Copie o endereço da página no navegador.");
+      }
+    }
+  };
   const openPix = (gift: PublicGift | null = null) => { setPixGift(gift); setPixOpen(true); };
+  const closeRsvpAndViewDetails = () => {
+    setRsvpOpen(false);
+    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220;
+    window.setTimeout(() => scrollTo("locais"), delay);
+  };
 
   return <main className="celebration-page min-h-screen bg-stone-50 pb-20 font-sans text-stone-800 selection:bg-rose-100 selection:text-rose-900">
     <span dangerouslySetInnerHTML={{ __html: `<!-- ${DIRECTION_CONTRACT.replace(/--/g, "—")} -->` }} />
@@ -301,7 +392,7 @@ export default function CelebrationPage() {
     </div>
 
     <footer className="celebration-footer border-t border-stone-200 pt-8 text-center text-xs text-stone-500"><p>Feito com <Heart className="mx-1 inline h-3.5 w-3.5 fill-rose-400 text-rose-400" /> por Nós Dois</p></footer>
-    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile} active={data.invitation.active}><RsvpContent events={data.events} responses={data.invitation.responses} general={data.invitation.general} active={data.invitation.active} enabled={data.config.rsvpEnabled && phase !== "past"} contacts={contactActions} onIdentified={refreshIdentity} /></RsvpPanel>
+    <RsvpPanel open={rsvpOpen} onOpenChange={setRsvpOpen} isMobile={isMobile} active={data.invitation.active}><RsvpContent events={data.events} responses={data.invitation.responses} general={data.invitation.general} active={data.invitation.active} enabled={data.config.rsvpEnabled && phase !== "past"} open={rsvpOpen} contacts={contactActions} onRefresh={refreshIdentity} onViewDetails={closeRsvpAndViewDetails} /></RsvpPanel>
     <PixPanel open={pixOpen} onOpenChange={(open) => { setPixOpen(open); if (!open) setPixGift(null); }} gift={pixGift} isMobile={isMobile} />
   </main>;
 }

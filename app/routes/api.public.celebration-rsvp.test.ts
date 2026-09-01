@@ -100,4 +100,19 @@ describe("RSVP individual", () => {
     expect(response.status).toBe(400);
     expect(updates).toHaveLength(0);
   });
+
+  it("trata a repetição da mesma resposta como idempotente", async () => {
+    mocks.createServerAdminClient.mockReturnValue({
+      from: (table: string) => {
+        if (table === "guest_event_rsvps") return {
+          select: () => thenable({ data: [{ id: rsvpId, event_id: eventId, adult_limit: 2, child_limit: 1, status: "confirmado", confirmed_adults: 1, confirmed_children: 0, private_message: "Até lá" }], error: null }),
+          update: (values: Record<string, unknown>) => { updates.push(values); return thenable({ error: null }); },
+        };
+        return { update: () => thenable({ error: null }), insert: () => thenable({ error: null }) };
+      },
+    });
+    const response = await action({ request: request({ eventResponses: [{ eventId, status: "confirmado", confirmedAdults: 1, confirmedChildren: 0, message: "Até lá" }] }) } as never);
+    expect(await response.json()).toEqual({ success: true, updated: false });
+    expect(updates).toHaveLength(0);
+  });
 });

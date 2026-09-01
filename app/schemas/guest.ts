@@ -1,6 +1,20 @@
 import { z } from "zod";
 import { GuestInviteMetadataSchema } from "./invite";
 
+export const GuestEventResponseAdminSchema = z.object({
+    id: z.string().uuid(),
+    event_id: z.string().uuid(),
+    event_title: z.string().min(1),
+    event_starts_at: z.string().nullable(),
+    status: z.enum(["pendente", "confirmado", "recusado"]),
+    adult_limit: z.number().int().min(0),
+    child_limit: z.number().int().min(0),
+    confirmed_adults: z.number().int().min(0),
+    confirmed_children: z.number().int().min(0),
+    private_message: z.string().nullable(),
+    responded_at: z.string().nullable(),
+});
+
 export const GuestSchema = z.object({
     id: z.string().uuid(),
     created_at: z.string(),
@@ -16,6 +30,7 @@ export const GuestSchema = z.object({
     rsvp_children: z.number().int().min(0).nullable().optional(),
     rsvp_message: z.string().nullable().optional(),
     rsvp_responded_at: z.string().nullable().optional(),
+    event_responses: z.array(GuestEventResponseAdminSchema).optional().default([]),
     invite: GuestInviteMetadataSchema.nullable().optional(),
 });
 
@@ -47,6 +62,7 @@ export const BulkActionSchema = z.object({
 });
 
 export type Guest = z.infer<typeof GuestSchema>;
+export type GuestEventResponseAdmin = z.infer<typeof GuestEventResponseAdminSchema>;
 export type AddGuestInput = z.infer<typeof AddGuestSchema>;
 export type UpdateGuestInput = z.infer<typeof UpdateGuestSchema>;
 export type UpdateRSVPInput = z.infer<typeof UpdateRSVPSchema>;

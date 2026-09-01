@@ -22,7 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserSession(request);
   const supabase = createServerAdminClient();
   const [{ data: guests, error: guestsError }, { data: activeInvites, error: invitesError }] = await Promise.all([
-    supabase.from("guests").select("*").order("name"),
+    supabase.from("guests").select("*,guest_event_rsvps(id,event_id,status,adult_limit,child_limit,confirmed_adults,confirmed_children,private_message,responded_at,celebration_events(title,starts_at))").order("name"),
     supabase
       .from("guest_invite_tokens")
       .select("guest_id,created_at,last_used_at")
@@ -37,7 +37,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
     last_used_at: invite.last_used_at ? String(invite.last_used_at) : null,
   }]));
   return Response.json({
-    guests: (guests || []).map((guest) => ({ ...guest, invite: invitesByGuest.get(String(guest.id)) || null })),
+    guests: (guests || []).map((guest) => {
+      const { guest_event_rsvps: eventRows, ...guestFields } = guest;
+      const eventResponses = (Array.isArray(eventRows) ? eventRows : []).map((response) => {
+        const linkedEvent = Array.isArray(response.celebration_events) ? response.celebration_events[0] : response.celebration_events;
+        return {
+          id: String(response.id),
+          event_id: String(response.event_id),
+          event_title: String(linkedEvent?.title || "Celebração"),
+          event_starts_at: linkedEvent?.starts_at ? String(linkedEvent.starts_at) : null,
+          status: response.status,
+          adult_limit: Number(response.adult_limit || 0),
+          child_limit: Number(response.child_limit || 0),
+          confirmed_adults: Number(response.confirmed_adults || 0),
+          confirmed_children: Number(response.confirmed_children || 0),
+          private_message: response.private_message ? String(response.private_message) : null,
+          responded_at: response.responded_at ? String(response.responded_at) : null,
+        };
+      });
+      return { ...guestFields, event_responses: eventResponses, invite: invitesByGuest.get(String(guest.id)) || null };
+    }),
   }, { headers: noStoreHeaders() });
 }
 

@@ -1,20 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Check, X, HelpCircle } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Users, Check, UserRoundCheck, UserPlus } from "lucide-react";
+import { ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import type { Guest } from "./types";
+import { confirmedCounts } from "@/lib/guest-rsvp";
 
 interface GuestStatsProps {
     guests: Guest[];
 }
 
 export function GuestStats({ guests }: GuestStatsProps) {
-    const officialGuests = guests.filter((guest) => guest.source !== "public_rsvp");
     const newFromSite = guests.filter((guest) => guest.source === "public_rsvp");
-    const totalGuests = officialGuests.length;
-
     const confirmedGuests = guests.filter(g => g.rsvp_status === 'confirmado');
-    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + (curr.rsvp_adults ?? curr.adults_count ?? 0), 0);
-    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + (curr.rsvp_children ?? curr.children_count ?? 0), 0);
+    const confirmedAdults = confirmedGuests.reduce((acc, curr) => acc + confirmedCounts(curr).adults, 0);
+    const confirmedChildren = confirmedGuests.reduce((acc, curr) => acc + confirmedCounts(curr).children, 0);
     const confirmedTotal = confirmedAdults + confirmedChildren;
 
     const groups = Array.from(new Set(guests.map(g => g.group_name))).filter(Boolean) as string[];
@@ -32,8 +30,8 @@ export function GuestStats({ guests }: GuestStatsProps) {
                         <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center mb-2 text-stone-600">
                             <Users className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-stone-800">{totalGuests}</div>
-                        <div className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">Cadastros da lista</div>
+                        <div className="text-2xl font-serif font-bold text-stone-800">{guests.length}</div>
+                        <div className="text-[10px] text-stone-500 uppercase tracking-wider font-medium">Convites cadastrados</div>
                     </CardContent>
                 </Card>
 
@@ -43,30 +41,30 @@ export function GuestStats({ guests }: GuestStatsProps) {
                         <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center mb-2 text-green-600">
                             <Check className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-green-700">{confirmedTotal}</div>
-                        <div className="text-[10px] text-green-600 uppercase tracking-wider font-medium">Pessoas previstas</div>
+                        <div className="text-2xl font-serif font-bold text-green-700">{confirmedGuests.length}</div>
+                        <div className="text-[10px] text-green-600 uppercase tracking-wider font-medium">Convites confirmados</div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-white border-yellow-100 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500" />
+                <Card className="bg-white border-emerald-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                     <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                        <div className="h-8 w-8 rounded-full bg-yellow-50 flex items-center justify-center mb-2 text-yellow-600">
-                            <HelpCircle className="h-4 w-4" />
+                        <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center mb-2 text-emerald-700">
+                            <UserRoundCheck className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-yellow-700">{newFromSite.length}</div>
-                        <div className="text-[10px] text-yellow-600 uppercase tracking-wider font-medium">Novos pelo site</div>
+                        <div className="text-2xl font-serif font-bold text-emerald-700">{confirmedTotal}</div>
+                        <div className="text-[10px] text-emerald-700 uppercase tracking-wider font-medium">Pessoas confirmadas</div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-white border-red-100 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+                <Card className="bg-white border-violet-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-violet-500" />
                     <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                        <div className="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center mb-2 text-red-600">
-                            <X className="h-4 w-4" />
+                        <div className="h-8 w-8 rounded-full bg-violet-50 flex items-center justify-center mb-2 text-violet-700">
+                            <UserPlus className="h-4 w-4" />
                         </div>
-                        <div className="text-2xl font-serif font-bold text-red-700">{confirmedGuests.filter((guest) => guest.source !== "public_rsvp").length}</div>
-                        <div className="text-[10px] text-red-600 uppercase tracking-wider font-medium">Confirmados da lista</div>
+                        <div className="text-2xl font-serif font-bold text-violet-700">{newFromSite.length}</div>
+                        <div className="text-[10px] text-violet-700 uppercase tracking-wider font-medium">Novos pelo site</div>
                     </CardContent>
                 </Card>
             </div>

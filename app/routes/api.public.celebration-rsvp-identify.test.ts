@@ -36,15 +36,21 @@ describe("identificação privada por nome", () => {
     const response = await action({ request: request("  JOAO   AVILA ") } as never);
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toBe("session=cookie");
-    expect(db.chain.eq).toHaveBeenCalledWith("name_search_key", "joao avila");
+    expect(db.chain.limit).toHaveBeenCalledWith(1000);
     expect(await response.json()).toEqual({ status: "found", displayName: "João Ávila" });
+  });
+
+  it("aceita variações seguras de hífen e apóstrofo sem devolver candidatos", async () => {
+    mocks.createServerAdminClient.mockReturnValue(client([{ id: "11111111-1111-4111-8111-111111111111", name: "Ana-Maria D’Ávila" }]));
+    const response = await action({ request: request("ana maria d avila") } as never);
+    expect(await response.json()).toEqual({ status: "found", displayName: "Ana-Maria D’Ávila" });
   });
 
   it("não retorna candidatos quando não encontra ou há homônimos", async () => {
     mocks.createServerAdminClient.mockReturnValueOnce(client([]));
     const missing = await action({ request: request("Nome Ausente") } as never);
     expect(await missing.json()).toEqual({ status: "not_found" });
-    mocks.createServerAdminClient.mockReturnValueOnce(client([{ id: "1", name: "Ana" }, { id: "2", name: "Ana" }]));
+    mocks.createServerAdminClient.mockReturnValueOnce(client([{ id: "1", name: "Ana Silva" }, { id: "2", name: "Ana-Silva" }]));
     const duplicate = await action({ request: request("Ana Silva") } as never);
     expect(await duplicate.json()).toEqual({ status: "ambiguous" });
   });

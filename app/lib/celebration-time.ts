@@ -1,11 +1,12 @@
 import type { CelebrationEvent } from "@/schemas/celebration";
 
 export const CELEBRATION_LIVE_WINDOW_MS = 12 * 60 * 60 * 1000;
+export const CELEBRATION_TIME_ZONE = "America/Fortaleza";
 
 export function formatCelebrationDate(value: string | null) {
   if (!value) return null;
   return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Fortaleza",
+    timeZone: CELEBRATION_TIME_ZONE,
     weekday: "long",
     day: "2-digit",
     month: "long",

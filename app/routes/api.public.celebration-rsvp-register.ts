@@ -22,8 +22,9 @@ export async function action({ request }: Route.ActionArgs) {
 
   const supabase = createServerAdminClient();
   const key = normalizeGuestName(parsed.data.name);
-  const { data: existing, error: lookupError } = await supabase.from("guests").select("id").eq("name_search_key", key).limit(2);
+  const { data: knownGuests, error: lookupError } = await supabase.from("guests").select("id,name").limit(1000);
   if (lookupError) return Response.json({ error: "Não foi possível verificar o nome agora." }, { status: 500, headers: noStoreHeaders() });
+  const existing = (knownGuests || []).filter((guest) => normalizeGuestName(String(guest.name)) === key).slice(0, 2);
   if (existing?.length) return Response.json({ status: existing.length > 1 ? "ambiguous" : "already_exists" }, { status: 409, headers: noStoreHeaders() });
 
   const { data: guestId, error } = await supabase.rpc("create_public_rsvp_guest", {

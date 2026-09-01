@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Guest } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
+import { confirmedCounts, formatRsvpTimestamp, latestResponseAt } from "@/lib/guest-rsvp";
 
 interface GuestListProps {
     guests: Guest[];
@@ -85,6 +86,9 @@ function GuestItem({
         recusado: "bg-red-100 text-red-700 border-red-200",
         pendente: "bg-yellow-100 text-yellow-700 border-yellow-200",
     };
+    const statusLabel = rsvpStatus === "confirmado" ? "Confirmado" : rsvpStatus === "recusado" ? "Recusado" : "Pendente";
+    const counts = confirmedCounts(guest);
+    const responseTime = formatRsvpTimestamp(latestResponseAt(guest));
     const weddingUrl = typeof window !== "undefined"
         ? `${window.location.origin.replace(/\/$/, "")}/celebracao`
         : "/celebracao";
@@ -97,6 +101,15 @@ function GuestItem({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             onClick={() => onGuestClick?.(guest)}
+            onKeyDown={(event) => {
+                if ((event.key === "Enter" || event.key === " ") && event.target === event.currentTarget) {
+                    event.preventDefault();
+                    onGuestClick?.(guest);
+                }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`Abrir detalhes de ${guest.name}`}
             className={`
                 group flex items-center justify-between p-3 rounded-xl border transition-all duration-200 cursor-pointer
                 ${isSelected ? "bg-primary/5 border-primary shadow-sm" : "bg-white border-stone-100 hover:border-stone-200 hover:shadow-sm"}
@@ -107,7 +120,8 @@ function GuestItem({
                     <Checkbox
                         checked={isSelected}
                         onCheckedChange={onToggleSelect}
-                        className={`transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} data-[state=checked]:opacity-100`}
+                        aria-label={`Selecionar ${guest.name}`}
+                        className={`h-6 w-6 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'} data-[state=checked]:opacity-100`}
                     />
                 </div>
 
@@ -120,10 +134,11 @@ function GuestItem({
 
                 <div className="min-w-0">
                     <p className="flex items-center gap-2 truncate text-sm font-semibold text-stone-800"><span className="truncate">{guest.name}</span>{guest.source === "public_rsvp" && <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700">Novo pelo site</span>}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-stone-500">
-                        <span className="bg-stone-100 px-1.5 py-0.5 rounded text-stone-600 font-medium">{guest.group_name}</span>
-                        <span>•</span>
-                        <span>{guest.adults_count + guest.children_count} pessoas</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-stone-500">
+                        <span className="rounded bg-stone-100 px-1.5 py-0.5 font-medium text-stone-600">{guest.group_name}</span>
+                        <span className={`rounded-full border px-2 py-0.5 font-semibold ${statusColors[rsvpStatus]}`}>{statusLabel}</span>
+                        <span>{counts.adults} adulto{counts.adults !== 1 ? "s" : ""} · {counts.children} criança{counts.children !== 1 ? "s" : ""}</span>
+                        {responseTime && <span>Resposta: {responseTime}</span>}
                     </div>
                 </div>
             </div>
@@ -131,7 +146,7 @@ function GuestItem({
             <div onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-400 hover:text-stone-600">
+                        <Button variant="ghost" size="icon" aria-label={`Ações para ${guest.name}`} className="h-11 w-11 text-stone-500 hover:text-stone-700">
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>

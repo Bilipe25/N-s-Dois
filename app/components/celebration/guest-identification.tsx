@@ -2,10 +2,22 @@ import { useState } from "react";
 import { Check, Loader2, Search, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { HttpRequestError, requestJson } from "@/lib/http.client";
+
+export type IdentificationResult =
+  | { kind: "identified" }
+  | {
+      kind: "registered";
+      response: {
+        status: "confirmado" | "recusado";
+        confirmedAdults: number;
+        confirmedChildren: number;
+      };
+    };
 
 type Props = {
   context?: "rsvp" | "gift";
-  onIdentified: () => void | Promise<void>;
+  onIdentified: (result: IdentificationResult) => void | Promise<void>;
   contacts?: React.ReactNode;
 };
 
@@ -22,29 +34,40 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
 
   async function identify(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
-    const response = await fetch("/api/public/celebracao/rsvp/identify", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
-    });
-    const body = await response.json().catch(() => ({}));
-    setBusy(false);
-    if (!response.ok) { setError(body.error || "Não foi possível verificar seu nome."); return; }
-    if (body.status === "found") { await onIdentified(); return; }
-    setStep(body.status === "ambiguous" ? "ambiguous" : "not_found");
+    try {
+      const body = await requestJson<{ status: "found" | "ambiguous" | "not_found" }>("/api/public/celebracao/rsvp/identify", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+      });
+      if (body.status === "found") { await onIdentified({ kind: "identified" }); return; }
+      setStep(body.status === "ambiguous" ? "ambiguous" : "not_found");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Não foi possível verificar seu nome.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function register(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
-    const response = await fetch("/api/public/celebracao/rsvp/register", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, status, confirmedAdults: status === "recusado" ? 0 : adults, confirmedChildren: status === "recusado" ? 0 : children, message, phone }),
-    });
-    const body = await response.json().catch(() => ({}));
-    setBusy(false);
-    if (!response.ok) {
-      if (response.status === 409) setStep(body.status === "ambiguous" ? "ambiguous" : "identify");
-      setError(body.error || "Não foi possível registrar sua resposta."); return;
+    const responseDraft = {
+      status,
+      confirmedAdults: status === "recusado" ? 0 : adults,
+      confirmedChildren: status === "recusado" ? 0 : children,
+    };
+    try {
+      await requestJson("/api/public/celebracao/rsvp/register", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, ...responseDraft, message, phone }),
+      });
+      await onIdentified({ kind: "registered", response: responseDraft });
+    } catch (requestError) {
+      if (requestError instanceof HttpRequestError && requestError.status === 409) {
+        setStep(requestError.data.status === "ambiguous" ? "ambiguous" : "identify");
+      }
+      setError(requestError instanceof Error ? requestError.message : "Não foi possível registrar sua resposta.");
+    } finally {
+      setBusy(false);
     }
-    await onIdentified();
   }
 
   const reset = () => { setStep("identify"); setError(""); };
@@ -67,10 +90,10 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
       <Button type="button" variant={status === "confirmado" ? "default" : "outline"} className={status === "confirmado" ? "min-h-11 bg-rose-500 hover:bg-rose-600" : "min-h-11"} onClick={() => setStatus("confirmado")}>Sim</Button>
       <Button type="button" variant={status === "recusado" ? "default" : "outline"} className={status === "recusado" ? "min-h-11 bg-stone-800 hover:bg-stone-900" : "min-h-11"} onClick={() => setStatus("recusado")}>Não poderei ir</Button>
     </div></fieldset>
-    {status === "confirmado" && <div className="grid grid-cols-2 gap-3">
+    {status === "confirmado" && <><p className="text-left text-xs leading-relaxed text-stone-500">Para este cadastro inicial, você pode informar até 6 adultos e 6 crianças. O casal poderá revisar os dados depois.</p><div className="grid grid-cols-2 gap-3">
       <label className="space-y-1 text-sm font-medium text-stone-700">Adultos<Input type="number" min={1} max={6} value={adults} onChange={(event) => setAdults(Number(event.target.value))} className="h-11 text-base" /></label>
       <label className="space-y-1 text-sm font-medium text-stone-700">Crianças<Input type="number" min={0} max={6} value={children} onChange={(event) => setChildren(Number(event.target.value))} className="h-11 text-base" /></label>
-    </div>}
+    </div></>}
     <label className="block space-y-1 text-sm font-medium text-stone-700">WhatsApp <span className="font-normal text-stone-500">opcional e privado</span><Input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={30} inputMode="tel" className="h-11 text-base" /></label>
     <label className="block space-y-1 text-sm font-medium text-stone-700">Mensagem <span className="font-normal text-stone-500">opcional e privada</span><textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={1000} rows={3} className="w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500" /></label>
     {error && <p className="celebration-form-error" role="alert">{error}</p>}
@@ -79,6 +102,7 @@ export function GuestIdentification({ context = "rsvp", onIdentified, contacts }
 
   return <form onSubmit={identify} className="space-y-4 py-2">
     <p className="text-sm leading-relaxed text-stone-600">{context === "gift" ? "Antes de escolher este presente, diga seu nome completo." : "Digite seu nome completo para encontrarmos sua resposta."}</p>
+    {context === "gift" && <p className="rounded-xl bg-stone-50 p-3 text-xs leading-relaxed text-stone-600">Depois de encontrar seu nome, você voltará para este mesmo presente.</p>}
     <label className="block space-y-2 text-sm font-medium text-stone-800">Nome completo<Input autoFocus name="name" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} minLength={3} maxLength={120} required className="h-12 text-base" placeholder="Seu nome e sobrenome" /></label>
     {error && <p className="celebration-form-error" role="alert">{error}</p>}
     <Button type="submit" disabled={busy || name.trim().length < 3} className="min-h-12 w-full rounded-full bg-rose-500 text-white hover:bg-rose-600">{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procurando…</> : "Continuar"}</Button>

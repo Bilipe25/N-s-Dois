@@ -22,6 +22,14 @@ describe("contratos públicos de presentes", () => {
     expect(PixPayloadRequestSchema.safeParse({ giftId: eventId, reservationId }).success).toBe(false);
   });
 
+  it("rejeita evento duplicado e confirmação sem nenhuma pessoa", () => {
+    expect(RsvpRequestSchema.safeParse({ eventResponses: [
+      { eventId, status: "confirmado", confirmedAdults: 1, confirmedChildren: 0, message: "" },
+      { eventId, status: "recusado", confirmedAdults: 0, confirmedChildren: 0, message: "" },
+    ] }).success).toBe(false);
+    expect(RsvpRequestSchema.safeParse({ eventResponses: [{ eventId, status: "confirmado", confirmedAdults: 0, confirmedChildren: 0, message: "" }] }).success).toBe(false);
+  });
+
   it("mantém o contrato público sem identidade da reserva", () => {
     const parsed = PublicGiftSchema.parse({
       id: eventId,

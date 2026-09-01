@@ -24,7 +24,7 @@ export async function action({ request }: Route.ActionArgs) {
   if ("generalResponse" in parsed.data) {
     const { data: guest, error: guestError } = await supabase
       .from("guests")
-      .select("id,source,adults_count,children_count")
+      .select("id,source,adults_count,children_count,rsvp_status,rsvp_adults,rsvp_children,rsvp_message")
       .eq("id", guestId)
       .maybeSingle();
     if (guestError || !guest) return Response.json({ error: "Não foi possível validar sua identificação." }, { status: 403, headers: noStoreHeaders() });
@@ -38,12 +38,17 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json({ error: "A quantidade ultrapassa o limite permitido." }, { status: 400, headers: noStoreHeaders() });
     }
 
+    const message = response.message || null;
+    if (guest.rsvp_status === response.status && Number(guest.rsvp_adults || 0) === adults && Number(guest.rsvp_children || 0) === children && (guest.rsvp_message || null) === message) {
+      return Response.json({ success: true, updated: false }, { headers: noStoreHeaders() });
+    }
+
     const now = new Date().toISOString();
     const { error: updateError } = await supabase.from("guests").update({
       rsvp_status: response.status,
       rsvp_adults: adults,
       rsvp_children: children,
-      rsvp_message: response.message || null,
+      rsvp_message: message,
       rsvp_responded_at: now,
     }).eq("id", guestId);
     if (updateError) return Response.json({ error: "Não foi possível salvar a resposta." }, { status: 500, headers: noStoreHeaders() });
@@ -60,7 +65,7 @@ export async function action({ request }: Route.ActionArgs) {
   const eventIds = parsed.data.eventResponses.map((response) => response.eventId);
   const { data: allowedRows, error } = await supabase
     .from("guest_event_rsvps")
-    .select("id,event_id,adult_limit,child_limit,celebration_events!inner(state)")
+    .select("id,event_id,adult_limit,child_limit,status,confirmed_adults,confirmed_children,private_message,celebration_events!inner(state)")
     .eq("guest_id", guestId)
     .in("event_id", eventIds)
     .eq("celebration_events.state", "published");
@@ -71,6 +76,7 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Um dos eventos não pertence a este convite." }, { status: 403, headers: noStoreHeaders() });
   }
 
+  let updated = false;
   for (const response of parsed.data.eventResponses) {
     const row = allowedByEvent.get(response.eventId)!;
     const adults = response.status === "recusado" ? 0 : response.confirmedAdults;
@@ -79,20 +85,26 @@ export async function action({ request }: Route.ActionArgs) {
       return Response.json({ error: "A quantidade ultrapassa o limite do convite." }, { status: 400, headers: noStoreHeaders() });
     }
 
+    const message = response.message || null;
+    if (row.status === response.status && Number(row.confirmed_adults || 0) === adults && Number(row.confirmed_children || 0) === children && (row.private_message || null) === message) continue;
+
     const { error: updateError } = await supabase
       .from("guest_event_rsvps")
       .update({
         status: response.status,
         confirmed_adults: adults,
         confirmed_children: children,
-        private_message: response.message || null,
+        private_message: message,
         responded_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", row.id)
       .eq("guest_id", guestId);
     if (updateError) return Response.json({ error: "Não foi possível salvar a resposta." }, { status: 500, headers: noStoreHeaders() });
+    updated = true;
   }
+
+  if (!updated) return Response.json({ success: true, updated: false }, { headers: noStoreHeaders() });
 
   const statuses = parsed.data.eventResponses.map((response) => response.status);
   const legacyStatus = statuses.includes("confirmado") ? "confirmado" : "recusado";
@@ -113,5 +125,5 @@ export async function action({ request }: Route.ActionArgs) {
     link: "/guests",
   });
 
-  return Response.json({ success: true }, { headers: noStoreHeaders() });
+  return Response.json({ success: true, updated: true }, { headers: noStoreHeaders() });
 }

@@ -19,15 +19,16 @@ export async function action({ request }: Route.ActionArgs) {
   const { data, error } = await supabase
     .from("guests")
     .select("id,name")
-    .eq("name_search_key", normalizeGuestName(parsed.data.name))
-    .limit(2);
+    .limit(1000);
   if (error) return Response.json({ error: "Não foi possível verificar o nome agora." }, { status: 500, headers: noStoreHeaders() });
-  if (!data?.length) return Response.json({ status: "not_found" }, { headers: noStoreHeaders() });
-  if (data.length > 1) return Response.json({ status: "ambiguous" }, { headers: noStoreHeaders() });
+  const requestedKey = normalizeGuestName(parsed.data.name);
+  const matches = (data || []).filter((guest) => normalizeGuestName(String(guest.name)) === requestedKey).slice(0, 2);
+  if (!matches.length) return Response.json({ status: "not_found" }, { headers: noStoreHeaders() });
+  if (matches.length > 1) return Response.json({ status: "ambiguous" }, { headers: noStoreHeaders() });
 
-  const cookie = await createInviteSession(request, String(data[0].id));
+  const cookie = await createInviteSession(request, String(matches[0].id));
   return Response.json(
-    { status: "found", displayName: String(data[0].name) },
+    { status: "found", displayName: String(matches[0].name) },
     { headers: noStoreHeaders({ "Set-Cookie": cookie }) },
   );
 }

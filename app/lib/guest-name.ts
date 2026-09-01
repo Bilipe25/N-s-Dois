@@ -1,5 +1,6 @@
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
 const WHITESPACE = /\s+/g;
+const NAME_SEPARATORS = /[-‐‑‒–—'’]+/g;
 
 export function cleanGuestName(value: string) {
   return value.trim().replace(WHITESPACE, " ");
@@ -9,6 +10,9 @@ export function normalizeGuestName(value: string) {
   return cleanGuestName(value)
     .normalize("NFD")
     .replace(COMBINING_MARKS, "")
+    .replace(NAME_SEPARATORS, " ")
+    .replace(WHITESPACE, " ")
+    .trim()
     .toLocaleLowerCase("pt-BR");
 }
 

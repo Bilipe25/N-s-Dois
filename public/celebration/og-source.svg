@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Gabriel e Raabe</title>
+  <desc id="description">Celebrando o Amor e o Novo Lar</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#292524"/>
+      <stop offset="0.58" stop-color="#3f3a37"/>
+      <stop offset="1" stop-color="#1c1917"/>
+    </linearGradient>
+    <radialGradient id="warmth" cx="0.18" cy="0.12" r="0.78">
+      <stop offset="0" stop-color="#f43f5e" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#f43f5e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <rect width="1200" height="630" fill="url(#warmth)"/>
+  <circle cx="1080" cy="96" r="210" fill="none" stroke="#fff1f2" stroke-opacity="0.09" stroke-width="2"/>
+  <circle cx="1080" cy="96" r="148" fill="none" stroke="#fb7185" stroke-opacity="0.18" stroke-width="2"/>
+  <path d="M88 112h168" stroke="#fb7185" stroke-width="5" stroke-linecap="round"/>
+  <text x="88" y="165" fill="#fecdd3" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4">CELEBRANDO O AMOR E O NOVO LAR</text>
+  <text x="82" y="346" fill="#fafaf9" font-family="Georgia, 'Times New Roman', serif" font-size="112" font-weight="700" letter-spacing="-3">Gabriel <tspan fill="#fda4af" font-weight="400">&amp;</tspan> Raabe</text>
+  <text x="90" y="420" fill="#e7e5e4" font-family="Inter, Arial, sans-serif" font-size="31">Um convite feito com carinho.</text>
+  <rect x="88" y="503" width="490" height="58" rx="29" fill="#ffffff" fill-opacity="0.09" stroke="#ffffff" stroke-opacity="0.18"/>
+  <text x="333" y="541" text-anchor="middle" fill="#fafaf9" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="600">nosdois-mu.vercel.app/celebracao</text>
+</svg>

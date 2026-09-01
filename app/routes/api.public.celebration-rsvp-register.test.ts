@@ -20,7 +20,7 @@ function request(body: unknown) {
   return new Request("https://example.com/api/public/celebracao/rsvp/register", { method: "POST", headers: { Origin: "https://example.com", "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
-function client(existing: Array<{ id: string }> = [], rpcResult = { data: "11111111-1111-4111-8111-111111111111", error: null }) {
+function client(existing: Array<{ id: string; name: string }> = [], rpcResult = { data: "11111111-1111-4111-8111-111111111111", error: null }) {
   const chain: Record<string, unknown> = {};
   for (const method of ["select", "eq", "limit"]) chain[method] = vi.fn(() => chain);
   chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: existing, error: null }).then(resolve);
@@ -44,7 +44,7 @@ describe("cadastro espontâneo de RSVP", () => {
   });
 
   it("impede duplicidade sem expor o cadastro encontrado", async () => {
-    mocks.createServerAdminClient.mockReturnValue(client([{ id: "existing" }]));
+    mocks.createServerAdminClient.mockReturnValue(client([{ id: "existing", name: "Maria da Silva" }]));
     const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 0 }) } as never);
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ status: "already_exists" });
