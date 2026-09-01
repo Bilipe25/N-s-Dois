@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Countdown } from "@/components/bridal-shower/countdown";
-import { GiftFilter } from "@/components/bridal-shower/gift-filter";
 import { GiftProgressBar } from "@/components/bridal-shower/gift-progress-bar";
+import { CelebrationGiftFilters } from "@/components/celebration/celebration-gift-filters";
 import { PublicGiftCard } from "@/components/celebration/public-gift-card";
 import { PixPanel } from "@/components/celebration/pix-panel";
 import { GuestIdentification, type IdentificationResult } from "@/components/celebration/guest-identification";
@@ -233,10 +233,12 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
   const [query, setQuery] = useState(""); const [category, setCategory] = useState<string | null>(null); const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [busy, setBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<PublicGift | null>(null); const [message, setMessage] = useState("");
+  const [filterError, setFilterError] = useState(""); const [resultCount, setResultCount] = useState(stats.total);
   const [reservationFeedback, setReservationFeedback] = useState<"reserved" | "cancelled" | "conflict" | null>(null);
   const [pixGift, setPixGift] = useState<PublicGift | null>(null); const [pixOpen, setPixOpen] = useState(false);
   const [reservedCount, setReservedCount] = useState(stats.reserved);
   const didInitializeFilters = useRef(false);
+  const giftSectionEndRef = useRef<HTMLDivElement>(null);
   const wasInvitationActive = useRef(invitationActive);
   const availabilityByGift = useRef(new Map(initialGifts.map((gift) => [gift.id, gift.available])));
   const isMobile = useIsMobile();
@@ -255,7 +257,7 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
 
   const requestPage = useCallback(async (nextCursor?: string | null, signal?: AbortSignal) => {
     const params = new URLSearchParams(); if (query.trim()) params.set("q", query.trim()); if (category) params.set("category", category); if (price) params.set("price", price); if (nextCursor) params.set("cursor", nextCursor);
-    return requestJson<{ gifts: PublicGift[]; nextCursor: string | null }>(`/api/public/celebracao/gifts?${params}`, { signal });
+    return requestJson<{ gifts: PublicGift[]; nextCursor: string | null; resultCount: number }>(`/api/public/celebracao/gifts?${params}`, { signal });
   }, [query, category, price]);
 
   const rememberAvailability = useCallback((items: PublicGift[]) => {
@@ -268,20 +270,22 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
       setGifts(initialGifts);
       setCursor(initialCursor);
       setReservedCount(stats.reserved);
+      setResultCount(stats.total);
       setPixGift((current) => current ? initialGifts.find((gift) => gift.id === current.id) || current : current);
     }
     wasInvitationActive.current = invitationActive;
-  }, [initialCursor, initialGifts, invitationActive, rememberAvailability, stats.reserved]);
+  }, [initialCursor, initialGifts, invitationActive, rememberAvailability, stats.reserved, stats.total]);
 
   useEffect(() => {
     if (!didInitializeFilters.current) { didInitializeFilters.current = true; return; }
+    setLoading(true); setFilterError(""); setMessage("");
     const controller = new AbortController(); const timer = window.setTimeout(async () => {
-      setLoading(true); setMessage(""); try { const body = await requestPage(null, controller.signal); rememberAvailability(body.gifts); setGifts(body.gifts); setCursor(body.nextCursor); } catch (error) { if ((error as Error).name !== "AbortError") setMessage((error as Error).message); } finally { if (!controller.signal.aborted) setLoading(false); }
+      try { const body = await requestPage(null, controller.signal); rememberAvailability(body.gifts); setGifts(body.gifts); setCursor(body.nextCursor); setResultCount(body.resultCount); } catch (error) { if ((error as Error).name !== "AbortError") { const errorMessage = (error as Error).message; setFilterError(errorMessage); setMessage(errorMessage); } } finally { if (!controller.signal.aborted) setLoading(false); }
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [rememberAvailability, requestPage]);
 
-  const loadMore = async () => { if (!cursor) return; setLoadingMore(true); try { const body = await requestPage(cursor); rememberAvailability(body.gifts); setGifts((current) => [...current, ...body.gifts]); setCursor(body.nextCursor); } catch (error) { setMessage((error as Error).message); } finally { setLoadingMore(false); } };
+  const loadMore = async () => { if (!cursor) return; setLoadingMore(true); try { const body = await requestPage(cursor); rememberAvailability(body.gifts); setGifts((current) => [...current, ...body.gifts]); setCursor(body.nextCursor); setResultCount(body.resultCount); } catch (error) { setMessage((error as Error).message); } finally { setLoadingMore(false); } };
   const applyReservation = async () => {
     if (!selected || !canReserve) return;
     setBusy(selected.id); setMessage(""); setReservationFeedback(null); const cancelling = Boolean(selected.reservation_id);
@@ -317,12 +321,11 @@ function GiftSection({ initialGifts, initialCursor, categories, stats, canReserv
 
   return <div className="space-y-7">
     <GiftProgressBar total={stats.total} reserved={reservedCount} />
-    <div className="-mx-4 border-b border-stone-200/70 bg-stone-50 px-4 py-3 sm:sticky sm:top-0 sm:z-30 sm:rounded-2xl sm:border sm:bg-stone-50/95 sm:backdrop-blur-md">
-      <GiftFilter categories={categories} searchTerm={query} onSearchChange={setQuery} selectedCategory={category} onCategorySelect={setCategory} selectedPriceRange={price} onPriceRangeSelect={setPrice} />
-    </div>
+    <CelebrationGiftFilters categories={categories} query={query} onQueryChange={setQuery} category={category} onCategoryChange={setCategory} price={price} onPriceChange={setPrice} resultCount={resultCount} loading={loading} error={filterError} endSentinelRef={giftSectionEndRef} />
     {message && <p className="rounded-xl bg-white p-3 text-center text-sm text-stone-700 shadow-sm" role="status">{message}</p>}
     {loading ? <div className="grid gap-3 sm:grid-cols-2"><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /><div className="h-36 animate-pulse rounded-2xl bg-stone-200" /></div> : gifts.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gifts.map((gift) => <PublicGiftCard key={gift.id} gift={gift} busy={busy === gift.id} onReserve={(chosenGift) => { setReservationFeedback(null); setSelected(chosenGift); }} onPix={pixEnabled ? (chosenGift) => { setPixGift(chosenGift); setPixOpen(true); } : undefined} />)}</div> : <div className="rounded-2xl border border-stone-100 bg-white px-4 py-14 text-center shadow-sm"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-rose-50"><PackageSearch className="h-10 w-10 text-rose-300" /></div><h3 className="font-serif text-xl text-stone-800">Nenhum presente encontrado</h3><p className="mx-auto mt-2 max-w-md text-sm text-stone-600">{query || category || price ? "Tente outro termo ou limpe os filtros." : "A lista de presentes está sendo preparada."}</p>{(query || category || price) && <Button variant="outline" className="mt-5 min-h-11 rounded-full" onClick={() => { setQuery(""); setCategory(null); setPrice(""); }}>Limpar filtros</Button>}</div>}
     {cursor && <div className="text-center"><Button variant="outline" className="min-h-11 rounded-full bg-white" onClick={loadMore} disabled={loadingMore}>{loadingMore ? "Carregando…" : "Ver mais presentes"}</Button></div>}
+    <div ref={giftSectionEndRef} className="h-px" aria-hidden="true" />
     {isMobile ? <Drawer open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DrawerContent className="celebration-drawer"><DrawerHeader className="relative pr-16 text-left"><DrawerTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DrawerTitle><DrawerDescription>Uma escolha feita com carinho.</DrawerDescription><DrawerCloseControl /></DrawerHeader><div className="celebration-drawer-scroll px-4">{panel}</div></DrawerContent></Drawer> : <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && closeReservationPanel()}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle className="font-serif text-2xl">{reservationFeedback ? "Sua escolha" : selected?.reservation_id ? "Cancelar reserva" : "Confirmar presente"}</DialogTitle><DialogDescription>Uma escolha feita com carinho.</DialogDescription></DialogHeader>{panel}</DialogContent></Dialog>}
     <PixPanel open={pixOpen} onOpenChange={(open) => { setPixOpen(open); if (!open) setPixGift(null); }} gift={pixGift} isMobile={isMobile} invitationActive={invitationActive} reservationAvailable={reservationsAvailable} identificationContacts={<ContactActions contacts={contacts} />} onIdentified={onIdentified} onGiftChange={updateGift} />
   </div>;
