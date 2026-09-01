@@ -48,10 +48,12 @@ function postRequest() {
 describe("reservas individuais de presentes", () => {
   let insertResult: { data: { id: string } | null; error: { code: string } | null };
   let cancelResult: { data: { id: string } | null; error: null };
+  let ownReservationResult: { id: string } | null;
 
   beforeEach(() => {
     insertResult = { data: { id: reservationId }, error: null };
     cancelResult = { data: { id: reservationId }, error: null };
+    ownReservationResult = null;
     mocks.consumeRateLimit.mockResolvedValue(true);
     mocks.getInviteGuestId.mockResolvedValue(guestId);
     mocks.getCelebrationConfig.mockResolvedValue({ giftsEnabled: true, reservationsEnabled: true });
@@ -64,6 +66,7 @@ describe("reservas individuais de presentes", () => {
         return {
           insert: () => thenable(insertResult),
           update: () => thenable(cancelResult),
+          select: () => thenable({ data: ownReservationResult, error: null }),
         };
       },
     });
@@ -85,6 +88,15 @@ describe("reservas individuais de presentes", () => {
     insertResult = { data: null, error: { code: "23505" } };
     const response = await reserveGift({ request: postRequest() } as never);
     expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Esse presente acabou de ser escolhido por outra pessoa." });
+  });
+
+  it("trata repetição da própria reserva como idempotente", async () => {
+    insertResult = { data: null, error: { code: "23505" } };
+    ownReservationResult = { id: reservationId };
+    const response = await reserveGift({ request: postRequest() } as never);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, reservationId, existing: true });
   });
 
   it("permite cancelar a própria reserva", async () => {

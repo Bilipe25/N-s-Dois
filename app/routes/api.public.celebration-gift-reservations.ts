@@ -31,7 +31,19 @@ export async function action({ request }: Route.ActionArgs) {
     .insert({ gift_id: gift.id, guest_id: guestId, status: "active" })
     .select("id")
     .single();
-  if (error?.code === "23505") return Response.json({ error: "Este presente acabou de ser reservado." }, { status: 409, headers: noStoreHeaders() });
+  if (error?.code === "23505") {
+    const { data: ownReservation } = await supabase
+      .from("gift_reservations")
+      .select("id")
+      .eq("gift_id", gift.id)
+      .eq("guest_id", guestId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (ownReservation) {
+      return Response.json({ success: true, reservationId: ownReservation.id, existing: true }, { headers: noStoreHeaders() });
+    }
+    return Response.json({ error: "Esse presente acabou de ser escolhido por outra pessoa." }, { status: 409, headers: noStoreHeaders() });
+  }
   if (error) return Response.json({ error: "Não foi possível reservar o presente." }, { status: 500, headers: noStoreHeaders() });
   return Response.json({ success: true, reservationId: data.id }, { status: 201, headers: noStoreHeaders() });
 }

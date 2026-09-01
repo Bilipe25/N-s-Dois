@@ -35,15 +35,19 @@ export async function action({ request }: Route.ActionArgs) {
     if (!data) return Response.json({ error: "Reserva não encontrada." }, { status: 404, headers: noStoreHeaders() });
     const gift = Array.isArray(data.bridal_shower_gifts) ? data.bridal_shower_gifts[0] : data.bridal_shower_gifts;
     amountCents = gift && typeof gift.price_cents === "number" ? gift.price_cents : null;
-    transactionId = `PRESENTE${String(data.id).replace(/-/g, "").slice(0, 12)}`;
+    transactionId = `RESERVA${String(data.id).replace(/-/g, "").slice(0, 12)}`;
   } else if (parsed.data.giftId) {
     const supabase = createServerAdminClient();
     const { data } = await supabase
       .from("bridal_shower_gifts")
-      .select("id,price_cents")
+      .select("id,price_cents,gift_reservations!left(id,status)")
       .eq("id", parsed.data.giftId)
       .maybeSingle();
     if (!data) return Response.json({ error: "Presente não encontrado." }, { status: 404, headers: noStoreHeaders() });
+    const reservations = Array.isArray(data.gift_reservations) ? data.gift_reservations : [];
+    if (reservations.some((reservation: { status?: string }) => reservation.status === "active")) {
+      return Response.json({ error: "Este presente já foi escolhido. O PIX geral continua disponível." }, { status: 409, headers: noStoreHeaders() });
+    }
     amountCents = typeof data.price_cents === "number" ? data.price_cents : null;
     transactionId = `PRESENTE${String(data.id).replace(/-/g, "").slice(0, 12)}`;
   }

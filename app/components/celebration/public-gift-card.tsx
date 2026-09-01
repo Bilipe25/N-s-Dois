@@ -47,17 +47,17 @@ export function PublicGiftCard({ gift, busy = false, onReserve, onPix }: PublicG
             {gift.link && <a href={gift.link} target="_blank" rel="noopener noreferrer" aria-label={`Ver sugestão online para ${gift.item_name}`} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-rose-700 underline-offset-4 hover:underline"><ExternalLink className="h-3.5 w-3.5" />Ver sugestão online</a>}
           </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-2 pt-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 pt-2 min-[360px]:grid-cols-2">
             <Button
               size="sm"
               type="button"
               disabled={busy || reservedBySomeoneElse}
               onClick={() => onReserve(gift)}
-              aria-label={gift.reservation_id ? `Cancelar escolha de ${gift.item_name}` : reservedBySomeoneElse ? `${gift.item_name} já foi reservado` : `Escolher ${gift.item_name} para presentear`}
+              aria-label={gift.reservation_id ? `Ver ou cancelar minha escolha de ${gift.item_name}` : reservedBySomeoneElse ? `${gift.item_name} já foi escolhido` : `Escolher ${gift.item_name} para comprar ou entregar`}
               className={`min-h-11 rounded-full px-2 text-xs font-semibold ${gift.reservation_id ? "border border-stone-200 bg-stone-100 text-stone-700 hover:bg-stone-200" : "bg-rose-500 text-white hover:bg-rose-600"}`}
               variant="secondary"
             >
-              {busy ? "Aguarde…" : gift.reservation_id ? "Cancelar" : reservedBySomeoneElse ? "Reservado" : "Escolher"}
+              {busy ? "Aguarde…" : gift.reservation_id ? "Minha escolha" : reservedBySomeoneElse ? "Já escolhido" : "Escolher presente"}
             </Button>
             {onPix && !reservedBySomeoneElse && (
               <Button size="sm" type="button" onClick={() => onPix(gift)} aria-label={`Presentear ${gift.item_name} por PIX`} className="min-h-11 rounded-full border border-emerald-200 bg-white px-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50" variant="outline">
