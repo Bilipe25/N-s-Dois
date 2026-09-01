@@ -1,9 +1,25 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(37);
+
+select ok(
+  (select public from storage.buckets where id = 'celebration-media'),
+  'celebration media is publicly readable for crawlers'
+);
+select is(
+  (select file_size_limit from storage.buckets where id = 'celebration-media'),
+  5242880::bigint,
+  'celebration media enforces a five megabyte final file limit'
+);
 
 set local role anon;
+select throws_ok(
+  $$insert into storage.objects (bucket_id, name) values ('celebration-media', 'hero/anonymous.webp')$$,
+  '42501',
+  null,
+  'anon cannot upload celebration media'
+);
 select throws_ok('select * from public.guests', '42501', null, 'anon cannot read guests');
 select throws_ok('select * from public.app_config', '42501', null, 'anon cannot read config');
 select throws_ok('select * from public.bridal_shower_guests', '42501', null, 'anon cannot read legacy guests');
@@ -21,6 +37,12 @@ select ok(not has_function_privilege('anon', 'public.rotate_guest_invite_token(u
 
 reset role;
 set local role authenticated;
+select throws_ok(
+  $$insert into storage.objects (bucket_id, name) values ('celebration-media', 'hero/authenticated.webp')$$,
+  '42501',
+  null,
+  'authenticated cannot upload celebration media directly'
+);
 select throws_ok('select * from public.guests', '42501', null, 'authenticated cannot read guests without app authorization');
 select throws_ok('select * from public.app_config', '42501', null, 'authenticated cannot read config directly');
 select throws_ok('select * from public.bridal_shower_guests', '42501', null, 'authenticated cannot read legacy guests');

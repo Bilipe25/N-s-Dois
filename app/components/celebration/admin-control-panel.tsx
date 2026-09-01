@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { AdminMediaManager } from "@/components/celebration/admin-media-manager";
 
 type AdminConfig = Record<string, string | number | boolean | null>;
 type AdminEvent = { id: string; kind: string; title: string; starts_at: string | null; venue_name: string | null; address: string | null; map_url: string | null; dress_code: string | null; schedule_note: string | null; sort_order: number; state: string };
@@ -24,13 +25,18 @@ export function CelebrationAdminControlPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const response = await fetch("/api/admin/celebracao");
-    const body = await response.json();
-    if (response.ok) setData(body as AdminData);
-    else toast.error(body.error || "A migração aditiva precisa ser aplicada antes de editar esta área.");
-    setLoading(false);
+  const load = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const response = await fetch("/api/admin/celebracao");
+      const body = await response.json();
+      if (response.ok) setData(body as AdminData);
+      else toast.error(body.error || "A migração aditiva precisa ser aplicada antes de editar esta área.");
+    } catch {
+      toast.error("Não foi possível atualizar a administração. Verifique sua conexão.");
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -43,7 +49,6 @@ export function CelebrationAdminControlPanel() {
       await send({
         intent: "update_page",
         title: text(form.get("title")), subtitle: text(form.get("subtitle")), story: text(form.get("story")), postEventMessage: text(form.get("postEventMessage")),
-        heroUrl: text(form.get("heroUrl")), ogUrl: text(form.get("ogUrl")), heroFocalX: Number(form.get("heroFocalX")), heroFocalY: Number(form.get("heroFocalY")),
         rsvpEnabled: bool(form, "rsvpEnabled"), giftsEnabled: bool(form, "giftsEnabled"), reservationsEnabled: bool(form, "reservationsEnabled"), pixEnabled: bool(form, "pixEnabled"),
         pixKey: text(form.get("pixKey")), pixRecipientName: text(form.get("pixRecipientName")), pixCity: text(form.get("pixCity")), contactGabriel: text(form.get("contactGabriel")), contactRaabe: text(form.get("contactRaabe")),
       });
@@ -73,12 +78,22 @@ export function CelebrationAdminControlPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <a href="#pagina" className="rounded-xl border bg-white p-4 text-sm font-medium">Evento / Página</a>
+        <a href="#imagens" className="rounded-xl border bg-white p-4 text-sm font-medium">Imagens</a>
         <a href="#eventos" className="rounded-xl border bg-white p-4 text-sm font-medium">Eventos e locais</a>
         <a href="#presentes" className="rounded-xl border bg-white p-4 text-sm font-medium">Presentes</a>
         <a href="/celebracao" target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl border bg-stone-900 p-4 text-sm font-medium text-white">Abrir página <ExternalLink className="h-4 w-4" /></a>
       </div>
+
+      <AdminMediaManager
+        heroUrl={typeof config.celebration_hero_url === "string" ? config.celebration_hero_url : null}
+        ogUrl={typeof config.celebration_og_url === "string" ? config.celebration_og_url : null}
+        heroFocalX={typeof config.celebration_hero_focal_x === "number" ? config.celebration_hero_focal_x : 50}
+        heroFocalY={typeof config.celebration_hero_focal_y === "number" ? config.celebration_hero_focal_y : 50}
+        description={typeof config.celebration_subtitle === "string" ? config.celebration_subtitle : ""}
+        onChanged={() => load(false)}
+      />
 
       <Card id="pagina">
         <CardHeader><CardTitle>Evento / Página</CardTitle><CardDescription>Conteúdo, aparência, PIX, contatos e recursos publicados em um só lugar.</CardDescription></CardHeader>
@@ -87,10 +102,6 @@ export function CelebrationAdminControlPanel() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Título" name="title" defaultValue={config.celebration_title} required />
               <Field label="Subtítulo" name="subtitle" defaultValue={config.celebration_subtitle} />
-              <Field label="Fotografia do hero (URL)" name="heroUrl" defaultValue={config.celebration_hero_url} type="url" />
-              <Field label="Imagem OG 1200×630 (URL)" name="ogUrl" defaultValue={config.celebration_og_url} type="url" />
-              <Field label="Foco horizontal (%)" name="heroFocalX" defaultValue={config.celebration_hero_focal_x ?? 50} type="number" />
-              <Field label="Foco vertical (%)" name="heroFocalY" defaultValue={config.celebration_hero_focal_y ?? 50} type="number" />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <TextArea label="Texto da celebração" name="story" defaultValue={config.celebration_story} />

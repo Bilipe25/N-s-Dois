@@ -36,6 +36,7 @@ export default [
     route("api/guests", "routes/api.guests.ts"),
     route("api/dashboard", "routes/api.dashboard.ts"),
     route("api/admin/celebracao", "routes/api.admin.celebration.ts"),
+    route("api/admin/celebracao/media", "routes/api.admin.celebration-media.ts"),
     route("api/admin/celebracao/gifts", "routes/api.admin.celebration-gifts.ts"),
     route("api/reserve-gift", "routes/api.legacy-public-disabled.ts"),
     route("api/groomsmen", "routes/api.groomsmen.ts"),

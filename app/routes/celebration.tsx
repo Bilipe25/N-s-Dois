@@ -22,6 +22,7 @@ import { PixPanel } from "@/components/celebration/pix-panel";
 import { GuestIdentification, type IdentificationResult } from "@/components/celebration/guest-identification";
 import { cancelGiftReservation, createGiftReservation } from "@/lib/gift-reservations";
 import { HttpRequestError, requestJson } from "@/lib/http.client";
+import { celebrationSocialImageMeta } from "@/lib/celebration-meta";
 import "./celebration.css";
 
 const DIRECTION_CONTRACT = `
@@ -36,17 +37,15 @@ export const meta: Route.MetaFunction = ({ data }) => {
   const title = "Gabriel & Raabe — Celebrando o Amor";
   const description = loaderData?.config.subtitle || "Celebre o amor e o novo lar de Gabriel e Raabe. Veja os detalhes e confirme sua presença.";
   const canonical = loaderData?.canonical || "/celebracao";
-  const image = loaderData?.canonical ? new URL("/celebration-og.png", loaderData.canonical).href : "/celebration-og.png";
+  const socialImageMeta = celebrationSocialImageMeta(loaderData?.config.ogUrl, canonical);
   return [
     { title }, { name: "description", content: description },
     { property: "og:type", content: "website" }, { property: "og:title", content: title },
     { property: "og:description", content: description }, { property: "og:url", content: canonical },
     { property: "og:site_name", content: "Nós Dois" }, { property: "og:locale", content: "pt_BR" },
-    { property: "og:image", content: image }, { property: "og:image:type", content: "image/png" },
-    { property: "og:image:width", content: "1200" }, { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: "Gabriel e Raabe — Celebrando o Amor e o Novo Lar" },
+    ...socialImageMeta,
     { name: "twitter:card", content: "summary_large_image" }, { name: "twitter:url", content: canonical },
-    { name: "twitter:title", content: title }, { name: "twitter:description", content: description }, { name: "twitter:image", content: image },
+    { name: "twitter:title", content: title }, { name: "twitter:description", content: description },
     { tagName: "link", rel: "canonical", href: canonical },
   ];
 };
