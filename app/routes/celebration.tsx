@@ -123,15 +123,13 @@ function RsvpSummaryList({ summaries }: { summaries: SavedRsvpSummary[] }) {
   </div>)}</div>;
 }
 
-function RsvpSuccess({ summaries, registered, onViewDetails, onEdit, canEdit }: { summaries: SavedRsvpSummary[]; registered: boolean; onViewDetails: () => void; onEdit: () => void; canEdit: boolean }) {
+function RsvpSuccess({ summaries, onViewDetails, onEdit, canEdit }: { summaries: SavedRsvpSummary[]; onViewDetails: () => void; onEdit: () => void; canEdit: boolean }) {
   const allDeclined = summaries.length > 0 && summaries.every((summary) => summary.status === "recusado");
   const allConfirmed = summaries.length > 0 && summaries.every((summary) => summary.status === "confirmado");
   const title = allDeclined ? "Resposta registrada" : allConfirmed ? "Presença confirmada" : "Respostas salvas";
   const description = allDeclined
     ? "Obrigado por nos avisar com carinho. Sua resposta pode ser alterada depois."
-    : registered
-      ? "Que alegria receber sua resposta. Seu cadastro ficou sinalizado para o casal revisar com tranquilidade."
-      : "Que alegria saber que você vem celebrar com a gente. Você pode alterar sua resposta depois.";
+    : "Que alegria saber que você vem celebrar com a gente. Você pode alterar sua resposta depois.";
 
   return <div className="celebration-rsvp-success-state" role="status" aria-live="polite">
     <div className="celebration-rsvp-success-icon" aria-hidden="true"><Check /></div>
@@ -187,7 +185,7 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
     ? drafts.map((draft) => ({ title: eventById.get(draft.event_id)?.title || "Celebração", status: draft.status, adults: draft.status === "recusado" ? 0 : draft.confirmed_adults, children: draft.status === "recusado" ? 0 : draft.confirmed_children, message: draft.message }))
     : generalDraft ? [{ title: "Celebração", status: generalDraft.status, adults: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_adults, children: generalDraft.status === "recusado" ? 0 : generalDraft.confirmed_children, message: generalDraft.message }] : []);
 
-  if (state === "saved" && savedSummaries.length) return <RsvpSuccess summaries={savedSummaries} registered={Boolean(registeredSummary)} onViewDetails={onViewDetails} canEdit={enabled} onEdit={() => { setRegisteredSummary(null); setState("idle"); setMode("edit"); }} />;
+  if (state === "saved" && savedSummaries.length) return <RsvpSuccess summaries={savedSummaries} onViewDetails={onViewDetails} canEdit={enabled} onEdit={() => { setRegisteredSummary(null); setState("idle"); setMode("edit"); }} />;
   if (!active) return <GuestIdentification onIdentified={handleIdentified} contacts={<ContactActions contacts={contacts} />} publicAdultLimit={publicAdultLimit} publicChildLimit={publicChildLimit} />;
   if (mode === "summary" && savedSummaries.length) return <RsvpReview state={persistedState} summaries={savedSummaries} canEdit={enabled} onEdit={() => setMode("edit")} onClose={onClose} />;
   if (!enabled) return <div className="celebration-panel-empty"><Heart /><p>As confirmações ainda não estão abertas.</p></div>;
@@ -218,7 +216,7 @@ function RsvpContent({ events, responses, general, active, enabled, open, contac
       <button type="button" aria-pressed={generalDraft.status !== "recusado"} className={generalDraft.status !== "recusado" ? "is-active" : ""} onClick={() => { setGeneralDraft({ ...generalDraft, status: "confirmado", confirmed_adults: Math.max(1, generalDraft.confirmed_adults) }); setState("idle"); }}>Estarei presente</button>
       <button type="button" aria-pressed={generalDraft.status === "recusado"} className={generalDraft.status === "recusado" ? "is-active" : ""} onClick={() => { setGeneralDraft({ ...generalDraft, status: "recusado", confirmed_adults: 0, confirmed_children: 0 }); setState("idle"); }}>Não poderei ir</button>
     </div>
-    {generalDraft.status !== "recusado" && <><p className="text-xs leading-relaxed text-stone-500">{generalDraft.is_public_registration ? `Este cadastro permite até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.` : `Seu convite está preparado para até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.`}</p><div className="celebration-counters"><GuestCountStepper label="Adultos" value={generalDraft.confirmed_adults} min={1} max={generalDraft.adult_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_adults: value })} helperText="Inclua você nesta quantidade." />{generalDraft.child_limit > 0 && <GuestCountStepper label="Crianças" value={generalDraft.confirmed_children} min={0} max={generalDraft.child_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_children: value })} />}</div></>}
+    {generalDraft.status !== "recusado" && <><p className="text-xs leading-relaxed text-stone-500">{generalDraft.is_public_registration ? `Você pode informar até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.` : `Seu convite está preparado para até ${guestLimitText(generalDraft.adult_limit, generalDraft.child_limit)}.`}</p><div className="celebration-counters"><GuestCountStepper label="Adultos" value={generalDraft.confirmed_adults} min={1} max={generalDraft.adult_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_adults: value })} helperText="Inclua você nesta quantidade." />{generalDraft.child_limit > 0 && <GuestCountStepper label="Crianças" value={generalDraft.confirmed_children} min={0} max={generalDraft.child_limit} onChange={(value) => setGeneralDraft({ ...generalDraft, confirmed_children: value })} />}</div></>}
     <label className="celebration-message"><span>Mensagem para o casal <small>opcional e privada</small></span><textarea value={generalDraft.message} maxLength={1000} rows={3} onChange={(event) => setGeneralDraft({ ...generalDraft, message: event.target.value })} placeholder="Escreva somente se quiser." /></label>
   </fieldset>}{drafts.map((draft) => {
     const event = eventById.get(draft.event_id); if (!event) return null;

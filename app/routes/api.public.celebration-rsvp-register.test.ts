@@ -20,7 +20,10 @@ function request(body: unknown) {
   return new Request("https://example.com/api/public/celebracao/rsvp/register", { method: "POST", headers: { Origin: "https://example.com", "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
-function client(existing: Array<{ id: string; name: string }> = [], rpcResult = { data: "11111111-1111-4111-8111-111111111111", error: null }) {
+function client(
+  existing: Array<{ id: string; name: string }> = [],
+  rpcResult: { data: string | null; error: { code: string } | null } = { data: "11111111-1111-4111-8111-111111111111", error: null },
+) {
   const chain: Record<string, unknown> = {};
   for (const method of ["select", "eq", "limit"]) chain[method] = vi.fn(() => chain);
   chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: existing, error: null }).then(resolve);
@@ -48,6 +51,30 @@ describe("cadastro espontâneo de RSVP", () => {
     const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 0 }) } as never);
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({ status: "already_exists" });
+  });
+
+  it("mantém a resposta neutra quando uma corrida cria o nome antes do RPC", async () => {
+    const db = client([], { data: null, error: { code: "23505" } });
+    mocks.createServerAdminClient.mockReturnValue(db);
+    const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 0 }) } as never);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ status: "already_exists" });
+  });
+
+  it("salva uma recusa sem acompanhantes e mantém a sessão privada", async () => {
+    const db = client(); mocks.createServerAdminClient.mockReturnValue(db);
+    const response = await action({ request: request({ name: "Maria da Silva", status: "recusado", confirmedAdults: 4, confirmedChildren: 2, message: "Não poderei ir" }) } as never);
+    expect(response.status).toBe(201);
+    expect(response.headers.get("set-cookie")).toBe("session=cookie");
+    expect(db.rpc).toHaveBeenCalledWith("create_public_rsvp_guest", expect.objectContaining({ p_status: "recusado", p_adults: 0, p_children: 0 }));
+  });
+
+  it("preserva o rate limit do registro público", async () => {
+    mocks.consumeRateLimit.mockResolvedValueOnce(false);
+    const db = client(); mocks.createServerAdminClient.mockReturnValue(db);
+    const response = await action({ request: request({ name: "Maria da Silva", status: "confirmado", confirmedAdults: 1, confirmedChildren: 0 }) } as never);
+    expect(response.status).toBe(429);
+    expect(db.from).not.toHaveBeenCalled();
   });
 
   it("rejeita quantidades acima dos limites públicos configurados antes de acessar o banco", async () => {

@@ -20,7 +20,7 @@ export async function action({ request }: Route.ActionArgs) {
     .from("guests")
     .select("id,name")
     .limit(1000);
-  if (error) return Response.json({ error: "Não foi possível verificar o nome agora." }, { status: 500, headers: noStoreHeaders() });
+  if (error) return Response.json({ error: "Não conseguimos continuar agora. Tente novamente." }, { status: 500, headers: noStoreHeaders() });
   const requestedKey = normalizeGuestName(parsed.data.name);
   const matches = (data || []).filter((guest) => normalizeGuestName(String(guest.name)) === requestedKey).slice(0, 2);
   if (!matches.length) return Response.json({ status: "not_found" }, { headers: noStoreHeaders() });

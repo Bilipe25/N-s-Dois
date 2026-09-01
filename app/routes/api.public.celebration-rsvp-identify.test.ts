@@ -20,10 +20,10 @@ function request(name: string) {
   return new Request("https://example.com/api/public/celebracao/rsvp/identify", { method: "POST", headers: { Origin: "https://example.com", "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
 }
 
-function client(rows: Array<{ id: string; name: string }>) {
+function client(rows: Array<{ id: string; name: string }>, error: { message: string } | null = null) {
   const chain: Record<string, unknown> = {};
   for (const method of ["select", "eq", "limit"]) chain[method] = vi.fn(() => chain);
-  chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve);
+  chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error }).then(resolve);
   return { from: vi.fn(() => chain), chain };
 }
 
@@ -58,5 +58,12 @@ describe("identificação privada por nome", () => {
   it("bloqueia excesso de tentativas", async () => {
     mocks.consumeRateLimit.mockResolvedValueOnce(false);
     expect((await action({ request: request("Maria Silva") } as never)).status).toBe(429);
+  });
+
+  it("responde a falhas do banco sem associá-las ao nome informado", async () => {
+    mocks.createServerAdminClient.mockReturnValue(client([], { message: "database unavailable" }));
+    const response = await action({ request: request("Maria Silva") } as never);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Não conseguimos continuar agora. Tente novamente." });
   });
 });

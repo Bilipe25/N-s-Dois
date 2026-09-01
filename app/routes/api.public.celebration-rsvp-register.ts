@@ -23,13 +23,13 @@ export async function action({ request }: Route.ActionArgs) {
   const adults = parsed.data.status === "recusado" ? 0 : parsed.data.confirmedAdults;
   const children = parsed.data.status === "recusado" ? 0 : parsed.data.confirmedChildren;
   if (adults > config.publicRsvpAdultLimit || children > config.publicRsvpChildLimit) {
-    return Response.json({ error: `Este cadastro permite até ${guestLimitText(config.publicRsvpAdultLimit, config.publicRsvpChildLimit)}.` }, { status: 400, headers: noStoreHeaders() });
+    return Response.json({ error: `Você pode informar até ${guestLimitText(config.publicRsvpAdultLimit, config.publicRsvpChildLimit)}.` }, { status: 400, headers: noStoreHeaders() });
   }
 
   const supabase = createServerAdminClient();
   const key = normalizeGuestName(parsed.data.name);
   const { data: knownGuests, error: lookupError } = await supabase.from("guests").select("id,name").limit(1000);
-  if (lookupError) return Response.json({ error: "Não foi possível verificar o nome agora." }, { status: 500, headers: noStoreHeaders() });
+  if (lookupError) return Response.json({ error: "Não conseguimos continuar agora. Tente novamente." }, { status: 500, headers: noStoreHeaders() });
   const existing = (knownGuests || []).filter((guest) => normalizeGuestName(String(guest.name)) === key).slice(0, 2);
   if (existing?.length) return Response.json({ status: existing.length > 1 ? "ambiguous" : "already_exists" }, { status: 409, headers: noStoreHeaders() });
 
@@ -43,7 +43,10 @@ export async function action({ request }: Route.ActionArgs) {
   });
   if (error || !guestId) {
     const conflict = error?.code === "23505";
-    return Response.json({ error: conflict ? "Este nome já foi identificado. Tente entrar novamente." : "Não foi possível registrar sua resposta." }, { status: conflict ? 409 : 500, headers: noStoreHeaders() });
+    return Response.json(
+      conflict ? { status: "already_exists" } : { error: "Não conseguimos confirmar sua resposta agora. Tente novamente." },
+      { status: conflict ? 409 : 500, headers: noStoreHeaders() },
+    );
   }
 
   const cookie = await createInviteSession(request, String(guestId));

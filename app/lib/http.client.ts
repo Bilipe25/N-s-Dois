@@ -1,3 +1,5 @@
+import { connectionFallback, responseFallback } from "@/lib/http-errors";
+
 export class HttpRequestError extends Error {
   status: number | null;
   data: JsonErrorBody & Record<string, unknown>;
@@ -11,12 +13,6 @@ export class HttpRequestError extends Error {
 }
 
 type JsonErrorBody = { error?: unknown };
-
-function responseFallback(status: number) {
-  if (status === 429) return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
-  if (status >= 500) return "O serviço está temporariamente indisponível. Tente novamente em instantes.";
-  return "Não foi possível concluir esta ação. Revise os dados e tente novamente.";
-}
 
 export async function requestJson<T>(
   input: RequestInfo | URL,
@@ -50,9 +46,7 @@ export async function requestJson<T>(
       throw new HttpRequestError("A conexão demorou mais que o esperado. Tente novamente.");
     }
     const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-    throw new HttpRequestError(offline
-      ? "Você está sem conexão. Sua resposta não foi enviada; tente novamente quando a internet voltar."
-      : "Não foi possível conectar agora. Confira sua internet e tente novamente.");
+    throw new HttpRequestError(connectionFallback(offline));
   } finally {
     window.clearTimeout(timeout);
     externalSignal?.removeEventListener("abort", forwardAbort);
