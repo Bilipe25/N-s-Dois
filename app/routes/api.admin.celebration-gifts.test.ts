@@ -34,7 +34,16 @@ describe("administração canônica de reservas", () => {
   });
 
   it("enriquece presentes com reservas ativas e nomes em uma única consulta de convidados", async () => {
-    const guestQuery = resolvedChain({ data: [{ id: guestId, name: "Maria da Silva" }], error: null }, ["in"]);
+    const guestQuery = resolvedChain({ data: [{
+      id: guestId,
+      name: " Maria da Silva ",
+      contact_phone: "(82) 99999-9999",
+      rsvp_status: "confirmado",
+      rsvp_adults: 2,
+      rsvp_children: 1,
+      adults_count: 1,
+      children_count: 0,
+    }], error: null }, ["in"]);
     const from = vi.fn((table: string) => {
       if (table === "bridal_shower_gifts") return { select: () => resolvedChain({ data: [
         { id: giftId, item_name: "Faqueiro", status: "disponivel" },
@@ -51,8 +60,22 @@ describe("administração canônica de reservas", () => {
     mocks.createServerAdminClient.mockReturnValue({ from });
 
     const result = await loader({ request: new Request("https://example.com/api/admin/celebracao/gifts") } as never);
-    expect(result.gifts[0].active_reservation).toMatchObject({ id: reservationId, guest_name: "Maria da Silva", legacy_source: false });
-    expect(result.gifts[1].active_reservation).toMatchObject({ id: secondReservationId, guest_name: "Registro legado", legacy_source: true });
+    expect(result.gifts[0].active_reservation).toMatchObject({
+      id: reservationId,
+      guest_name: "Maria da Silva",
+      guest_phone: "(82) 99999-9999",
+      guest_rsvp_status: "confirmado",
+      guest_adults: 2,
+      guest_children: 1,
+      legacy_source: false,
+    });
+    expect(result.gifts[1].active_reservation).toMatchObject({
+      id: secondReservationId,
+      guest_name: "Registro legado",
+      guest_phone: null,
+      guest_rsvp_status: "pendente",
+      legacy_source: true,
+    });
     expect(from.mock.calls.filter(([table]) => table === "guests")).toHaveLength(1);
   });
 

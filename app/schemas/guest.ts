@@ -24,6 +24,10 @@ export const GuestSchema = z.object({
     children_count: z.number().int().min(0),
     rsvp_status: z.enum(["pendente", "confirmado", "recusado"]),
     phone: z.string().nullable().optional(),
+    reserved_gifts: z.array(z.object({
+        id: z.string().uuid(),
+        item_name: z.string().min(1),
+    })).optional().default([]),
     source: z.enum(["admin", "public_rsvp"]).optional().default("admin"),
     review_status: z.enum(["pending", "approved"]).optional().default("approved"),
     rsvp_adults: z.number().int().min(0).nullable().optional(),

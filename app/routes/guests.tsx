@@ -48,6 +48,8 @@ import {
 import type { Guest } from "@/schemas/guest";
 import { CELEBRATION_TIME_ZONE, formatCelebrationDate } from "@/lib/celebration-time";
 import { confirmedCounts, formatRsvpTimestamp, guestHasPrivateMessage, latestResponseAt, respondedToday } from "@/lib/guest-rsvp";
+import { CelebrationWhatsAppComposer, type CelebrationWhatsAppComposerData } from "@/components/celebration/whatsapp-message-composer";
+import { normalizeWhatsAppPhone } from "@/lib/celebration-whatsapp";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Convidados - Nós Dois" }];
@@ -110,6 +112,7 @@ export default function Guests() {
     const [inviteLink, setInviteLink] = useState<{ guestId: string; url: string } | null>(null);
     const [isCreatingInvite, setIsCreatingInvite] = useState(false);
     const [rotateInviteOpen, setRotateInviteOpen] = useState(false);
+    const [whatsappData, setWhatsappData] = useState<CelebrationWhatsAppComposerData | null>(null);
 
     // Derived Data
     const groups = Array.from(new Set(guests.map((g) => g.group_name))).filter(Boolean) as string[];
@@ -209,6 +212,19 @@ export default function Guests() {
         setInviteLink(null);
         setRotateInviteOpen(false);
         setSelectedGuest(guest);
+    };
+
+    const openWhatsAppComposer = (guest: Guest) => {
+        const counts = confirmedCounts(guest);
+        setWhatsappData({
+            guestName: guest.name,
+            phone: guest.phone,
+            rsvpStatus: guest.rsvp_status,
+            adults: counts.adults,
+            children: counts.children,
+            gifts: (guest.reserved_gifts || []).map((gift) => gift.item_name),
+            context: guest.rsvp_status === "recusado" ? "declined" : guest.rsvp_status === "confirmado" ? "confirmation" : "rsvp_update",
+        });
     };
 
     const handleExportPdf = useCallback(async () => {
@@ -438,6 +454,7 @@ export default function Guests() {
                         onUpdateRSVP={(id, status) => updateRSVP({ id, status })}
                         onDelete={(id) => deleteGuest(id)}
                         onGuestClick={handleGuestClick}
+                        onWhatsApp={openWhatsAppComposer}
                     />
                 </div>
             </div>
@@ -594,7 +611,16 @@ export default function Guests() {
                                     </div>
                                 </div>
 
-                                {selectedGuest.phone && <div className="rounded-xl bg-stone-50 p-4"><p className="text-xs text-stone-500">Telefone privado</p><p className="mt-1 font-medium text-stone-900">{selectedGuest.phone}</p></div>}
+                                <div className="rounded-xl bg-stone-50 p-4"><p className="text-xs text-stone-500">Telefone privado</p><p className="mt-1 font-medium text-stone-900">{selectedGuest.phone || "WhatsApp não informado"}</p></div>
+
+                                {selectedGuest.reserved_gifts && selectedGuest.reserved_gifts.length > 0 && (
+                                    <div className="rounded-xl bg-rose-50 p-4">
+                                        <p className="text-xs font-semibold text-rose-800">Presentes reservados</p>
+                                        <ul className="mt-2 space-y-1 text-sm text-stone-800">
+                                            {selectedGuest.reserved_gifts.map((gift) => <li key={gift.id}>• {gift.item_name}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
 
                                 {selectedGuest.created_at && (
                                     <div className="bg-stone-50 rounded-xl p-4">
@@ -626,6 +652,20 @@ export default function Guests() {
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-medium text-stone-500">Ações Rápidas</h3>
                                     <div className="grid grid-cols-2 gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={!normalizeWhatsAppPhone(selectedGuest.phone)}
+                                            className="col-span-2 h-12 border-green-200 text-green-800 hover:bg-green-50"
+                                            onClick={() => {
+                                                const guest = selectedGuest;
+                                                setSelectedGuest(null);
+                                                openWhatsAppComposer(guest);
+                                            }}
+                                        >
+                                            <MessageCircle className="mr-2 h-4 w-4" />
+                                            {normalizeWhatsAppPhone(selectedGuest.phone) ? "WhatsApp" : "WhatsApp não informado"}
+                                        </Button>
                                         {selectedGuest.rsvp_status !== 'confirmado' && (
                                             <Button
                                                 variant="outline"
@@ -741,6 +781,12 @@ export default function Guests() {
                     )}
                 </DrawerContent>
             </Drawer>
+
+            <CelebrationWhatsAppComposer
+                open={Boolean(whatsappData)}
+                onOpenChange={(open) => { if (!open) setWhatsappData(null); }}
+                data={whatsappData}
+            />
 
             <AlertDialog open={rotateInviteOpen} onOpenChange={setRotateInviteOpen}>
                 <AlertDialogContent>

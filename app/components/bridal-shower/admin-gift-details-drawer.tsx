@@ -1,17 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Badge } from "@/components/ui/badge";
-import { Edit, X, Gift as GiftIcon, Tag, DollarSign, Store, User, Clock, ExternalLink, History } from "lucide-react";
+import { Edit, X, Gift as GiftIcon, Tag, DollarSign, Store, User, Clock, ExternalLink, History, MessageCircle } from "lucide-react";
 import type { Gift } from "@/schemas/bridal-shower";
+import { normalizeWhatsAppPhone } from "@/lib/celebration-whatsapp";
 
 interface AdminGiftDetailsDrawerProps {
     gift: Gift | null;
     onClose: () => void;
     onEdit: (gift: Gift) => void;
     cancelReservation: { mutate: (reservationId: string) => void; isPending: boolean };
+    onWhatsApp: (gift: Gift) => void;
 }
 
-export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, cancelReservation }: AdminGiftDetailsDrawerProps) {
+export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, cancelReservation, onWhatsApp }: AdminGiftDetailsDrawerProps) {
     const reservation = gift?.active_reservation || null;
     return (
         <Drawer open={!!gift} onOpenChange={(open) => !open && onClose()}>
@@ -116,6 +118,19 @@ export function AdminGiftDetailsDrawer({ gift, onClose, onEdit, cancelReservatio
                                         </p>
                                     </div>
                                 </div>
+                            )}
+
+                            {reservation && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={!normalizeWhatsAppPhone(reservation.guest_phone)}
+                                    onClick={() => onWhatsApp(gift)}
+                                    className="min-h-12 w-full rounded-full border-green-200 text-green-800 hover:bg-green-50"
+                                >
+                                    <MessageCircle className="mr-2 h-4 w-4" />
+                                    {normalizeWhatsAppPhone(reservation.guest_phone) ? `WhatsApp de ${reservation.guest_name}` : "WhatsApp não informado"}
+                                </Button>
                             )}
 
                             {reservation && (

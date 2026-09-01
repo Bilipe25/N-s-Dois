@@ -21,14 +21,19 @@ const ActionSchema = z.discriminatedUnion("intent", [
 export async function loader({ request }: LoaderFunctionArgs) {
   await requireUserSession(request);
   const supabase = createServerAdminClient();
-  const [{ data: guests, error: guestsError }, { data: activeInvites, error: invitesError }] = await Promise.all([
+  const [{ data: guests, error: guestsError }, { data: activeInvites, error: invitesError }, { data: activeReservations, error: reservationsError }] = await Promise.all([
     supabase.from("guests").select("*,guest_event_rsvps(id,event_id,status,adult_limit,child_limit,confirmed_adults,confirmed_children,private_message,responded_at,celebration_events(title,starts_at))").order("name"),
     supabase
       .from("guest_invite_tokens")
       .select("guest_id,created_at,last_used_at")
       .is("revoked_at", null),
+    supabase
+      .from("gift_reservations")
+      .select("id,guest_id,bridal_shower_gifts(item_name)")
+      .eq("status", "active")
+      .not("guest_id", "is", null),
   ]);
-  if (guestsError || invitesError) {
+  if (guestsError || invitesError || reservationsError) {
     return Response.json({ error: "Não foi possível carregar os convidados." }, { status: 500, headers: noStoreHeaders() });
   }
   const invitesByGuest = new Map((activeInvites || []).map((invite) => [String(invite.guest_id), {
@@ -36,9 +41,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     created_at: String(invite.created_at),
     last_used_at: invite.last_used_at ? String(invite.last_used_at) : null,
   }]));
+  const giftsByGuest = new Map<string, Array<{ id: string; item_name: string }>>();
+  for (const reservation of activeReservations || []) {
+    if (!reservation.guest_id) continue;
+    const linkedGift = Array.isArray(reservation.bridal_shower_gifts) ? reservation.bridal_shower_gifts[0] : reservation.bridal_shower_gifts;
+    const itemName = String(linkedGift?.item_name || "").trim();
+    if (!itemName) continue;
+    const guestId = String(reservation.guest_id);
+    giftsByGuest.set(guestId, [...(giftsByGuest.get(guestId) || []), { id: String(reservation.id), item_name: itemName }]);
+  }
   return Response.json({
     guests: (guests || []).map((guest) => {
-      const { guest_event_rsvps: eventRows, ...guestFields } = guest;
+      const { guest_event_rsvps: eventRows, contact_phone: contactPhone, ...guestFields } = guest;
       const eventResponses = (Array.isArray(eventRows) ? eventRows : []).map((response) => {
         const linkedEvent = Array.isArray(response.celebration_events) ? response.celebration_events[0] : response.celebration_events;
         return {
@@ -55,7 +69,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
           responded_at: response.responded_at ? String(response.responded_at) : null,
         };
       });
-      return { ...guestFields, event_responses: eventResponses, invite: invitesByGuest.get(String(guest.id)) || null };
+      return {
+        ...guestFields,
+        phone: contactPhone ? String(contactPhone).trim() : null,
+        reserved_gifts: giftsByGuest.get(String(guest.id)) || [],
+        event_responses: eventResponses,
+        invite: invitesByGuest.get(String(guest.id)) || null,
+      };
     }),
   }, { headers: noStoreHeaders() });
 }

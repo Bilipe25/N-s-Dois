@@ -32,24 +32,47 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const reservations = reservationsResult.data || [];
     const guestIds = Array.from(new Set(reservations.flatMap((reservation) => reservation.guest_id ? [reservation.guest_id] : [])));
-    const guestNames = new Map<string, string>();
+    const guestDetails = new Map<string, {
+        name: string;
+        phone: string | null;
+        rsvpStatus: "pendente" | "confirmado" | "recusado";
+        adults: number;
+        children: number;
+    }>();
     if (guestIds.length > 0) {
-        const { data: guests, error: guestsError } = await supabase.from("guests").select("id,name").in("id", guestIds);
+        const { data: guests, error: guestsError } = await supabase
+            .from("guests")
+            .select("id,name,contact_phone,rsvp_status,rsvp_adults,rsvp_children,adults_count,children_count")
+            .in("id", guestIds);
         if (guestsError) throw data({ error: guestsError.message }, { status: 500 });
-        for (const guest of guests || []) guestNames.set(String(guest.id), String(guest.name));
+        for (const guest of guests || []) {
+            const rsvpStatus = guest.rsvp_status === "confirmado" || guest.rsvp_status === "recusado" ? guest.rsvp_status : "pendente";
+            guestDetails.set(String(guest.id), {
+                name: String(guest.name).trim(),
+                phone: guest.contact_phone ? String(guest.contact_phone).trim() : null,
+                rsvpStatus,
+                adults: rsvpStatus === "recusado" ? 0 : Number(guest.rsvp_adults ?? guest.adults_count ?? 0),
+                children: rsvpStatus === "recusado" ? 0 : Number(guest.rsvp_children ?? guest.children_count ?? 0),
+            });
+        }
     }
 
     const reservationByGift = new Map(reservations.map((reservation) => [String(reservation.gift_id), reservation]));
     const gifts = (giftsResult.data || []).map((gift) => {
         const reservation = reservationByGift.get(String(gift.id));
+        const guest = reservation?.guest_id ? guestDetails.get(String(reservation.guest_id)) : null;
         return {
             ...gift,
             active_reservation: reservation ? {
                 id: reservation.id,
                 guest_id: reservation.guest_id,
-                guest_name: (reservation.guest_id ? guestNames.get(String(reservation.guest_id)) : null)
+                guest_name: guest?.name
                     || reservation.reserved_by_name_snapshot
                     || "Identificação legada indisponível",
+                guest_phone: guest?.phone || null,
+                guest_rsvp_status: guest?.rsvpStatus || "pendente",
+                guest_adults: guest?.adults || 0,
+                guest_children: guest?.children || 0,
                 reserved_at: reservation.reserved_at,
                 legacy_source: reservation.legacy_source,
             } : null,

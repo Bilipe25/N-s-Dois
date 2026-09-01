@@ -5,12 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import type { Route } from "./+types/guests.$id";
+import { requireUserSession } from "@/sessions";
+import { assertSameOrigin, noStoreHeaders } from "@/lib/security.server";
+import { z } from "zod";
+
+const GuestEditorSchema = z.object({
+    name: z.string().trim().min(1).max(180),
+    group_name: z.string().trim().min(1).max(120),
+    adults_count: z.coerce.number().int().min(0).max(20),
+    children_count: z.coerce.number().int().min(0).max(20),
+    rsvp_status: z.enum(["pendente", "confirmado", "recusado"]),
+    contact_phone: z.string().trim().max(30),
+});
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Editar Convidado - Nós Dois" }];
 };
 
 export const loader = async ({ request, params }: Route.LoaderArgs) => {
+    await requireUserSession(request);
     const supabase = createServerAdminClient();
     const { id } = params;
 
@@ -28,24 +41,21 @@ export const loader = async ({ request, params }: Route.LoaderArgs) => {
 };
 
 export const action = async ({ request, params }: Route.ActionArgs) => {
+    await requireUserSession(request);
+    assertSameOrigin(request);
     const formData = await request.formData();
     const supabase = createServerAdminClient();
     const { id } = params;
 
-    const name = formData.get("name") as string;
-    const group_name = formData.get("group_name") as string;
-    const adults_count = parseInt(formData.get("adults_count") as string) || 1;
-    const children_count = parseInt(formData.get("children_count") as string) || 0;
-    const rsvp_status = formData.get("rsvp_status") as string;
+    const parsed = GuestEditorSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return Response.json({ error: "Revise os dados do convidado." }, { status: 400, headers: noStoreHeaders() });
+    const { contact_phone, ...guest } = parsed.data;
 
     const { error } = await supabase
         .from("guests")
         .update({
-            name,
-            group_name,
-            adults_count,
-            children_count,
-            rsvp_status
+            ...guest,
+            contact_phone: contact_phone || null,
         })
         .eq("id", id);
 
@@ -136,6 +146,21 @@ export default function EditGuest() {
                                 <option value="confirmado">Confirmado</option>
                                 <option value="recusado">Recusado</option>
                             </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="contact_phone" className="text-sm font-medium">WhatsApp</label>
+                            <Input
+                                id="contact_phone"
+                                name="contact_phone"
+                                type="tel"
+                                inputMode="tel"
+                                autoComplete="tel"
+                                maxLength={30}
+                                defaultValue={guest.contact_phone || ""}
+                                placeholder="(82) 99999-9999"
+                            />
+                            <p className="text-xs text-muted-foreground">Opcional. Visível somente na administração.</p>
                         </div>
 
                         <Button type="submit" className="w-full" disabled={isSubmitting}>

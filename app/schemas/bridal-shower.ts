@@ -16,6 +16,10 @@ export const ActiveGiftReservationSchema = z.object({
     id: z.string().uuid(),
     guest_id: z.string().uuid().nullable(),
     guest_name: z.string().min(1),
+    guest_phone: z.string().nullable(),
+    guest_rsvp_status: z.enum(["pendente", "confirmado", "recusado"]),
+    guest_adults: z.number().int().min(0),
+    guest_children: z.number().int().min(0),
     reserved_at: z.string(),
     legacy_source: z.boolean(),
 });

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { Link } from "react-router";
 import { MoreVertical, Pencil, MessageCircle, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +11,7 @@ import {
 import type { Guest } from "./types";
 import { motion, AnimatePresence } from "framer-motion";
 import { confirmedCounts, formatRsvpTimestamp, latestResponseAt } from "@/lib/guest-rsvp";
+import { normalizeWhatsAppPhone } from "@/lib/celebration-whatsapp";
 
 interface GuestListProps {
     guests: Guest[];
@@ -20,9 +20,10 @@ interface GuestListProps {
     onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void;
     onDelete: (id: string) => void;
     onGuestClick?: (guest: Guest) => void;
+    onWhatsApp: (guest: Guest) => void;
 }
 
-export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, onDelete, onGuestClick }: GuestListProps) {
+export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, onDelete, onGuestClick, onWhatsApp }: GuestListProps) {
     return (
         <div className="space-y-2 pb-24">
             <AnimatePresence mode="popLayout">
@@ -48,6 +49,7 @@ export function GuestList({ guests, selectedIds, onToggleSelect, onUpdateRSVP, o
                             onUpdateRSVP={onUpdateRSVP}
                             onDelete={onDelete}
                             onGuestClick={onGuestClick}
+                            onWhatsApp={onWhatsApp}
                         />
                     ))
                 )}
@@ -62,14 +64,16 @@ function GuestItem({
     onToggleSelect,
     onUpdateRSVP,
     onDelete,
-    onGuestClick
+    onGuestClick,
+    onWhatsApp,
 }: {
     guest: Guest,
     isSelected: boolean,
     onToggleSelect: () => void,
     onUpdateRSVP: (id: string, status: "confirmado" | "recusado" | "pendente") => void,
     onDelete: (id: string) => void,
-    onGuestClick?: (guest: Guest) => void
+    onGuestClick?: (guest: Guest) => void,
+    onWhatsApp: (guest: Guest) => void,
 }) {
     // Optimistic RSVP is handled by React Query now, so we just use the prop
     const rsvpStatus = guest.rsvp_status;
@@ -89,10 +93,7 @@ function GuestItem({
     const statusLabel = rsvpStatus === "confirmado" ? "Confirmado" : rsvpStatus === "recusado" ? "Recusado" : "Pendente";
     const counts = confirmedCounts(guest);
     const responseTime = formatRsvpTimestamp(latestResponseAt(guest));
-    const weddingUrl = typeof window !== "undefined"
-        ? `${window.location.origin.replace(/\/$/, "")}/celebracao`
-        : "/celebracao";
-    const inviteText = encodeURIComponent(`Olá ${guest.name.split(' ')[0]}, você foi convidado para o nosso casamento! Veja todos os detalhes e confirme sua presença aqui: ${weddingUrl}`);
+    const hasWhatsApp = Boolean(normalizeWhatsAppPhone(guest.phone));
 
     return (
         <motion.div
@@ -133,8 +134,8 @@ function GuestItem({
                 </div>
 
                 <div className="min-w-0">
-                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-stone-800"><span className="truncate">{guest.name}</span>{guest.source === "public_rsvp" && <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700">Novo pelo site</span>}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-stone-500">
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold text-stone-800"><span className="truncate">{guest.name}</span>{guest.source === "public_rsvp" && <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-violet-700">Novo pelo site</span>}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
                         <span className="rounded bg-stone-100 px-1.5 py-0.5 font-medium text-stone-600">{guest.group_name}</span>
                         <span className={`rounded-full border px-2 py-0.5 font-semibold ${statusColors[rsvpStatus]}`}>{statusLabel}</span>
                         <span>{counts.adults} adulto{counts.adults !== 1 ? "s" : ""} · {counts.children} criança{counts.children !== 1 ? "s" : ""}</span>
@@ -157,16 +158,13 @@ function GuestItem({
                                 <span>Editar</span>
                             </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <a
-                                href={`https://wa.me/?text=${inviteText}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="cursor-pointer flex items-center text-green-600"
-                            >
-                                <MessageCircle className="mr-2 h-4 w-4" />
-                                <span>Enviar Convite</span>
-                            </a>
+                        <DropdownMenuItem
+                            disabled={!hasWhatsApp}
+                            onSelect={() => onWhatsApp(guest)}
+                            className="cursor-pointer text-green-700 focus:text-green-800"
+                        >
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            <span>{hasWhatsApp ? "WhatsApp" : "WhatsApp não informado"}</span>
                         </DropdownMenuItem>
 
                         {rsvpStatus !== 'confirmado' && (

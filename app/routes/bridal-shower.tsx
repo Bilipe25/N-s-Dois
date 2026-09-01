@@ -32,6 +32,7 @@ import { CelebrationAdminControlPanel } from "@/components/celebration/admin-con
 import { AdminAddGiftDrawer } from "@/components/bridal-shower/admin-add-gift-drawer";
 import { AdminEditGiftDrawer } from "@/components/bridal-shower/admin-edit-gift-drawer";
 import { AdminGiftDetailsDrawer } from "@/components/bridal-shower/admin-gift-details-drawer";
+import { CelebrationWhatsAppComposer, type CelebrationWhatsAppComposerData } from "@/components/celebration/whatsapp-message-composer";
 
 export const meta: Route.MetaFunction = () => {
     return [{ title: "Administração da Celebração - Nós Dois" }];
@@ -63,6 +64,7 @@ export default function BridalShower() {
     const [showBulkCategory, setShowBulkCategory] = useState(false);
     const [bulkCategory, setBulkCategory] = useState<GiftCategory | "">("");
     const [selectedGiftDetails, setSelectedGiftDetails] = useState<Gift | null>(null);
+    const [whatsappData, setWhatsappData] = useState<CelebrationWhatsAppComposerData | null>(null);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Import Text State
@@ -117,6 +119,21 @@ export default function BridalShower() {
     const handleEditGift = (gift: Gift) => {
         setEditingGift(gift);
         setShowEditGift(true);
+    };
+
+    const openGiftWhatsAppComposer = (gift: Gift) => {
+        const reservation = gift.active_reservation;
+        if (!reservation) return;
+        setWhatsappData({
+            guestName: reservation.guest_name,
+            phone: reservation.guest_phone,
+            rsvpStatus: reservation.guest_rsvp_status,
+            adults: reservation.guest_adults,
+            children: reservation.guest_children,
+            gifts: [gift.item_name],
+            context: "gift_reserved",
+        });
+        closeGiftDetails();
     };
 
     const handleBulkCategorySubmit = (e: React.FormEvent) => {
@@ -368,7 +385,12 @@ export default function BridalShower() {
             {/* Modals & Drawers */}
             <AdminAddGiftDrawer open={showAddGift} onOpenChange={setShowAddGift} createGift={createGift} />
             <AdminEditGiftDrawer open={showEditGift} onOpenChange={setShowEditGift} gift={editingGift} updateGift={updateGift} />
-            <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={closeGiftDetails} onEdit={handleEditGift} cancelReservation={cancelGiftReservation} />
+            <AdminGiftDetailsDrawer gift={selectedGiftDetails} onClose={closeGiftDetails} onEdit={handleEditGift} cancelReservation={cancelGiftReservation} onWhatsApp={openGiftWhatsAppComposer} />
+            <CelebrationWhatsAppComposer
+                open={Boolean(whatsappData)}
+                onOpenChange={(open) => { if (!open) setWhatsappData(null); }}
+                data={whatsappData}
+            />
 
             {/* Modal de Importação em Massa de Presentes */}
             <Dialog open={showImport} onOpenChange={setShowImport}>
